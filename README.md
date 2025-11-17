@@ -1,6 +1,16 @@
 # RL Studio
 
-A full-stack platform for designing reinforcement learning environments, running GPU-backed training, and monitoring agents in real-time.
+<div align="center">
+
+**A full-stack platform for designing reinforcement learning environments, running GPU-backed training, and monitoring agents in real-time.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+
+</div>
+
+---
 
 ## 🚀 Features
 
@@ -12,6 +22,42 @@ A full-stack platform for designing reinforcement learning environments, running
 - **Code Generation**: Auto-generate production-ready Gymnasium environments and training scripts
 - **Paper Import**: Import environment specifications from arXiv/blog URLs via Firecrawl
 - **Algorithm Support**: PPO, DQN, A2C, Behavior Cloning, Imitation Learning, and more
+
+## 🎯 What It Can Do
+
+### Universal Environment Builder
+
+Design grid worlds, 2D continuous environments, custom geometry, and multi-agent setups — all powered by the same SceneGraph engine.
+
+<div align="center">
+  <img src="public/images/landing/environment-builder.png" alt="RL Studio environment editor" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+</div>
+
+### Live Rollout Visualizer
+
+Step through episodes, inspect state transitions, debug reward triggers, and preview learned policies in real-time.
+
+<div align="center">
+  <img src="public/images/landing/rollout-visualizer.png" alt="RL Studio rollout preview" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+</div>
+
+### One-Click Training
+
+Launch GPU training jobs with PPO, DQN, A2C, or other algorithms. Monitor progress in real time with metrics, logs, and rollouts streamed back into the studio.
+
+<div align="center">
+  <img src="public/images/landing/training-config.png" alt="RL Studio training configuration" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+</div>
+
+### Export Everything
+
+Generate Gymnasium-compatible Python code, training scripts, config files, and complete project bundles.
+
+<div align="center">
+  <img src="public/images/landing/export-dialog.png" alt="RL Studio export functionality" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+</div>
+
+---
 
 ## 🛠️ Tech Stack
 
@@ -260,3 +306,12 @@ Built with:
 - [TanStack Start](https://tanstack.com/start)
 - [Convex](https://www.convex.dev/)
 
+---
+
+<div align="center">
+
+**Made with ❤️ for the RL community**
+
+[Get Started](#-quick-start) • [View Features](#-features) • [Deploy](#-deployment)
+
+</div>
