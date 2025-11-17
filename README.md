@@ -95,27 +95,6 @@ npm run dev
 
 Open http://localhost:3000 in your browser!
 
-## 🚀 Deployment
-
-### Quick Deploy
-
-See [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) for the fastest way to deploy.
-
-### Full Deployment Guide
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment instructions.
-
-**TL;DR:**
-1. Deploy Convex: `npx convex deploy --prod`
-2. Deploy to Netlify: Connect GitHub repo → Set `VITE_CONVEX_URL` → Deploy
-
-## 📚 Documentation
-
-- **[Deployment Guide](./DEPLOYMENT.md)**: Complete deployment instructions
-- **[Quick Deploy](./QUICK_DEPLOY.md)**: Fast deployment guide
-- **[Backend Architecture](./BACKEND.md)**: Detailed backend documentation
-- **[Contributing](./CONTRIBUTING.md)**: Contribution guidelines
-
 ## 🎯 Core Workflows
 
 ### Creating an Environment
@@ -204,9 +183,47 @@ npx convex dev   # Start Convex dev server
 ```bash
 npm run build
 # Deploy dist/ to Netlify
+# Set environment variable: VITE_CONVEX_URL
 ```
 
-### Backend (Convex)
+### Backend (Multiple Options)
+
+#### Option 1: Google Cloud Run (Recommended)
+
+```bash
+cd backend
+./deploy-gcp.sh
+```
+
+Or manually:
+```bash
+gcloud run deploy rl-studio-backend \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars "CONVEX_URL=$CONVEX_URL,PORT=8080"
+```
+
+#### Option 2: AWS (ECS/Fargate)
+
+```bash
+cd backend
+./aws-deploy.sh
+```
+
+#### Option 3: Railway (Easiest)
+
+1. Go to https://railway.app
+2. New Project → Deploy from GitHub
+3. Select your repo
+4. Add Service → Empty Service
+5. Root Directory: `backend`
+6. Build Command: `pip install -r requirements.txt`
+7. Start Command: `python main.py`
+8. Add environment variable: `CONVEX_URL`
+
+### Convex
 
 ```bash
 npx convex deploy
@@ -225,7 +242,10 @@ Training jobs are automatically deployed via SkyPilot when launched from the UI.
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## 📝 License
 
@@ -239,3 +259,4 @@ Built with:
 - [SkyPilot](https://github.com/skypilot-org/skypilot)
 - [TanStack Start](https://tanstack.com/start)
 - [Convex](https://www.convex.dev/)
+

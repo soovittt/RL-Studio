@@ -137,3 +137,9 @@ dist/
 eggs/
 wheels/
 
+# Documentation files (only README.md is allowed)
+*.md
+!README.md
+!backend/README.md
+!convex/README.md
+

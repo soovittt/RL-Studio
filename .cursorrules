@@ -1,0 +1,31 @@
+# Cursor Rules for RL Studio
+
+## File Creation Rules
+
+**CRITICAL: DO NOT CREATE .md FILES**
+- Never create any .md files except README.md
+- All documentation should be added to README.md only
+- Do not create temporary .md files, guides, or documentation files
+- Do not create COMMIT_MESSAGE.md, SETUP.md, GUIDE.md, or any other .md files
+- If documentation is needed, update README.md instead
+
+## Documentation Policy
+
+- All project documentation belongs in README.md
+- Do not split documentation into multiple .md files
+- Keep README.md comprehensive and up-to-date
+- Never create separate documentation files
+
+## Code Style
+
+- Use TypeScript for frontend code
+- Use Python for backend code
+- Follow existing code patterns
+- Keep components focused and modular
+
+## File Naming
+
+- Use kebab-case for file names
+- Do not create files with generic names like "guide.md", "setup.md", "notes.md"
+- All documentation goes in README.md only
+

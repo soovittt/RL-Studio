@@ -1,0 +1,27 @@
+# Cursor ignore patterns
+# Files that Cursor should not create or modify
+
+# Documentation files (only README.md is allowed)
+*.md
+!README.md
+!backend/README.md
+!convex/README.md
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+COMMIT_MSG.txt
+COMMIT_MESSAGE.md
+SETUP.md
+GUIDE.md
+NOTES.md
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
