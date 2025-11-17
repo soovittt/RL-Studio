@@ -1,0 +1,15 @@
+name: rl-studio-training
+
+resources:
+  accelerators: A10:1
+
+setup: |
+  pip install -r requirements.txt
+
+run: |
+  python train.py
+
+envs:
+  RUN_ID: ${RUN_ID}
+  CONVEX_URL: ${CONVEX_URL}
+  METRICS_INTERVAL: ${METRICS_INTERVAL:-100}
