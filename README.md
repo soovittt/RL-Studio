@@ -1,91 +1,227 @@
-# RL Studio
-
 <div align="center">
+
+# 🎮 RL Studio
 
 **A full-stack platform for designing reinforcement learning environments, running GPU-backed training, and monitoring agents in real-time.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Convex](https://img.shields.io/badge/Convex-FF4D00?logo=convex)](https://www.convex.dev/)
+
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Contributors](https://img.shields.io/github/contributors/yourusername/rl-studio)](https://github.com/yourusername/rl-studio/graphs/contributors)
+[![Issues](https://img.shields.io/github/issues/yourusername/rl-studio)](https://github.com/yourusername/rl-studio/issues)
+[![Stars](https://img.shields.io/github/stars/yourusername/rl-studio)](https://github.com/yourusername/rl-studio/stargazers)
+
+[Documentation](#-documentation) • [Quick Start](#-quick-start) • [Features](#-features) • [Contributing](#-contributing)
 
 </div>
 
 ---
 
-## 🚀 Features
+## 📖 Table of Contents
 
-- **Visual Environment Editor**: Design gridworld and continuous environments with drag-and-drop interface
-- **Real-time Training**: Launch GPU-backed training jobs on AWS/GCP/Azure via SkyPilot
-- **Live Metrics**: Monitor training progress with real-time metrics visualization
-- **RL Analysis**: Advanced analysis including reward decomposition, trajectory visualization, policy entropy, and termination analysis
-- **Multi-Agent Support**: Design and train multi-agent environments
-- **Code Generation**: Auto-generate production-ready Gymnasium environments and training scripts
-- **Paper Import**: Import environment specifications from arXiv/blog URLs via Firecrawl
-- **Algorithm Support**: PPO, DQN, A2C, Behavior Cloning, Imitation Learning, and more
+- [About](#-about)
+- [Features](#-features)
+- [Screenshots](#-screenshots)
+- [Tech Stack](#-tech-stack)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Environment Variables Setup](#-environment-variables-setup)
+- [Usage](#-usage)
+- [API Documentation](#-api-documentation)
+- [Development](#-development)
+- [Deployment](#-deployment)
+- [Contributing](#-contributing)
+- [Roadmap](#-roadmap)
+- [FAQ](#-faq)
+- [License](#-license)
+- [Acknowledgments](#-acknowledgments)
 
-## 🎯 What It Can Do
+---
 
-### Universal Environment Builder
+## 🎯 About
 
-Design grid worlds, 2D continuous environments, custom geometry, and multi-agent setups — all powered by the same SceneGraph engine.
+RL Studio is a comprehensive platform that brings together environment design, training orchestration, and real-time monitoring for reinforcement learning. Whether you're a researcher prototyping new environments or a practitioner training production models, RL Studio provides the tools you need in one unified interface.
+
+### Key Highlights
+
+- 🎨 **Visual Environment Builder** - Design complex RL environments without writing code
+- 🚀 **One-Click Training** - Launch GPU-backed training jobs on AWS/GCP/Azure
+- 📊 **Real-time Monitoring** - Track training progress with live metrics and visualizations
+- 🔬 **Advanced Analysis** - Deep insights into rewards, trajectories, and policy behavior
+- 📦 **Code Generation** - Export production-ready Gymnasium environments
+- 📄 **Paper Import** - Import environment specs from research papers
+
+---
+
+## ✨ Features
+
+### 🎨 Visual Environment Editor
+
+- **Drag-and-Drop Interface**: Design gridworld and continuous environments visually
+- **Multi-Agent Support**: Create complex multi-agent scenarios
+- **Custom Geometry**: Define custom shapes and obstacles
+- **Real-time Preview**: See your environment as you build it
+
+### 🚀 Training & Orchestration
+
+- **GPU-Backed Training**: Launch training jobs on AWS/GCP/Azure via SkyPilot
+- **Multiple Algorithms**: Support for PPO, DQN, A2C, BC, Imitation Learning, and more
+- **Hyperparameter Tuning**: Built-in suggestions based on environment characteristics
+- **Spot Instance Support**: 70% cost savings with automatic spot instance management
+
+### 📊 Monitoring & Analysis
+
+- **Live Metrics**: Real-time training metrics visualization
+- **Reward Decomposition**: Understand which rules contribute most to rewards
+- **Trajectory Visualization**: View agent paths and detect attractors
+- **Policy Entropy**: Measure exploration vs exploitation
+- **Termination Analysis**: Understand why episodes end
+
+### 🔧 Developer Tools
+
+- **Code Generation**: Auto-generate production-ready Gymnasium environments
+- **Paper Import**: Import environment specs from arXiv/blog URLs via Firecrawl
+- **Export Everything**: Generate complete project bundles with training scripts
+- **Code Review**: AI-powered code review and validation
+
+---
+
+## 📸 Screenshots
+
+### Environment Builder
 
 <div align="center">
-  <img src="public/images/landing/environment-builder.png" alt="RL Studio environment editor" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <img src="./public/images/landing/environment-builder.png" alt="RL Studio environment editor" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <p><em>Design complex RL environments with our visual editor</em></p>
 </div>
 
-### Live Rollout Visualizer
-
-Step through episodes, inspect state transitions, debug reward triggers, and preview learned policies in real-time.
+### Rollout Visualizer
 
 <div align="center">
-  <img src="public/images/landing/rollout-visualizer.png" alt="RL Studio rollout preview" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <img src="./public/images/landing/rollout-visualizer.png" alt="RL Studio rollout preview" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <p><em>Step through episodes and debug reward triggers in real-time</em></p>
 </div>
 
-### One-Click Training
-
-Launch GPU training jobs with PPO, DQN, A2C, or other algorithms. Monitor progress in real time with metrics, logs, and rollouts streamed back into the studio.
+### Training Configuration
 
 <div align="center">
-  <img src="public/images/landing/training-config.png" alt="RL Studio training configuration" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <img src="./public/images/landing/training-config.png" alt="RL Studio training configuration" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <p><em>Configure and launch training jobs with one click</em></p>
 </div>
 
-### Export Everything
-
-Generate Gymnasium-compatible Python code, training scripts, config files, and complete project bundles.
+### Export Dialog
 
 <div align="center">
-  <img src="public/images/landing/export-dialog.png" alt="RL Studio export functionality" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <img src="./public/images/landing/export-dialog.png" alt="RL Studio export functionality" width="800" style="border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <p><em>Export production-ready code and project bundles</em></p>
 </div>
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: TanStack Start (React SSR), TypeScript, Tailwind CSS
-- **Backend**: FastAPI (Python), Convex (realtime DB)
-- **Training**: SkyPilot (GPU orchestration), Stable-Baselines3, PyTorch
-- **RL Libraries**: Gymnasium, NumPy, SciPy, scikit-learn
-- **Deployment**: Netlify (frontend), Convex Cloud (backend), AWS/GCP/Azure (training)
+### Frontend
+- **Framework**: [TanStack Start](https://tanstack.com/start) (React SSR)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **3D Graphics**: Three.js, React Three Fiber
+- **State Management**: Convex (realtime database)
+- **Charts**: Recharts
 
-## 📋 Prerequisites
+### Backend
+- **API**: FastAPI (Python)
+- **Database**: Convex (realtime DB)
+- **Training**: SkyPilot (GPU orchestration)
+- **RL Libraries**: Stable-Baselines3, Gymnasium, PyTorch
+- **Analysis**: NumPy, SciPy, scikit-learn
 
-- Node.js 18+ and npm
-- Python 3.9+
-- Convex account (free tier available)
-- AWS account (for GPU training jobs)
-- OpenAI API key (optional, for code generation)
+### Infrastructure
+- **Frontend Hosting**: Netlify
+- **Backend Hosting**: Google Cloud Run / AWS ECS / Railway
+- **Database**: Convex Cloud
+- **Training Jobs**: AWS/GCP/Azure (via SkyPilot)
 
-## 🏃 Quick Start
+---
 
-### 1. Clone and Install
+## 🏗️ Architecture
 
-```bash
-git clone <repository-url>
-cd "RL Studio"
-npm install
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Frontend (React)                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Editor     │  │  Visualizer  │  │   Training   │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Convex (Realtime DB)                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ Environments │  │     Runs      │  │   Metrics    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Backend API (FastAPI)                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Rollout    │  │   Analysis   │  │   Codegen    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Training Infrastructure (SkyPilot)             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │     AWS      │  │      GCP      │  │    Azure     │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Set Up Convex
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js** 18+ and npm
+- **Python** 3.9+
+- **Convex account** ([free tier available](https://www.convex.dev/))
+- **AWS account** (for GPU training jobs, optional)
+- **OpenAI API key** (optional, for code generation)
+
+### Installation
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/yourusername/rl-studio.git
+cd RL-Studio
+```
+
+> 💡 **Note**: This is an open-source project. You'll be setting up your own instance with your own API keys and credentials.
+
+2. **Install dependencies**
+
+```bash
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cd ..
+```
+
+3. **Set up Convex**
 
 ```bash
 npx convex dev
@@ -96,56 +232,365 @@ This will:
 - Set up your local development environment
 - Generate a deployment URL
 
-### 3. Configure Environment Variables
+4. **Configure environment variables**
 
-Create `.env` in the root directory:
+> ⚠️ **Important**: Since this is an open-source project, you'll need to set up your own environment variables. The `.env` files are not included in the repository for security reasons.
+
+#### Step 1: Create Root `.env` File
+
+Create a `.env` file in the root directory of the project:
 
 ```bash
-# Convex (required)
-VITE_CONVEX_URL=https://your-deployment.convex.cloud
-
-# OpenAI (optional, for code generation)
-OPENAI_API_KEY=sk-your-api-key-here
-
-# Firecrawl (optional, for paper import)
-FIRECRAWL_API_KEY=your-firecrawl-key
+# Create the file
+touch .env
 ```
 
-### 4. Set Up Backend
+Then add the following content (replace with your own values):
 
 ```bash
+# ============================================
+# CONVEX CONFIGURATION (REQUIRED)
+# ============================================
+# Get this URL from running: npx convex dev
+# It will look like: https://your-deployment-name.convex.cloud
+VITE_CONVEX_URL=https://your-deployment-name.convex.cloud
+
+# ============================================
+# OPENAI API (OPTIONAL - For Code Generation)
+# ============================================
+# Get your API key from: https://platform.openai.com/api-keys
+# Leave empty if you don't need code generation features
+OPENAI_API_KEY=sk-your-api-key-here
+
+# ============================================
+# FIRECRAWL API (OPTIONAL - For Paper Import)
+# ============================================
+# Get your API key from: https://firecrawl.dev
+# Leave empty if you don't need paper import features
+FIRECRAWL_API_KEY=your-firecrawl-api-key
+
+# ============================================
+# BACKEND SERVICE URLs (OPTIONAL)
+# ============================================
+# For local development, these default to localhost:8000
+# For production, set these to your deployed backend URLs
+VITE_ROLLOUT_SERVICE_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
+VITE_TRAINING_SERVICE_URL=http://localhost:8000
+
+# ============================================
+# SENTRY (OPTIONAL - For Error Tracking)
+# ============================================
+# Get your DSN from: https://sentry.io
+# Leave empty if you don't need error tracking
+VITE_SENTRY_DSN=your-sentry-dsn
+```
+
+#### Step 2: Create Backend `.env` File
+
+Create a `.env` file in the `backend/` directory:
+
+```bash
+# Create the file
 cd backend
+touch .env
+cd ..
+```
 
-# Install Python dependencies
-pip install -r requirements.txt
+Then add the following content:
 
-# Set up AWS credentials for training (add to backend/.env)
+```bash
+# ============================================
+# OPENAI API (OPTIONAL - For Code Generation)
+# ============================================
+# Same as in root .env, or leave empty
+OPENAI_API_KEY=sk-your-api-key-here
+
+# ============================================
+# AWS CREDENTIALS (OPTIONAL - For GPU Training)
+# ============================================
+# Get these from: https://console.aws.amazon.com/iam/
+# Required only if you want to launch GPU training jobs
 AWS_ACCESS_KEY_ID=your-aws-access-key-id
 AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
 AWS_DEFAULT_REGION=us-east-1
 
-# Start backend server
-python main.py
+# ============================================
+# CONVEX URL (OPTIONAL)
+# ============================================
+# Usually same as VITE_CONVEX_URL from root .env
+CONVEX_URL=https://your-deployment-name.convex.cloud
+
+# ============================================
+# SERVER CONFIGURATION (OPTIONAL)
+# ============================================
+# These have sensible defaults, only change if needed
+# PORT=8000
+# HOST=0.0.0.0
+# DEBUG=false
+# CORS_ORIGINS=*
 ```
 
-The backend will automatically:
-- Install SkyPilot if needed
-- Configure AWS credentials from `.env`
-- Set up infrastructure for training jobs
+#### Step 3: Set Convex Environment Variables
 
-### 5. Start Development Server
+For Convex-specific environment variables (like Firecrawl API key for Convex functions), use the Convex CLI:
 
 ```bash
+# Set Firecrawl API key for Convex functions
+npx convex env set FIRECRAWL_API_KEY your-firecrawl-key
+
+# Set CodeRabbit API key (if using code review features)
+npx convex env set CODERABBIT_API_KEY your-coderabbit-key
+```
+
+#### 📋 Environment Variables Quick Reference
+
+| Variable | Location | Required | Description |
+|----------|----------|-----------|-------------|
+| `VITE_CONVEX_URL` | Root `.env` | ✅ Yes | Your Convex deployment URL |
+| `OPENAI_API_KEY` | Root `.env` & `backend/.env` | ❌ No | For AI code generation |
+| `FIRECRAWL_API_KEY` | Root `.env` & Convex | ❌ No | For paper import feature |
+| `AWS_ACCESS_KEY_ID` | `backend/.env` | ❌ No | For GPU training jobs |
+| `AWS_SECRET_ACCESS_KEY` | `backend/.env` | ❌ No | For GPU training jobs |
+| `VITE_ROLLOUT_SERVICE_URL` | Root `.env` | ❌ No | Backend URL (defaults to localhost) |
+| `VITE_API_URL` | Root `.env` | ❌ No | Backend API URL (defaults to localhost) |
+
+#### 🔒 Security Notes
+
+- **Never commit `.env` files** to version control (they're already in `.gitignore`)
+- **Use different keys** for development and production
+- **Rotate API keys** regularly for security
+- **Use environment-specific files**: `.env.local` for local overrides, `.env.production` for production
+
+#### 🆘 Troubleshooting
+
+**Problem**: "VITE_CONVEX_URL is not set"  
+**Solution**: Run `npx convex dev` to get your Convex URL, then add it to `.env`
+
+**Problem**: "Backend connection failed"  
+**Solution**: Make sure `VITE_ROLLOUT_SERVICE_URL` points to your running backend (default: `http://localhost:8000`)
+
+**Problem**: "OpenAI API key invalid"  
+**Solution**: Check that your API key starts with `sk-` and is not a placeholder value
+
+5. **Start the development servers**
+
+```bash
+# Terminal 1: Start backend
+cd backend
+source venv/bin/activate
+python main.py
+
+# Terminal 2: Start frontend
 npm run dev
 ```
 
-Open http://localhost:3000 in your browser!
+6. **Open your browser**
 
-## 🎯 Core Workflows
+Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Creating an Environment
+---
 
-1. Click "New Environment" in the dashboard
+## ⚙️ Environment Variables Setup
+
+> 📝 **For Open Source Contributors**: This section explains how to configure environment variables for your own RL Studio instance.
+
+Since RL Studio is open source, you need to set up your own environment variables. Here's a comprehensive guide:
+
+### 🎯 Quick Setup Checklist
+
+- [ ] Clone the repository
+- [ ] Install dependencies (Node.js & Python)
+- [ ] Set up Convex account (`npx convex dev`)
+- [ ] Create root `.env` file with `VITE_CONVEX_URL`
+- [ ] Create `backend/.env` file (optional, for training features)
+- [ ] Set Convex environment variables (optional, for paper import)
+
+### 📝 Detailed Setup Guide
+
+#### 1. Required: Convex Setup
+
+**Convex is required** for the application to work. It's free to get started:
+
+```bash
+# This will create a Convex account and deployment
+npx convex dev
+```
+
+This will output a URL like:
+```
+https://your-deployment-name.convex.cloud
+```
+
+**Add this to your root `.env` file:**
+```bash
+VITE_CONVEX_URL=https://your-deployment-name.convex.cloud
+```
+
+#### 2. Optional: OpenAI API (Code Generation)
+
+If you want to use AI-powered code generation:
+
+1. Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Add to both `.env` files:
+
+**Root `.env`:**
+```bash
+OPENAI_API_KEY=sk-proj-...your-key-here
+```
+
+**`backend/.env`:**
+```bash
+OPENAI_API_KEY=sk-proj-...your-key-here
+```
+
+#### 3. Optional: Firecrawl API (Paper Import)
+
+If you want to import environments from research papers:
+
+1. Get an API key from [Firecrawl](https://firecrawl.dev)
+2. Add to root `.env`:
+```bash
+FIRECRAWL_API_KEY=fc-...your-key-here
+```
+3. Also set in Convex:
+```bash
+npx convex env set FIRECRAWL_API_KEY fc-...your-key-here
+```
+
+#### 4. Optional: AWS Credentials (GPU Training)
+
+If you want to launch GPU training jobs:
+
+1. Create an AWS account
+2. Create an IAM user with programmatic access
+3. Add credentials to `backend/.env`:
+```bash
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
+```
+
+#### 5. Optional: Backend URLs (Production)
+
+For production deployments, set your backend URLs in root `.env`:
+
+```bash
+VITE_ROLLOUT_SERVICE_URL=https://your-backend-url.com
+VITE_API_URL=https://your-backend-url.com
+VITE_TRAINING_SERVICE_URL=https://your-backend-url.com
+```
+
+For local development, these default to `http://localhost:8000`.
+
+### 📋 Complete `.env` File Templates
+
+#### Root `.env` (Minimum Required)
+
+```bash
+# REQUIRED - Get from: npx convex dev
+VITE_CONVEX_URL=https://your-deployment-name.convex.cloud
+```
+
+#### Root `.env` (Full Example)
+
+```bash
+# ============================================
+# REQUIRED
+# ============================================
+VITE_CONVEX_URL=https://your-deployment-name.convex.cloud
+
+# ============================================
+# OPTIONAL - Code Generation
+# ============================================
+OPENAI_API_KEY=sk-proj-your-key-here
+
+# ============================================
+# OPTIONAL - Paper Import
+# ============================================
+FIRECRAWL_API_KEY=fc-your-key-here
+
+# ============================================
+# OPTIONAL - Backend URLs (for production)
+# ============================================
+# VITE_ROLLOUT_SERVICE_URL=https://your-backend.com
+# VITE_API_URL=https://your-backend.com
+# VITE_TRAINING_SERVICE_URL=https://your-backend.com
+```
+
+#### `backend/.env` (Full Example)
+
+```bash
+# ============================================
+# OPTIONAL - Code Generation
+# ============================================
+OPENAI_API_KEY=sk-proj-your-key-here
+
+# ============================================
+# OPTIONAL - AWS for GPU Training
+# ============================================
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
+
+# ============================================
+# OPTIONAL - Convex (usually same as VITE_CONVEX_URL)
+# ============================================
+CONVEX_URL=https://your-deployment-name.convex.cloud
+
+# ============================================
+# OPTIONAL - Server Config
+# ============================================
+# PORT=8000
+# HOST=0.0.0.0
+# DEBUG=false
+```
+
+### 🔍 Verifying Your Setup
+
+After setting up your `.env` files, verify everything works:
+
+```bash
+# 1. Check Convex connection
+npx convex dev
+# Should show: "✅ Convex functions are ready"
+
+# 2. Start backend
+cd backend
+source venv/bin/activate
+python main.py
+# Should show: "✅ Loaded .env from backend/.env"
+
+# 3. Start frontend
+npm run dev
+# Should open at http://localhost:3000
+```
+
+### 🆘 Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| `VITE_CONVEX_URL is not set` | Run `npx convex dev` and add the URL to `.env` |
+| `Backend connection failed` | Make sure backend is running on port 8000 |
+| `OpenAI API key invalid` | Check that your key starts with `sk-` |
+| `AWS credentials not found` | Only needed for GPU training, can be skipped for local dev |
+
+### 🔐 Security Best Practices
+
+1. **Never commit `.env` files** - They're already in `.gitignore`
+2. **Use different keys for dev/prod** - Create separate `.env.local` and `.env.production`
+3. **Rotate keys regularly** - Especially for production
+4. **Use environment variables in CI/CD** - Don't hardcode secrets
+
+---
+
+## 📚 Documentation
+
+### Core Workflows
+
+#### Creating an Environment
+
+1. Click **"New Environment"** in the dashboard
 2. Choose environment type (Grid or Continuous)
 3. Design your environment:
    - Add agents, goals, obstacles
@@ -154,38 +599,94 @@ Open http://localhost:3000 in your browser!
    - Configure action/observation spaces
 4. Save your environment
 
-### Running Rollouts
+#### Running Rollouts
 
 1. Open your environment
-2. Go to "Rollout Preview" tab
+2. Go to **"Rollout Preview"** tab
 3. Configure rollout settings (max steps, policy)
-4. Click "Run Rollout"
+4. Click **"Run Rollout"**
 5. View results and analysis in real-time
 
-### Launching Training
+#### Launching Training
 
 1. Open your environment
-2. Click "Launch Training"
+2. Click **"Launch Training"**
 3. Configure training settings:
    - **Algorithm**: PPO, DQN, A2C, BC, Imitation, or Random
    - **Hyperparameters**: Learning rate, gamma, total steps, etc.
    - **GPU**: Select GPU type (A10:1 recommended)
    - **Parallel Environments**: Number of parallel envs
-4. Click "Launch Training"
+4. Click **"Launch Training"**
 5. Monitor progress in real-time
 
-### RL Analysis
+#### RL Analysis
 
-After running rollouts, use the "RL Analysis" tab to:
+After running rollouts, use the **"RL Analysis"** tab to:
 - **Reward Decomposition**: See which rules contribute most to rewards
 - **Trajectory Visualization**: View agent paths and detect attractors
 - **Policy Entropy**: Measure exploration vs exploitation
 - **Termination Analysis**: Understand why episodes end
 
-## 🏗️ Project Structure
+---
+
+## 🔌 API Documentation
+
+### Backend API
+
+The backend API is documented using FastAPI's automatic OpenAPI documentation. Once the backend is running, visit:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Key Endpoints
+
+#### Rollout API
+
+```http
+POST /api/rollout
+Content-Type: application/json
+
+{
+  "env_spec": {...},
+  "max_steps": 1000,
+  "policy": "random"
+}
+```
+
+#### Training API
+
+```http
+POST /api/training/launch
+Content-Type: application/json
+
+{
+  "run_id": "run_123",
+  "algorithm": "ppo",
+  "hyperparams": {...},
+  "gpu": "A10:1"
+}
+```
+
+#### Analysis API
+
+```http
+POST /api/analysis/reward
+Content-Type: application/json
+
+{
+  "rollout_steps": [...],
+  "env_spec": {...}
+}
+```
+
+---
+
+## 💻 Development
+
+### Project Structure
 
 ```
-RL Studio/
+rl-studio/
 ├── app/                    # Frontend (TanStack Start)
 │   ├── components/         # React components
 │   ├── lib/               # Utilities and clients
@@ -206,21 +707,35 @@ RL Studio/
     └── train.py          # Main training script
 ```
 
-## 🔧 Development
+### Development Commands
 
 ```bash
 # Frontend
 npm run dev      # Start dev server
 npm run build    # Build for production
 npm run lint     # Run linter
+npm run test     # Run tests
+npm run format   # Format code
 
 # Backend
 cd backend
-python main.py  # Start FastAPI server
+source venv/bin/activate
+python main.py           # Start FastAPI server
+python -m pytest         # Run tests (if configured)
 
 # Convex
-npx convex dev   # Start Convex dev server
+npx convex dev           # Start Convex dev server
+npx convex deploy        # Deploy to production
 ```
+
+### Code Style
+
+- **Frontend**: ESLint + Prettier
+- **Backend**: Black (Python formatter)
+- **TypeScript**: Strict mode enabled
+- **Python**: Type hints required
+
+---
 
 ## 🚢 Deployment
 
@@ -242,6 +757,7 @@ cd backend
 ```
 
 Or manually:
+
 ```bash
 gcloud run deploy rl-studio-backend \
   --source . \
@@ -260,7 +776,7 @@ cd backend
 
 #### Option 3: Railway (Easiest)
 
-1. Go to https://railway.app
+1. Go to [Railway](https://railway.app)
 2. New Project → Deploy from GitHub
 3. Select your repo
 4. Add Service → Empty Service
@@ -279,32 +795,128 @@ npx convex deploy
 
 Training jobs are automatically deployed via SkyPilot when launched from the UI. No manual deployment needed!
 
+---
+
 ## 💰 Cost Estimates
+
+### Training Costs
 
 - **A10:1 GPU**: ~$1.00/hour (on-demand) or ~$0.30/hour (spot)
 - **1M training steps**: ~2-4 hours = ~$2-4 (on-demand) or ~$0.60-1.20 (spot)
 
-**Recommendation**: Enable spot instances for 70% cost savings!
+**💡 Recommendation**: Enable spot instances for 70% cost savings!
+
+### Infrastructure Costs
+
+- **Convex**: Free tier available, then usage-based
+- **Frontend Hosting**: Free on Netlify (hobby tier)
+- **Backend Hosting**: ~$5-20/month (depending on traffic)
+
+---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Quick Contribution Guide
+
+1. **Fork the repository**
+2. **Create a feature branch**
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. **Make your changes**
+4. **Commit your changes**
+   ```bash
+   git commit -m 'Add some amazing feature'
+   ```
+5. **Push to the branch**
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+6. **Open a Pull Request**
+
+### Development Setup
+
+See [Development](#-development) section for setup instructions.
+
+### Code of Conduct
+
+Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] **Multi-Agent Training**: Enhanced support for multi-agent RL
+- [ ] **Custom Algorithms**: Plugin system for custom RL algorithms
+- [ ] **Distributed Training**: Support for distributed training across multiple GPUs
+- [ ] **Environment Templates**: Pre-built templates for common RL tasks
+- [ ] **Collaboration Features**: Real-time collaboration on environments
+- [ ] **Model Zoo**: Pre-trained models and benchmarks
+- [ ] **Mobile App**: Mobile app for monitoring training jobs
+- [ ] **API SDK**: Official SDKs for Python, JavaScript, and Rust
+
+See our [Issues](https://github.com/yourusername/rl-studio/issues) for more planned features.
+
+---
+
+## ❓ FAQ
+
+### General
+
+**Q: Is RL Studio free to use?**  
+A: Yes! RL Studio is open source and free. You only pay for cloud infrastructure (GPU training jobs, hosting, etc.).
+
+**Q: What cloud providers are supported?**  
+A: AWS, Google Cloud Platform, and Microsoft Azure are all supported via SkyPilot.
+
+**Q: Can I use RL Studio without cloud training?**  
+A: Yes! You can use RL Studio for environment design and local rollouts without any cloud setup.
+
+### Technical
+
+**Q: What Python version is required?**  
+A: Python 3.9 or higher.
+
+**Q: Can I deploy on my own infrastructure?**  
+A: Yes! RL Studio is fully open source and can be deployed anywhere.
+
+**Q: How do I add a custom RL algorithm?**  
+A: Currently, you can modify the training scripts. We're working on a plugin system for easier extensibility.
+
+### Training
+
+**Q: How much do GPU training jobs cost?**  
+A: See [Cost Estimates](#-cost-estimates) section. Costs vary by provider and instance type.
+
+**Q: Can I use spot instances?**  
+A: Yes! SkyPilot automatically manages spot instances for cost savings.
+
+**Q: How long do training jobs take?**  
+A: Depends on your environment and hyperparameters. Typical jobs range from 1-4 hours for 1M steps.
+
+---
 
 ## 📝 License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
 
 ## 🙏 Acknowledgments
 
-Built with:
-- [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3)
-- [Gymnasium](https://github.com/Farama-Foundation/Gymnasium)
-- [SkyPilot](https://github.com/skypilot-org/skypilot)
-- [TanStack Start](https://tanstack.com/start)
-- [Convex](https://www.convex.dev/)
+RL Studio is built with amazing open-source tools and libraries:
+
+- [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3) - RL algorithms
+- [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) - RL environments
+- [SkyPilot](https://github.com/skypilot-org/skypilot) - GPU orchestration
+- [TanStack Start](https://tanstack.com/start) - React framework
+- [Convex](https://www.convex.dev/) - Realtime database
+- [FastAPI](https://fastapi.tiangolo.com/) - Python API framework
+- [Three.js](https://threejs.org/) - 3D graphics
+
+Special thanks to all [contributors](https://github.com/yourusername/rl-studio/graphs/contributors) who have helped make RL Studio better!
 
 ---
 
@@ -312,6 +924,8 @@ Built with:
 
 **Made with ❤️ for the RL community**
 
-[Get Started](#-quick-start) • [View Features](#-features) • [Deploy](#-deployment)
+[Get Started](#-quick-start) • [Documentation](#-documentation) • [Contributing](#-contributing) • [License](#-license)
+
+[⭐ Star us on GitHub](https://github.com/yourusername/rl-studio) • [🐛 Report Bug](https://github.com/yourusername/rl-studio/issues) • [💡 Request Feature](https://github.com/yourusername/rl-studio/issues)
 
 </div>
