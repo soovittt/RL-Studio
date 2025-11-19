@@ -3,7 +3,7 @@
  * Generates production-ready code based on actual environment configuration
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'
 
 export interface GenerateCodeRequest {
   env_spec: any

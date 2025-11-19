@@ -3,7 +3,7 @@
  * REAL Python backend calculations - NO FALLBACKS
  */
 
-const ANALYSIS_SERVICE_URL = import.meta.env.VITE_TRAINING_SERVICE_URL || 'http://localhost:8000'
+const ANALYSIS_SERVICE_URL = import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'
 const WS_URL = ANALYSIS_SERVICE_URL.replace('http://', 'ws://').replace('https://', 'wss://')
 
 export interface AnalyzeRolloutRequest {

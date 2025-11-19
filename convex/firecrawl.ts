@@ -82,24 +82,62 @@ class FirecrawlService {
   }
 
   async scrape(url: string, options?: { formats?: string[]; includeImages?: boolean }): Promise<FirecrawlScrapeResponse> {
-    const response = await fetch(`${this.baseUrl}/scrape`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        url,
-        formats: options?.formats || ['markdown', 'html'],
-        includeImages: options?.includeImages ?? true,
-      }),
-    })
+    try {
+      // Firecrawl API v1 format - only 'url' is required
+      // The 'formats' and 'includeImages' parameters are not recognized by v1 API
+      // Firecrawl returns markdown by default
+      const response = await fetch(`${this.baseUrl}/scrape`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({ url }),
+      })
 
-    if (!response.ok) {
-      throw new Error(`Firecrawl API error: ${response.statusText}`)
+      if (!response.ok) {
+        // Try to get detailed error message from response body
+        let errorMessage = `Firecrawl API error: ${response.status} ${response.statusText}`
+        let errorDetails = ''
+        try {
+          const errorText = await response.text()
+          errorDetails = errorText
+          try {
+            const errorData = JSON.parse(errorText)
+            if (errorData.error) {
+              errorMessage = `Firecrawl API error: ${errorData.error}`
+            } else if (errorData.message) {
+              errorMessage = `Firecrawl API error: ${errorData.message}`
+            } else if (errorData.details) {
+              errorMessage = `Firecrawl API error: ${errorData.details}`
+            }
+          } catch {
+            // If not JSON, use the text as error message
+            if (errorText) {
+              errorMessage = `Firecrawl API error: ${errorText.substring(0, 200)}`
+            }
+          }
+        } catch {
+          // If reading response fails, use status text
+        }
+        const fullError = `${errorMessage}${errorDetails ? ` (Details: ${errorDetails.substring(0, 100)})` : ''}`
+        throw new Error(fullError)
+      }
+
+      const result = await response.json()
+      
+      // Check if Firecrawl returned an error in the response body
+      if (result.error) {
+        throw new Error(`Firecrawl error: ${result.error}`)
+      }
+      
+      return result
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error(`Firecrawl scrape failed: ${String(error)}`)
     }
-
-    return await response.json()
   }
 
   async search(query: string, options?: { limit?: number; sites?: string[] }): Promise<FirecrawlSearchResponse> {
@@ -535,10 +573,8 @@ export const scrapeUrl = action({
     }
 
     const service = new FirecrawlService(firecrawlApiKey)
-    const result = await service.scrape(args.url, {
-      formats: ['markdown', 'html'],
-      includeImages: args.includeImages ?? true,
-    })
+    // Firecrawl v1 only accepts 'url' parameter
+    const result = await service.scrape(args.url)
 
     return result
   },
@@ -555,10 +591,8 @@ export const importFromPaper = action({
     const service = new FirecrawlService(firecrawlApiKey)
     const parser = new EnvironmentParser()
     
-    const scrapeResult = await service.scrape(args.url, {
-      formats: ['markdown', 'html'],
-      includeImages: true,
-    })
+    // Firecrawl v1 only accepts 'url' parameter
+    const scrapeResult = await service.scrape(args.url)
 
     if (!scrapeResult.success || !scrapeResult.data) {
       throw new Error('Failed to scrape URL')
@@ -596,10 +630,8 @@ export const importFromGitHub = action({
     const [, owner, repo] = repoMatch
     const readmeUrl = `https://github.com/${owner}/${repo}/blob/main/README.md`
     
-    const scrapeResult = await service.scrape(readmeUrl, {
-      formats: ['markdown', 'html'],
-      includeImages: true,
-    })
+    // Firecrawl v1 only accepts 'url' parameter
+    const scrapeResult = await service.scrape(readmeUrl)
 
     if (!scrapeResult.success || !scrapeResult.data) {
       throw new Error('Failed to scrape GitHub repository')
@@ -811,10 +843,8 @@ export const parseDiagram = action({
     const parser = new EnvironmentParser()
     
     // Scrape URL with images
-    const scrapeResult = await service.scrape(args.url, {
-      formats: ['markdown', 'html'],
-      includeImages: true,
-    })
+    // Firecrawl v1 only accepts 'url' parameter
+    const scrapeResult = await service.scrape(args.url)
 
     if (!scrapeResult.success || !scrapeResult.data) {
       throw new Error('Failed to scrape URL')

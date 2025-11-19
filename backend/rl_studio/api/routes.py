@@ -22,6 +22,7 @@ from .generation import router as generation_router
 from .benchmarks import router as benchmarks_router
 from .codegen import router as codegen_router
 from .infrastructure import router as infrastructure_router
+from .ingestion import router as ingestion_router
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ router.include_router(generation_router)
 router.include_router(benchmarks_router)
 router.include_router(codegen_router)
 router.include_router(infrastructure_router)
+router.include_router(ingestion_router)
 
 # ============================================================================
 # Rollout Routes
@@ -242,16 +244,25 @@ async def launch_training(request: LaunchJobRequest):
                     logger.warning(f"Could not fetch env_spec from Convex: {e}. Training will use default environment.")
         
         # Launch training job with env_spec
-        job_id = launch_training_job(
-            request.runId, 
-            request.config,
-            env_spec=env_spec,
-            use_managed_jobs=request.config.get("use_managed_jobs", True)
-        )
-        return LaunchJobResponse(
-            success=True,
-            jobId=job_id
-        )
+        try:
+            job_id = launch_training_job(
+                request.runId, 
+                request.config,
+                env_spec=env_spec,
+                use_managed_jobs=request.config.get("use_managed_jobs", True)
+            )
+            logger.info(f"✅ Training job launched successfully: {job_id}")
+            return LaunchJobResponse(
+                success=True,
+                jobId=job_id
+            )
+        except Exception as job_error:
+            error_msg = str(job_error)
+            logger.error(f"❌ Failed to launch training job: {error_msg}", exc_info=True)
+            return LaunchJobResponse(
+                success=False,
+                error=f"Failed to launch training job: {error_msg}"
+            )
     except Exception as e:
         logger.error(f"Failed to launch training job: {e}", exc_info=True)
         return LaunchJobResponse(

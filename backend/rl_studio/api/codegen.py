@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import logging
 
-from ..codegen.code_generator import CodeGenerator
+# Lazy imports - CodeGenerator loads OpenAI client which can be slow
+# Cache functions are lightweight, so import them directly
 from ..codegen.cache import get_cached_code, set_cached_code, clear_cache, get_cache_stats
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,8 @@ async def generate_code(request: GenerateCodeRequest):
         
         # Cache miss - generate code
         logger.info(f"🔄 Cache MISS for {file_type} - generating new code")
+        # Lazy import to avoid loading OpenAI client at startup
+        from ..codegen.code_generator import CodeGenerator
         generator = CodeGenerator()
         
         if file_type == "environment":
@@ -268,6 +271,8 @@ async def generate_all_files(request: GenerateCodeRequest):
     Returns a dictionary mapping file names to code content
     """
     try:
+        # Lazy import to avoid loading OpenAI client at startup
+        from ..codegen.code_generator import CodeGenerator
         generator = CodeGenerator()
         env_spec = request.env_spec
         training_config = request.training_config or {}

@@ -83,10 +83,11 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
         setError(errorMessage)
         
         // Better error messages
+        const backendUrl = import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'
         let userMessage = `Unable to generate code: ${errorMessage}\n\n`
         if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
           userMessage += 'Backend connection issue. Please ensure:\n'
-          userMessage += '1. Backend server is running at http://localhost:8000\n'
+          userMessage += `1. Backend server is running at ${backendUrl}\n`
           userMessage += '2. Check backend logs for errors\n'
         } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
           userMessage += 'API authentication failed. Please check:\n'
