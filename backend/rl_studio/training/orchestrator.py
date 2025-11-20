@@ -43,18 +43,29 @@ def generate_skypilot_yaml(run_id: str, config: Dict[str, Any], output_path: str
     accelerator = config.get("accelerator", "A10:1")
     use_spot = config.get("use_spot", False)  # Use spot instances for cost savings
     
+    # Determine workdir - SkyPilot needs the training directory
+    backend_root = Path(__file__).parent.parent.parent
+    training_dir = backend_root.parent / "training"
+    if training_dir.exists():
+        # Use absolute path for workdir so SkyPilot can sync it
+        workdir_path = str(training_dir.absolute())
+        logger.info(f"Using training directory as workdir: {workdir_path}")
+    else:
+        # Fallback: use current directory
+        workdir_path = config.get("workdir", ".")
+        logger.warning(f"Training directory not found at {training_dir}, using: {workdir_path}")
+    
     # Build proper SkyPilot YAML structure following official docs
     yaml_content = {
         "name": f"rl-studio-{run_id}",
         "resources": {
             "accelerators": accelerator,
             "use_spot": use_spot,  # Enable spot instances for ~70% cost savings
-            # Optional: specify cloud provider (auto-selects cheapest if not specified)
-            # "infra": config.get("cloud", "aws"),  # aws, gcp, azure, k8s, etc.
+            # Explicitly specify cloud provider if provided
+            **({"cloud": config.get("cloud")} if config.get("cloud") else {}),
         },
-        # Workdir: local directory to sync to cluster (~/sky_workdir/ on cluster)
-        # SkyPilot automatically syncs this directory
-        "workdir": config.get("workdir", "."),
+        # Workdir: SkyPilot will sync this directory to cluster (~/sky_workdir/ on cluster)
+        "workdir": workdir_path,
         "setup": """# Install RL dependencies
 pip install -q stable-baselines3>=2.2.0 gymnasium>=0.29.0 torch>=2.0.0
 pip install -q numpy>=1.24.0 scipy>=1.10.0 requests>=2.31.0
@@ -87,14 +98,17 @@ python train.py
             "mode": "MOUNT"  # or "MOUNT_CACHED" for read-heavy workloads
         }
     
-    # Add local file mounts if specified
-    if config.get("train_script_path"):
-        # For managed jobs, workdir handles this automatically
-        # But we can still add explicit mounts if needed
-        pass
+    # Mount backend code so train.py can import RLStudioEnv
+    backend_root = Path(__file__).parent.parent.parent
+    backend_dir = backend_root / "rl_studio"
+    if backend_dir.exists():
+        # Mount backend to /backend on cluster
+        file_mounts["/backend"] = str(backend_dir.absolute())
+        logger.info(f"Mounting backend code: {backend_dir.absolute()} → /backend")
     
     if file_mounts:
         yaml_content["file_mounts"] = file_mounts
+        logger.info(f"File mounts configured: {list(file_mounts.keys())}")
     
     # Add environment-specific config if provided
     if env_spec:
@@ -186,16 +200,76 @@ def launch_skypilot_job(yaml_path: str, use_managed_jobs: bool = True) -> str:
                          If False, use `sky launch` (interactive, SSH-able)
     """
     # Check if SkyPilot is installed
-    if not check_skypilot_installed():
+    # Use full PATH to ensure we find sky command
+    import os
+    env = os.environ.copy()
+    # Add common installation paths (including user Python bin)
+    paths_to_check = [
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+        os.path.expanduser('~/.local/bin'),
+        os.path.expanduser('~/Library/Python/3.13/bin'),  # User Python 3.13
+        os.path.expanduser('~/Library/Python/3.12/bin'),  # User Python 3.12
+        os.path.expanduser('~/Library/Python/3.11/bin'),  # User Python 3.11
+    ]
+    current_path = env.get('PATH', '')
+    for path in paths_to_check:
+        if path not in current_path and Path(path).exists():
+            env['PATH'] = f"{path}:{env.get('PATH', '')}"
+    
+    try:
+        # Use longer timeout and check if sky command exists first
+        import shutil
+        sky_path = shutil.which("sky", path=env.get("PATH", ""))
+        if not sky_path:
+            raise RuntimeError(
+                "SkyPilot CLI not found. Install with: pip install 'skypilot[aws,gcp,azure]'"
+            )
+        
+        result = subprocess.run(
+            ["sky", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15,  # Increased timeout
+            env=env,
+        )
+        if result.returncode != 0:
+            logger.warning(f"SkyPilot version check returned non-zero: {result.stderr}")
+            # Don't fail - might still work
+    except FileNotFoundError:
         raise RuntimeError(
             "SkyPilot CLI not found. Install with: pip install 'skypilot[aws,gcp,azure]'"
         )
+    except subprocess.TimeoutExpired:
+        logger.warning("SkyPilot version check timed out - this might indicate a hanging process")
+        logger.warning("Will attempt launch anyway - SkyPilot might still work")
+        # Don't fail - attempt launch anyway
     
-    # Check cloud credentials
-    cloud_status = check_cloud_credentials()
-    if not cloud_status.get("any_cloud_ready"):
-        logger.warning("No cloud providers configured. Run 'sky check' to set up credentials.")
-        logger.warning("SkyPilot supports: AWS, GCP, Azure, Lambda Cloud, etc.")
+    # Check cloud credentials (but don't fail if check fails - credentials might still work)
+    try:
+        cloud_status = check_cloud_credentials()
+        if not cloud_status.get("any_cloud_ready"):
+            logger.warning("SkyPilot cloud check didn't detect configured clouds.")
+            logger.warning("This might be a false negative - will attempt launch anyway.")
+            logger.warning("If launch fails, run 'sky check aws' to verify credentials.")
+    except Exception as e:
+        logger.warning(f"Cloud credential check failed: {e}. Will attempt launch anyway.")
+    
+    # Use full PATH for sky command
+    import os
+    env = os.environ.copy()
+    paths_to_check = [
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+        os.path.expanduser('~/.local/bin'),
+        os.path.expanduser('~/Library/Python/3.13/bin'),
+        os.path.expanduser('~/Library/Python/3.12/bin'),
+        os.path.expanduser('~/Library/Python/3.11/bin'),
+    ]
+    current_path = env.get('PATH', '')
+    for path in paths_to_check:
+        if path not in current_path and Path(path).exists():
+            env['PATH'] = f"{path}:{env.get('PATH', '')}"
     
     try:
         if use_managed_jobs:
@@ -208,6 +282,7 @@ def launch_skypilot_job(yaml_path: str, use_managed_jobs: bool = True) -> str:
                 text=True,
                 check=True,
                 timeout=300,  # 5 minute timeout for job launch
+                env=env,  # Use env with full PATH
             )
         else:
             # Use regular launch for interactive development
@@ -218,6 +293,7 @@ def launch_skypilot_job(yaml_path: str, use_managed_jobs: bool = True) -> str:
                 text=True,
                 check=True,
                 timeout=300,  # 5 minute timeout for job launch
+                env=env,  # Use env with full PATH
             )
         
         # Extract job ID from output
@@ -491,8 +567,27 @@ def launch_training_job(run_id: str, config: Dict[str, Any], env_spec: Optional[
     
     yaml_path = temp_dir / f"{run_id}.yaml"
     
+    # Verify training directory exists before generating YAML
+    backend_root = Path(__file__).parent.parent.parent
+    training_dir = backend_root.parent / "training"
+    if not training_dir.exists():
+        raise RuntimeError(f"Training directory not found: {training_dir}")
+    
+    train_script = training_dir / "train.py"
+    if not train_script.exists():
+        raise RuntimeError(f"Training script not found: {train_script}")
+    
+    logger.info(f"✅ Training directory verified: {training_dir}")
+    logger.info(f"✅ Training script found: {train_script}")
+    
     # Generate YAML with proper SkyPilot configuration
     generate_skypilot_yaml(run_id, config, str(yaml_path), env_spec)
+    
+    # Verify YAML was created
+    if not Path(yaml_path).exists():
+        raise RuntimeError(f"Failed to generate SkyPilot YAML: {yaml_path}")
+    
+    logger.info(f"✅ SkyPilot YAML generated: {yaml_path}")
     
     # Launch job (managed or cluster)
     job_id = launch_skypilot_job(str(yaml_path), use_managed_jobs=use_managed_jobs)

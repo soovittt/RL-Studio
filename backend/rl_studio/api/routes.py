@@ -27,6 +27,7 @@ from .assets import router as assets_router
 from .templates import router as templates_router
 from .compile import router as compile_router
 from .admin import router as admin_router
+from .ingestion import router as ingestion_router
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ router.include_router(assets_router)
 router.include_router(templates_router)
 router.include_router(compile_router)
 router.include_router(admin_router)
+router.include_router(ingestion_router)
 
 # ============================================================================
 # Rollout Routes
@@ -252,52 +254,61 @@ async def launch_training(request: LaunchJobRequest):
                     logger.warning(f"Could not fetch env_spec from Convex: {e}. Training will use default environment.")
         
         # Launch training job with env_spec
-        job_id = launch_training_job(
-            request.runId, 
-            request.config,
-            env_spec=env_spec,
-            use_managed_jobs=request.config.get("use_managed_jobs", True)
-        )
-        
-        # Update run status in Convex to "running" and save skyPilotJobId
-        import os
-        import requests
-        convex_url = os.getenv("CONVEX_URL")
-        if convex_url and request.runId:
-            try:
-                # Update run status to "running" and save job ID
-                response = requests.post(
-                    f"{convex_url}/api/action",
-                    json={
-                        "path": "runs:updateStatus",
-                        "args": {
-                            "id": request.runId,
-                            "status": "running",
-                            "skyPilotJobId": job_id
-                        },
-                    },
-                    headers={"Content-Type": "application/json"},
-                    timeout=10,
-                )
-                if response.ok:
-                    logger.info(f"Updated run {request.runId} status to 'running' with job ID {job_id}")
-                else:
-                    logger.warning(f"Failed to update run status: {response.text}")
-                
-                # Sync initial metadata
+        try:
+            job_id = launch_training_job(
+                request.runId, 
+                request.config,
+                env_spec=env_spec,
+                use_managed_jobs=request.config.get("use_managed_jobs", True)
+            )
+            logger.info(f"✅ Training job launched successfully: {job_id}")
+            
+            # Update run status in Convex to "running" and save skyPilotJobId
+            import os
+            import requests
+            convex_url = os.getenv("CONVEX_URL")
+            if convex_url and request.runId:
                 try:
-                    from ..api.background_sync import sync_run_metadata_to_convex
-                    sync_run_metadata_to_convex(request.runId, job_id, convex_url)
-                except Exception as sync_error:
-                    logger.warning(f"Could not sync initial metadata: {sync_error}")
-                
-            except Exception as e:
-                logger.warning(f"Could not update run status in Convex: {e}")
-        
-        return LaunchJobResponse(
-            success=True,
-            jobId=job_id
-        )
+                    # Update run status to "running" and save job ID
+                    response = requests.post(
+                        f"{convex_url}/api/action",
+                        json={
+                            "path": "runs:updateStatus",
+                            "args": {
+                                "id": request.runId,
+                                "status": "running",
+                                "skyPilotJobId": job_id
+                            },
+                        },
+                        headers={"Content-Type": "application/json"},
+                        timeout=10,
+                    )
+                    if response.ok:
+                        logger.info(f"Updated run {request.runId} status to 'running' with job ID {job_id}")
+                    else:
+                        logger.warning(f"Failed to update run status: {response.text}")
+                    
+                    # Sync initial metadata
+                    try:
+                        from ..api.background_sync import sync_run_metadata_to_convex
+                        sync_run_metadata_to_convex(request.runId, job_id, convex_url)
+                    except Exception as sync_error:
+                        logger.warning(f"Could not sync initial metadata: {sync_error}")
+                    
+                except Exception as e:
+                    logger.warning(f"Could not update run status in Convex: {e}")
+            
+            return LaunchJobResponse(
+                success=True,
+                jobId=job_id
+            )
+        except Exception as job_error:
+            error_msg = str(job_error)
+            logger.error(f"❌ Failed to launch training job: {error_msg}", exc_info=True)
+            return LaunchJobResponse(
+                success=False,
+                error=f"Failed to launch training job: {error_msg}"
+            )
     except Exception as e:
         logger.error(f"Failed to launch training job: {e}", exc_info=True)
         return LaunchJobResponse(

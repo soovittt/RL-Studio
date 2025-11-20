@@ -6,10 +6,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
-from ..training.trainer import RLTrainer, TrainingConfig
-from ..training.hyperparameter_suggestions import HyperparameterSuggester
-from ..training.curriculum import CurriculumLearningEngine
-from ..training.algorithms import AlgorithmRegistry
+# Lazy imports - don't load heavy ML libraries until actually needed
+# This allows the server to start quickly
 
 router = APIRouter(prefix="/api/training", tags=["training"])
 
@@ -28,6 +26,8 @@ class CreateCurriculumRequest(BaseModel):
 async def get_algorithms(action_space_type: str = "discrete"):
     """Get available algorithms for action space type"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..training.algorithms import AlgorithmRegistry
         algorithms = AlgorithmRegistry.get_available_algorithms(action_space_type)
         return {"success": True, "algorithms": algorithms}
     except Exception as e:
@@ -38,6 +38,8 @@ async def get_algorithms(action_space_type: str = "discrete"):
 async def suggest_hyperparameters(request: SuggestHyperparametersRequest):
     """Get hyperparameter suggestions"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..training.hyperparameter_suggestions import HyperparameterSuggester
         suggester = HyperparameterSuggester()
         suggestions = suggester.suggest(request.env_spec, request.algorithm)
         return {"success": True, "suggestions": suggestions}
@@ -49,6 +51,8 @@ async def suggest_hyperparameters(request: SuggestHyperparametersRequest):
 async def create_curriculum(request: CreateCurriculumRequest):
     """Create a curriculum learning setup"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..training.curriculum import CurriculumLearningEngine
         curriculum = CurriculumLearningEngine(request.env_spec)
         
         # Add default stages if none provided

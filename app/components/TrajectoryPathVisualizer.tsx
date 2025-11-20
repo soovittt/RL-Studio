@@ -224,7 +224,7 @@ export function TrajectoryPathVisualizer({
         <div className="font-semibold mb-2">❌ Backend Required</div>
         <div className="text-sm text-center">{error}</div>
         <div className="text-xs mt-2 text-muted-foreground">
-          Real Python calculations (NumPy, SciPy, sklearn) are required. Start backend at <code className="bg-muted px-1 rounded">http://localhost:8000</code>
+          Real Python calculations (NumPy, SciPy, sklearn) are required. Backend: <code className="bg-muted px-1 rounded">{import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'}</code>
         </div>
       </div>
     )

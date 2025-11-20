@@ -98,10 +98,16 @@ def create_env_from_spec(spec: Dict[str, Any]):
         import sys
         from pathlib import Path
         
-        # Add backend to path if not already there
-        backend_path = Path(__file__).parent.parent / "backend"
-        if str(backend_path) not in sys.path:
-            sys.path.insert(0, str(backend_path))
+        # Try to import from mounted backend (if available)
+        # SkyPilot mounts backend to /backend if configured
+        backend_paths = [
+            Path("/backend"),  # SkyPilot mount location
+            Path(__file__).parent.parent / "backend",  # Local development
+        ]
+        
+        for backend_path in backend_paths:
+            if backend_path.exists() and str(backend_path) not in sys.path:
+                sys.path.insert(0, str(backend_path))
         
         try:
             from rl_studio.training.trainer import RLStudioEnv

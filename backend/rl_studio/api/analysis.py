@@ -11,10 +11,8 @@ import asyncio
 import json
 import logging
 
-from ..analysis.reward_analysis import RewardAnalyzer
-from ..analysis.trajectory_analysis import TrajectoryAnalyzer
-from ..analysis.termination_analysis import TerminationAnalyzer
-from ..analysis.diagnostics import RLDiagnostics
+# Lazy imports - don't load heavy NumPy/SciPy libraries until actually needed
+# This allows the server to start quickly, then load dependencies when endpoints are called
 from ..utils.json_serializer import serialize_for_json
 
 logger = logging.getLogger(__name__)
@@ -37,6 +35,8 @@ async def analyze_reward(request: AnalyzeRolloutRequest):
     try:
         # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.reward_analysis import RewardAnalyzer
         analyzer = RewardAnalyzer()
         # Heavy computation with NumPy/SciPy
         analysis = await loop.run_in_executor(
@@ -64,6 +64,8 @@ async def analyze_reward_streaming(websocket: WebSocket):
         
         # Run heavy computation with progress updates
         loop = asyncio.get_event_loop()
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.reward_analysis import RewardAnalyzer
         analyzer = RewardAnalyzer()
         
         # Stream progress
@@ -105,6 +107,8 @@ async def analyze_reward_streaming(websocket: WebSocket):
 async def analyze_multiple_rewards(request: AnalyzeMultipleRolloutsRequest):
     """Analyze reward patterns across multiple rollouts"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.reward_analysis import RewardAnalyzer
         analyzer = RewardAnalyzer()
         analysis = analyzer.analyze_multiple_rollouts(request.rollouts)
         return {"success": True, "analysis": analysis}
@@ -117,6 +121,8 @@ async def analyze_trajectory(request: AnalyzeRolloutRequest):
     """Analyze trajectory for a rollout - REAL Python calculations with NumPy"""
     try:
         loop = asyncio.get_event_loop()
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.trajectory_analysis import TrajectoryAnalyzer
         analyzer = TrajectoryAnalyzer()
         # Heavy computation with NumPy for trajectory analysis
         analysis = await loop.run_in_executor(
@@ -144,6 +150,8 @@ async def analyze_trajectory_streaming(websocket: WebSocket):
         await websocket.send_json({"type": "started", "message": "Starting trajectory analysis..."})
         
         loop = asyncio.get_event_loop()
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.trajectory_analysis import TrajectoryAnalyzer
         analyzer = TrajectoryAnalyzer()
         
         # Heavy NumPy calculations
@@ -179,6 +187,8 @@ async def analyze_trajectory_streaming(websocket: WebSocket):
 async def analyze_multiple_trajectories(request: AnalyzeMultipleRolloutsRequest):
     """Analyze trajectories across multiple rollouts"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.trajectory_analysis import TrajectoryAnalyzer
         analyzer = TrajectoryAnalyzer()
         analysis = analyzer.analyze_multiple_rollouts(request.rollouts, request.env_spec)
         return {"success": True, "analysis": analysis}
@@ -190,6 +200,8 @@ async def analyze_multiple_trajectories(request: AnalyzeMultipleRolloutsRequest)
 async def analyze_termination(request: AnalyzeRolloutRequest):
     """Analyze termination for a rollout"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.termination_analysis import TerminationAnalyzer
         analyzer = TerminationAnalyzer()
         analysis = analyzer.analyze_rollout(request.rollout_steps)
         return {"success": True, "analysis": analysis}
@@ -202,6 +214,8 @@ async def analyze_multiple_terminations(request: AnalyzeMultipleRolloutsRequest)
     """Analyze termination patterns across multiple rollouts - REAL Python calculations"""
     try:
         loop = asyncio.get_event_loop()
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.termination_analysis import TerminationAnalyzer
         analyzer = TerminationAnalyzer()
         # Heavy computation with NumPy for statistical analysis
         analysis = await loop.run_in_executor(
@@ -231,6 +245,8 @@ async def analyze_multiple_terminations_streaming(websocket: WebSocket):
         })
         
         loop = asyncio.get_event_loop()
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.termination_analysis import TerminationAnalyzer
         analyzer = TerminationAnalyzer()
         
         # Heavy NumPy statistical calculations
@@ -265,6 +281,8 @@ async def analyze_multiple_terminations_streaming(websocket: WebSocket):
 async def get_diagnostics(request: AnalyzeRolloutRequest):
     """Get advanced RL diagnostics"""
     try:
+        # Lazy import to avoid loading heavy deps at startup
+        from ..analysis.diagnostics import RLDiagnostics
         diagnostics = RLDiagnostics()
         # Process rollout to compute diagnostics
         # (In real implementation, this would come from training metrics)
