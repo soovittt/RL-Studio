@@ -68,9 +68,20 @@ fi
 echo -e "${GREEN}✅ Authenticated${NC}"
 echo ""
 
-# Set project
+# Set project (PROJECT_ID might be a project number, so we'll use --project flag)
 echo -e "${YELLOW}Setting GCP project...${NC}"
-gcloud config set project $PROJECT_ID 2>/dev/null || echo "⚠️  Could not set project, continuing..."
+# Try to get project ID from project number if it's numeric
+if [[ $PROJECT_ID =~ ^[0-9]+$ ]]; then
+    # It's a project number, try to get the project ID
+    ACTUAL_PROJECT_ID=$(gcloud projects describe $PROJECT_ID --format="value(projectId)" 2>/dev/null || echo "")
+    if [ -n "$ACTUAL_PROJECT_ID" ]; then
+        echo "   Found project ID: $ACTUAL_PROJECT_ID (from project number $PROJECT_ID)"
+        PROJECT_ID=$ACTUAL_PROJECT_ID
+    else
+        echo "   ⚠️  Using project number $PROJECT_ID (will use --project flag)"
+    fi
+fi
+gcloud config set project $PROJECT_ID 2>/dev/null || echo "⚠️  Could not set project, will use --project flag"
 echo ""
 
 # Get CONVEX_URL from environment or prompt
@@ -103,6 +114,7 @@ echo ""
 
 cd "$(dirname "$0")"
 
+# Use --project flag to handle project number vs project ID
 gcloud run deploy $SERVICE_NAME \
     --source . \
     --region $REGION \
@@ -112,6 +124,7 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 1 \
     --timeout 300 \
     --max-instances 10 \
+    --project 290319355713 \
     $ENV_VARS
 
 echo ""
