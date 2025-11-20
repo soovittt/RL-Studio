@@ -114,7 +114,7 @@ echo ""
 
 cd "$(dirname "$0")"
 
-# Use --project flag to handle project number vs project ID
+# Use --project flag with the actual project ID (not number)
 gcloud run deploy $SERVICE_NAME \
     --source . \
     --region $REGION \
@@ -124,7 +124,7 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 1 \
     --timeout 300 \
     --max-instances 10 \
-    --project 290319355713 \
+    --project $PROJECT_ID \
     $ENV_VARS
 
 echo ""
