@@ -159,7 +159,8 @@ def verify_aws_setup() -> Dict[str, Any]:
 
 def install_skypilot() -> bool:
     """
-    Install SkyPilot with AWS support.
+    Automatically install SkyPilot if not already installed.
+    This is called automatically when needed - users don't need to do anything.
     
     Returns:
         True if installation successful
@@ -214,10 +215,13 @@ def install_skypilot() -> bool:
 
 def setup_infrastructure() -> Dict[str, Any]:
     """
-    Complete infrastructure setup:
-    1. Install SkyPilot if needed
-    2. Configure AWS credentials from .env
-    3. Verify setup
+    Complete infrastructure setup - AUTOMATED:
+    1. Install SkyPilot if needed (automatic)
+    2. Configure AWS credentials from .env (automatic)
+    3. Verify setup (automatic)
+    
+    This function is called automatically when needed.
+    Users only need to set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in backend/.env
     
     Returns:
         Dict with setup status
@@ -230,30 +234,39 @@ def setup_infrastructure() -> Dict[str, Any]:
         "warnings": [],
     }
     
-    # Step 1: Install SkyPilot
+    # Step 1: Install SkyPilot automatically if not installed
     try:
         subprocess.run(["sky", "--version"], capture_output=True, check=True, timeout=5)
         result["skypilot_installed"] = True
         logger.info("✅ SkyPilot already installed")
     except:
-        logger.info("Installing SkyPilot...")
+        logger.info("📦 SkyPilot not found. Installing automatically...")
+        logger.info("   This may take a few minutes...")
         if install_skypilot():
             result["skypilot_installed"] = True
+            logger.info("✅ SkyPilot installed successfully")
         else:
-            result["errors"].append("Failed to install SkyPilot")
-            return result
+            result["warnings"].append("SkyPilot installation failed. It will be installed when you first launch a training job.")
+            # Don't fail - SkyPilot can be installed later
+            logger.warning("⚠️  SkyPilot installation failed. Will retry when needed.")
     
-    # Step 2: Setup AWS credentials
+    # Step 2: Setup AWS credentials automatically from .env
     if setup_aws_credentials_from_env():
         result["aws_configured"] = True
+        logger.info("✅ AWS credentials configured from .env")
     else:
-        result["warnings"].append("AWS credentials not found in .env. Please add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+        result["warnings"].append("AWS credentials not found in .env. GPU training will not work until you add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to backend/.env")
+        logger.info("ℹ️  AWS credentials not set (optional - only needed for GPU training)")
     
-    # Step 3: Verify AWS access
+    # Step 3: Verify AWS access (only if credentials are set)
     if result["skypilot_installed"] and result["aws_configured"]:
         verify_result = verify_aws_setup()
         result["aws_accessible"] = verify_result.get("aws_accessible", False)
-        result["errors"].extend(verify_result.get("errors", []))
+        if result["aws_accessible"]:
+            logger.info("✅ AWS access verified - ready for GPU training!")
+        else:
+            result["warnings"].extend(verify_result.get("errors", []))
+            logger.warning("⚠️  AWS access verification failed. Check your credentials.")
     
     return result
 

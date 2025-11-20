@@ -12,6 +12,24 @@ export const listRecent = query({
   },
 })
 
+export const list = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db
+      .query('environments')
+      .withIndex('by_created')
+      .order('desc')
+    
+    if (args.limit) {
+      return await query.take(args.limit)
+    }
+    
+    return await query.collect()
+  },
+})
+
 export const get = query({
   args: { id: v.id('environments') },
   handler: async (ctx, args) => {

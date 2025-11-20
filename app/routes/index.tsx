@@ -31,7 +31,14 @@ function LandingPage() {
       <nav className="border-b border-gray-200">
         <div className="max-w-[880px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/images/logo.png" 
+                alt="RL Studio Logo" 
+                className="h-8 w-8"
+              />
             <div className="text-xl font-semibold text-gray-900">RL Studio</div>
+            </div>
             <div className="flex items-center">
               <Link
                 to="/login"
@@ -48,9 +55,16 @@ function LandingPage() {
       <section className="max-w-[880px] mx-auto px-6 py-16">
         <div className="flex flex-col md:flex-row items-start gap-12">
           <div className="flex-1">
-            <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+            <div className="flex items-center gap-4 mb-6">
+              <img 
+                src="/images/logo.png" 
+                alt="RL Studio Logo" 
+                className="h-16 w-16"
+              />
+              <h1 className="text-5xl font-bold text-gray-900 leading-tight">
               RL Studio
             </h1>
+            </div>
             <p className="text-xl text-gray-700 mb-4 leading-relaxed">
               Build, visualize, and train reinforcement learning environments — all in your browser.
             </p>
@@ -76,23 +90,13 @@ function LandingPage() {
             </div>
           </div>
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-full max-w-md aspect-square border border-gray-200 rounded bg-gray-50 flex items-center justify-center">
-              <div className="text-center text-gray-400">
-                <svg
-                  className="w-32 h-32 mx-auto mb-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1}
-                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-                  />
-                </svg>
-                <p className="text-sm">Environment Preview</p>
-              </div>
+            <div className="w-full max-w-md border border-gray-200 rounded overflow-hidden bg-white shadow-sm">
+              <img
+                src="/images/fps.png"
+                alt="RL Studio environment preview showing 3D FPS game environment"
+                className="w-full h-auto object-contain"
+                loading="lazy"
+              />
             </div>
           </div>
         </div>

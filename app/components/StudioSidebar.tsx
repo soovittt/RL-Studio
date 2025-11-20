@@ -35,29 +35,11 @@ export function StudioSidebar({
 
       <div className="mb-4">
         <button
-          onClick={() => setShowTemplates(!showTemplates)}
-          className="w-full px-3 py-2 border border-border rounded text-sm hover:bg-muted"
+          onClick={() => onNewFromTemplate()}
+          className="w-full px-3 py-2 border border-border rounded text-sm hover:bg-muted font-medium"
         >
-          {showTemplates ? '▼' : '▶'} Templates
+          📋 Templates & Assets
         </button>
-        {showTemplates && (
-          <div className="mt-2 space-y-1">
-            {TEMPLATES.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => {
-                  onNewFromTemplate()
-                  setShowTemplates(false)
-                }}
-                className="w-full px-3 py-2 text-left border border-border rounded text-xs hover:bg-muted"
-                title={template.description}
-              >
-                <div className="font-medium">{template.name}</div>
-                <div className="text-muted-foreground text-xs">{template.envType}</div>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="mb-4">

@@ -60,20 +60,30 @@ def send_metrics(
     """Send training metrics to Convex HTTP endpoint."""
     try:
         # Use Convex HTTP endpoint
+        # convex_url is like "https://xxx.convex.cloud/api"
+        # We need "https://xxx.convex.cloud" for HTTP routes
         http_url = convex_deployment_url or convex_url.replace("/api", "")
+        if not http_url.startswith("http"):
+            http_url = f"https://{http_url}" if not http_url.startswith("http") else http_url
+        
         response = requests.post(
             f"{http_url}/metrics",
             json={
                 "runId": run_id,
                 "step": step,
-                **metrics,
+                "reward": metrics.get("reward", 0.0),
+                "loss": metrics.get("loss"),
+                "entropy": metrics.get("entropy"),
+                "valueLoss": metrics.get("valueLoss"),
             },
             headers={"Content-Type": "application/json"},
             timeout=10,
         )
         response.raise_for_status()
+        logger.debug(f"Sent metrics for run {run_id} at step {step}: reward={metrics.get('reward', 0.0)}")
     except Exception as e:
         logger.warning(f"Failed to send metrics at step {step}: {e}")
+        # Don't raise - metrics are non-critical, training should continue
 
 
 def create_env_from_spec(spec: Dict[str, Any]):
@@ -580,6 +590,30 @@ def train_random(env, config: Dict[str, Any], run_id: str, convex_url: str):
     return None
 
 
+def update_run_status(run_id: str, status: str, convex_url: str):
+    """Update run status in Convex database."""
+    try:
+        http_url = convex_url.replace("/api", "")
+        response = requests.post(
+            f"{convex_url}/api/action",
+            json={
+                "path": "runs:updateStatus",
+                "args": {
+                    "id": run_id,
+                    "status": status,
+                },
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+        if response.ok:
+            logger.info(f"Updated run {run_id} status to '{status}'")
+        else:
+            logger.warning(f"Failed to update run status: {response.text}")
+    except Exception as e:
+        logger.warning(f"Could not update run status: {e}")
+
+
 def train(run_id: str):
     """Main training loop."""
     if not CONVEX_URL:
@@ -588,33 +622,57 @@ def train(run_id: str):
         raise ValueError("RUN_ID environment variable required")
 
     logger.info(f"Starting training for run {run_id}")
+    
+    # Update run status to "running" in database
+    try:
+        update_run_status(run_id, "running", CONVEX_URL)
+    except Exception as e:
+        logger.warning(f"Could not update run status at start: {e}")
 
-    # Fetch configuration
-    config = fetch_config(run_id, CONVEX_URL)
-    algorithm = config.get("algorithm", "ppo").lower()
-    logger.info(f"Loaded config: algorithm={algorithm}")
+    try:
+        # Fetch configuration
+        config = fetch_config(run_id, CONVEX_URL)
+        algorithm = config.get("algorithm", "ppo").lower()
+        logger.info(f"Loaded config: algorithm={algorithm}")
 
-    # Create environment
-    env_spec = config.get("environment", {}).get("spec", {})
-    env = create_env_from_spec(env_spec)
+        # Create environment
+        env_spec = config.get("environment", {}).get("spec", {})
+        env = create_env_from_spec(env_spec)
 
-    # Train based on algorithm
-    if algorithm == "ppo":
-        train_ppo(env, config, run_id, CONVEX_URL)
-    elif algorithm == "dqn":
-        train_dqn(env, config, run_id, CONVEX_URL)
-    elif algorithm == "a2c":
-        train_a2c(env, config, run_id, CONVEX_URL)
-    elif algorithm == "bc":
-        train_bc(env, config, run_id, CONVEX_URL)
-    elif algorithm == "imitation":
-        train_imitation(env, config, run_id, CONVEX_URL)
-    elif algorithm == "random":
-        train_random(env, config, run_id, CONVEX_URL)
-    else:
-        raise ValueError(f"Unknown algorithm: {algorithm}. Supported: ppo, dqn, a2c, bc, imitation, random")
+        # Train based on algorithm
+        if algorithm == "ppo":
+            train_ppo(env, config, run_id, CONVEX_URL)
+        elif algorithm == "dqn":
+            train_dqn(env, config, run_id, CONVEX_URL)
+        elif algorithm == "a2c":
+            train_a2c(env, config, run_id, CONVEX_URL)
+        elif algorithm == "bc":
+            train_bc(env, config, run_id, CONVEX_URL)
+        elif algorithm == "imitation":
+            train_imitation(env, config, run_id, CONVEX_URL)
+        elif algorithm == "random":
+            train_random(env, config, run_id, CONVEX_URL)
+        else:
+            raise ValueError(f"Unknown algorithm: {algorithm}. Supported: ppo, dqn, a2c, bc, imitation, random")
 
-    logger.info("Training finished")
+        logger.info("Training finished successfully")
+        
+        # Update run status to "completed" in database
+        try:
+            update_run_status(run_id, "completed", CONVEX_URL)
+        except Exception as e:
+            logger.warning(f"Could not update run status at completion: {e}")
+            
+    except Exception as e:
+        logger.error(f"Training failed: {e}")
+        
+        # Update run status to "error" in database
+        try:
+            update_run_status(run_id, "error", CONVEX_URL)
+        except Exception as update_error:
+            logger.warning(f"Could not update run status on error: {update_error}")
+        
+        raise
 
 
 if __name__ == "__main__":

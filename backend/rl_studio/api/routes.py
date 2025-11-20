@@ -22,6 +22,11 @@ from .generation import router as generation_router
 from .benchmarks import router as benchmarks_router
 from .codegen import router as codegen_router
 from .infrastructure import router as infrastructure_router
+from .scenes import router as scenes_router
+from .assets import router as assets_router
+from .templates import router as templates_router
+from .compile import router as compile_router
+from .admin import router as admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +40,11 @@ router.include_router(generation_router)
 router.include_router(benchmarks_router)
 router.include_router(codegen_router)
 router.include_router(infrastructure_router)
+router.include_router(scenes_router)
+router.include_router(assets_router)
+router.include_router(templates_router)
+router.include_router(compile_router)
+router.include_router(admin_router)
 
 # ============================================================================
 # Rollout Routes
@@ -248,6 +258,42 @@ async def launch_training(request: LaunchJobRequest):
             env_spec=env_spec,
             use_managed_jobs=request.config.get("use_managed_jobs", True)
         )
+        
+        # Update run status in Convex to "running" and save skyPilotJobId
+        import os
+        import requests
+        convex_url = os.getenv("CONVEX_URL")
+        if convex_url and request.runId:
+            try:
+                # Update run status to "running" and save job ID
+                response = requests.post(
+                    f"{convex_url}/api/action",
+                    json={
+                        "path": "runs:updateStatus",
+                        "args": {
+                            "id": request.runId,
+                            "status": "running",
+                            "skyPilotJobId": job_id
+                        },
+                    },
+                    headers={"Content-Type": "application/json"},
+                    timeout=10,
+                )
+                if response.ok:
+                    logger.info(f"Updated run {request.runId} status to 'running' with job ID {job_id}")
+                else:
+                    logger.warning(f"Failed to update run status: {response.text}")
+                
+                # Sync initial metadata
+                try:
+                    from ..api.background_sync import sync_run_metadata_to_convex
+                    sync_run_metadata_to_convex(request.runId, job_id, convex_url)
+                except Exception as sync_error:
+                    logger.warning(f"Could not sync initial metadata: {sync_error}")
+                
+            except Exception as e:
+                logger.warning(f"Could not update run status in Convex: {e}")
+        
         return LaunchJobResponse(
             success=True,
             jobId=job_id
@@ -260,14 +306,63 @@ async def launch_training(request: LaunchJobRequest):
         )
 
 @router.get("/api/training/status/{job_id}", response_model=JobStatusResponse)
-async def get_training_status(job_id: str):
-    """Get status of a training job"""
+async def get_training_status(job_id: str, sync: bool = True):
+    """
+    Get comprehensive status of a training job including SkyPilot metadata and logs.
+    
+    Args:
+        job_id: SkyPilot job ID
+        sync: If True, sync latest status/logs to Convex database
+    """
     try:
+        from ..training.orchestrator import get_job_status, get_job_logs
+        from ..api.background_sync import sync_run_metadata_to_convex
+        import os
+        import requests
+        
         status = get_job_status(job_id)
+        
+        # Get logs if job is running or recently completed
+        logs_info = None
+        if status.get("status") in ["RUNNING", "SUCCEEDED", "FAILED"]:
+            logs_info = get_job_logs(job_id, max_lines=500)  # Get last 500 lines
+        
+        # Sync to Convex if requested
+        if sync:
+            try:
+                convex_url = os.getenv("CONVEX_URL")
+                if convex_url:
+                    # Find run_id from job_id by querying Convex
+                    response = requests.post(
+                        f"{convex_url}/api/action",
+                        json={
+                            "path": "runs:getBySkyPilotJobId",
+                            "args": {"skyPilotJobId": job_id},
+                        },
+                        headers={"Content-Type": "application/json"},
+                        timeout=10,
+                    )
+                    if response.ok:
+                        run = response.json()
+                        if run:
+                            from ..api.background_sync import sync_run_metadata_to_convex
+                            sync_run_metadata_to_convex(run["_id"], job_id, convex_url)
+            except Exception as sync_error:
+                logger.debug(f"Could not auto-sync: {sync_error}")
+        
+        # Combine status and logs
+        full_status = {
+            **status,
+            "logs": logs_info.get("logs", "") if logs_info else None,
+            "log_line_count": logs_info.get("line_count", 0) if logs_info else 0,
+            "logs_truncated": logs_info.get("truncated", False) if logs_info else False,
+        }
+        
         return JobStatusResponse(
             success=True,
             status=status.get("status"),
-            jobId=job_id
+            jobId=job_id,
+            metadata=full_status  # Include full metadata with logs
         )
     except Exception as e:
         logger.error(f"Failed to get job status: {e}", exc_info=True)
@@ -276,6 +371,29 @@ async def get_training_status(job_id: str):
             error=str(e),
             jobId=job_id
         )
+
+
+@router.get("/api/training/logs/{job_id}")
+async def get_training_logs(job_id: str, max_lines: int = 1000):
+    """Get logs from a training job"""
+    try:
+        from ..training.orchestrator import get_job_logs
+        
+        logs_info = get_job_logs(job_id, max_lines=max_lines)
+        
+        return {
+            "success": True,
+            "job_id": job_id,
+            "logs": logs_info.get("logs", ""),
+            "line_count": logs_info.get("line_count", 0),
+            "truncated": logs_info.get("truncated", False),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get job logs: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @router.post("/api/training/stop/{job_id}")
 async def stop_training(job_id: str):

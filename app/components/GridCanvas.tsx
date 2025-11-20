@@ -2,7 +2,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { EnvSpec, ObjectSpec, Vec2, ObjectType } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
+import { AssetPalette, assetToObjectType, getAssetColor } from './AssetPalette'
 import { useSelection } from '~/lib/selectionManager.js'
+import { Asset } from '~/lib/assetClient'
 
 interface GridCanvasProps {
   envSpec: EnvSpec
@@ -13,22 +15,10 @@ interface GridCanvasProps {
   }
 }
 
-const OBJECT_COLORS: Record<ObjectType, string> = {
-  wall: 'bg-gray-800',
-  agent: 'bg-blue-500',
-  goal: 'bg-green-500',
-  obstacle: 'bg-gray-600',
-  region: 'bg-yellow-200',
-  checkpoint: 'bg-purple-500',
-  trap: 'bg-red-500',
-  key: 'bg-yellow-500',
-  door: 'bg-orange-500',
-  custom: 'bg-gray-400',
-}
-
 export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: GridCanvasProps) {
   const { selection, selectObject, selectAgent } = useSelection()
-  const [selectedTool, setSelectedTool] = useState<ObjectType>('wall')
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [assets, setAssets] = useState<Asset[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Vec2 | null>(null)
 
@@ -105,21 +95,24 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
       return
     }
 
-    // Place new object or agent
-    const worldPos = gridToWorld(gridX, gridY)
+    // Place new object or agent using selected asset
+    if (!selectedAsset) return
 
-    if (selectedTool === 'agent') {
+    const worldPos = gridToWorld(gridX, gridY)
+    const objectType = assetToObjectType(selectedAsset) as ObjectType
+
+    if (objectType === 'agent') {
       // Remove existing agent if placing new one
       if (envSpec.agents.length > 0) {
         sceneGraph.removeAgent(envSpec.agents[0].id)
       }
       sceneGraph.addAgent('Agent', worldPos, { type: 'grid-step' })
-    } else {
+    } else if (objectType) {
       sceneGraph.addObject(
-        selectedTool,
+        objectType,
         worldPos,
         { type: 'rect', width: cellSize, height: cellSize },
-        {}
+        { assetId: selectedAsset._id } // Store asset reference
       )
     }
 
@@ -140,6 +133,79 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     }
   }
 
+  // Get color for object/agent from assets
+  const getColorForObject = (object: ObjectSpec | null, agent: any): string => {
+    if (object) {
+      // Try to find asset by assetId stored in properties
+      if (object.properties?.assetId) {
+        const asset = assets.find(a => a._id === object.properties.assetId)
+        if (asset) {
+          const hexColor = asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
+          // Convert hex to inline style (we'll use inline style for dynamic colors)
+          return '' // Return empty string, we'll use inline style
+        }
+      }
+      // Fallback: find asset by type
+      const asset = assets.find(a => {
+        const objectType = assetToObjectType(a)
+        return objectType === object.type
+      })
+      if (asset) {
+        const hexColor = asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
+        return '' // Return empty string, we'll use inline style
+      }
+      // Final fallback
+      return 'bg-gray-400'
+    }
+    if (agent) {
+      // Find agent asset
+      const agentAsset = assets.find(a => {
+        const objectType = assetToObjectType(a)
+        return objectType === 'agent'
+      })
+      if (agentAsset) {
+        const hexColor = agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
+        return '' // Return empty string, we'll use inline style
+      }
+      return 'bg-blue-500'
+    }
+    return 'bg-white'
+  }
+
+  // Get hex color for object/agent from assets
+  const getHexColorForObject = (object: ObjectSpec | null, agent: any): string => {
+    if (object) {
+      // Try to find asset by assetId stored in properties
+      if (object.properties?.assetId) {
+        const asset = assets.find(a => a._id === object.properties.assetId)
+        if (asset) {
+          return asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
+        }
+      }
+      // Fallback: find asset by type
+      const asset = assets.find(a => {
+        const objectType = assetToObjectType(a)
+        return objectType === object.type
+      })
+      if (asset) {
+        return asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
+      }
+      return '#9ca3af'
+    }
+    if (agent) {
+      // Find agent asset
+      const agentAsset = assets.find(a => {
+        const objectType = assetToObjectType(a)
+        return objectType === 'agent'
+      })
+      if (agentAsset) {
+        return agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
+      }
+      return '#4a90e2'
+    }
+    return '#ffffff'
+  }
+
   // Render grid cells
   const renderGrid = () => {
     const cells: JSX.Element[] = []
@@ -152,21 +218,19 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
           (object && selection.selectedObjectId === object.id) ||
           (agent && selection.selectedAgentId === agent.id)
 
-        const cellType = object?.type || agent ? 'agent' : 'empty'
-        const color = object 
-          ? OBJECT_COLORS[object.type] 
-          : agent 
-            ? OBJECT_COLORS.agent 
-            : 'bg-white'
+        const color = getColorForObject(object, agent)
+        const hexColor = getHexColorForObject(object, agent)
+        const useInlineStyle = color === '' && hexColor !== '#ffffff'
 
         cells.push(
           <button
             key={`${x}-${y}`}
             onClick={() => handleCellClick(x, y)}
             onContextMenu={(e) => handleCellRightClick(e, x, y)}
-            className={`w-10 h-10 border border-gray-300 ${color} hover:opacity-80 transition-opacity ${
+            className={`w-10 h-10 border border-gray-300 ${color || 'bg-white'} hover:opacity-80 transition-opacity ${
               isSelected ? 'ring-2 ring-primary ring-offset-1' : ''
             }`}
+            style={useInlineStyle ? { backgroundColor: hexColor } : undefined}
             title={`${x}, ${y}${object ? ` - ${object.type}` : ''}${agent ? ` - ${agent.name}` : ''}`}
           />
         )
@@ -176,25 +240,34 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     return cells
   }
 
+  // Load assets when component mounts
+  useEffect(() => {
+    async function loadAssets() {
+      try {
+        const { listAssets } = await import('~/lib/assetClient')
+        const loadedAssets = await listAssets({ mode: 'grid' })
+        const primaryAssets = loadedAssets
+          .filter((asset) => asset.meta?.palette === 'primary')
+          .sort((a, b) => a.name.localeCompare(b.name))
+        setAssets(primaryAssets)
+      } catch (err) {
+        console.warn('Failed to load assets:', err)
+      }
+    }
+    loadAssets()
+  }, [])
+
   return (
     <div className="h-full flex flex-col">
-      {/* Tool Palette */}
-      <div className="p-2 border-b border-border flex gap-2 flex-wrap">
-        {Object.entries(OBJECT_COLORS).map(([type, color]) => (
-          <button
-            key={type}
-            onClick={() => setSelectedTool(type as ObjectType)}
-            className={`px-3 py-1 rounded text-sm border ${
-              selectedTool === type
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border hover:bg-muted'
-            }`}
-          >
-            <span className={`inline-block w-3 h-3 ${color} rounded mr-2`} />
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-          </button>
-        ))}
-      </div>
+      {/* Asset Palette from Backend */}
+      <AssetPalette
+        mode="grid"
+        selectedAssetId={selectedAsset?._id}
+        onSelectAsset={(asset) => {
+          setSelectedAsset(asset)
+        }}
+        className="bg-card"
+      />
 
       {/* Grid Canvas */}
       <div className="flex-1 overflow-auto p-4">

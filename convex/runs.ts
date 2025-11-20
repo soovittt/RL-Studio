@@ -19,6 +19,16 @@ export const get = query({
   },
 })
 
+export const getBySkyPilotJobId = query({
+  args: { skyPilotJobId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('runs')
+      .withIndex('by_skyPilotJobId', (q) => q.eq('skyPilotJobId', args.skyPilotJobId))
+      .first()
+  },
+})
+
 export const getConfig = query({
   args: { runId: v.id('runs') },
   handler: async (ctx, args) => {
@@ -92,5 +102,35 @@ export const updateStatus = mutation({
     }
 
     return await ctx.db.patch(id, updates)
+  },
+})
+
+export const updateSkyPilotMetadata = mutation({
+  args: {
+    id: v.id('runs'),
+    skyPilotStatus: v.optional(v.string()),
+    skyPilotResources: v.optional(v.any()),
+    skyPilotCost: v.optional(v.number()),
+    skyPilotDuration: v.optional(v.union(v.number(), v.string())),
+    skyPilotLogs: v.optional(v.string()),
+    lastLogUpdate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args
+    const existing = await ctx.db.get(id)
+    if (!existing) throw new Error('Run not found')
+
+    // Convert skyPilotDuration from string to number if needed
+    const patchUpdates: any = { ...updates }
+    if (patchUpdates.skyPilotDuration !== undefined && typeof patchUpdates.skyPilotDuration === 'string') {
+      const numValue = parseFloat(patchUpdates.skyPilotDuration)
+      if (!isNaN(numValue)) {
+        patchUpdates.skyPilotDuration = numValue
+      } else {
+        delete patchUpdates.skyPilotDuration
+      }
+    }
+
+    return await ctx.db.patch(id, patchUpdates)
   },
 })

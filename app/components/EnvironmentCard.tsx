@@ -3,6 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
 import type { Id } from '../../convex/_generated/dataModel'
+import { updateScene, getScene } from '~/lib/sceneClient'
 
 interface EnvironmentCardProps {
   env: {
@@ -43,6 +44,12 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
     }
   }, [showMenu])
 
+  // Sync edit state with env changes
+  useEffect(() => {
+    setEditName(env.name)
+    setEditDescription(env.description || '')
+  }, [env.name, env.description])
+
   // Focus input when editing starts
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
@@ -54,15 +61,37 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
   useEffect(() => {
     if (isEditingDescription && descInputRef.current) {
       descInputRef.current.focus()
+      // Place cursor at end
+      descInputRef.current.setSelectionRange(
+        descInputRef.current.value.length,
+        descInputRef.current.value.length
+      )
     }
   }, [isEditingDescription])
 
   const handleSaveName = async () => {
     if (editName.trim() && editName !== env.name) {
+      const newName = editName.trim()
+      
+      // Update in old system (environments table)
       await updateMutation({
         id: env._id,
-        name: editName.trim(),
+        name: newName,
       })
+      
+      // Also update in Scene Service if this environment has been migrated
+      try {
+        const sceneData = await getScene(env._id)
+        if (sceneData?.scene) {
+          await updateScene(env._id, {
+            name: newName,
+      })
+        }
+      } catch (err) {
+        // Scene not found in new system - that's okay, just update old system
+        console.log('Environment not in Scene Service, updating old system only')
+      }
+      
       if (onUpdate) onUpdate()
     }
     setIsEditingName(false)
@@ -71,10 +100,25 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
   const handleSaveDescription = async () => {
     const newDesc = editDescription.trim()
     if (newDesc !== (env.description || '')) {
+      // Update in old system (environments table)
       await updateMutation({
         id: env._id,
         description: newDesc || undefined,
       })
+      
+      // Also update in Scene Service if this environment has been migrated
+      try {
+        const sceneData = await getScene(env._id)
+        if (sceneData?.scene) {
+          await updateScene(env._id, {
+            description: newDesc || undefined,
+          })
+        }
+      } catch (err) {
+        // Scene not found in new system - that's okay, just update old system
+        console.log('Environment not in Scene Service, updating old system only')
+      }
+      
       if (onUpdate) onUpdate()
     }
     setIsEditingDescription(false)
@@ -186,7 +230,17 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
             className="w-full text-lg font-semibold mb-2 bg-background border-b-2 border-primary focus:outline-none px-1"
           />
         ) : (
-          <h3 className="text-lg font-semibold mb-2 text-foreground">{env.name}</h3>
+          <h3
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsEditingName(true)
+            }}
+            className="text-lg font-semibold mb-2 text-foreground cursor-text hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
+            title="Click to edit title"
+          >
+            {env.name}
+          </h3>
         )}
 
         {/* Description */}
@@ -200,19 +254,47 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
               if (e.key === 'Escape') {
                 setEditDescription(env.description || '')
                 setIsEditingDescription(false)
+              } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                // Cmd/Ctrl+Enter to save
+                handleSaveDescription()
               }
             }}
             onClick={(e) => e.stopPropagation()}
             className="w-full text-sm text-muted-foreground mb-4 bg-background border border-border rounded px-2 py-1 focus:outline-none focus:border-primary resize-none"
-            rows={2}
+            rows={3}
             placeholder="Add a description..."
           />
         ) : (
-          <p className="text-sm text-muted-foreground mb-4 min-h-[2.5rem]">
-            {env.description || (
-              <span className="italic text-muted-foreground/60">No description</span>
+          <div
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsEditingDescription(true)
+            }}
+            className="text-sm text-muted-foreground mb-4 min-h-[2.5rem] cursor-text hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors group"
+            title="Click to edit description"
+          >
+            {env.description ? (
+              <p className="whitespace-pre-wrap">{env.description}</p>
+            ) : (
+              <span className="italic text-muted-foreground/60 flex items-center gap-1">
+                <svg
+                  className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                No description - click to add
+              </span>
             )}
-          </p>
+          </div>
         )}
 
         {/* Footer */}

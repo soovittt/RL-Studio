@@ -38,7 +38,28 @@ export interface RolloutResponse {
   executionTime?: number
 }
 
-const ROLLOUT_SERVICE_URL = import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'
+// Get backend service URL with proper local vs production handling
+const getBackendUrl = (): string => {
+  const envUrl = import.meta.env.VITE_ROLLOUT_SERVICE_URL
+  
+  // If explicitly set, use it
+  if (envUrl) {
+    return envUrl
+  }
+  
+  // In production, warn if not set (should be set)
+  if (import.meta.env.MODE === 'production') {
+    console.warn(
+      '⚠️ VITE_ROLLOUT_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
+      'Please set your production backend URL in environment variables.'
+    )
+  }
+  
+  // Default to localhost for local development
+  return 'http://localhost:8000'
+}
+
+const ROLLOUT_SERVICE_URL = getBackendUrl()
 
 /**
  * Run rollout via HTTP (returns complete result)

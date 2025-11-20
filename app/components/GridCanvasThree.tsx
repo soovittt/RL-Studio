@@ -1,11 +1,13 @@
 // GridCanvasThree - Beautiful 3D grid renderer using Three.js + React Three Fiber
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment, PerspectiveCamera } from '@react-three/drei'
 import { Bloom, Vignette, EffectComposer } from '@react-three/postprocessing'
 import { EnvSpec, ObjectSpec, Vec2, ObjectType } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { useSelection } from '~/lib/selectionManager.js'
+import { AssetPalette, assetToObjectType, getAssetColor } from './AssetPalette'
+import type { Asset } from '~/lib/assetClient'
 import * as THREE from 'three'
 
 interface GridCanvasThreeProps {
@@ -17,30 +19,16 @@ interface GridCanvasThreeProps {
   }
 }
 
-const OBJECT_COLORS: Record<ObjectType, [number, number, number]> = {
-  wall: [0.2, 0.2, 0.2],
-  agent: [0.23, 0.51, 0.96], // Blue
-  goal: [0.06, 0.72, 0.51], // Green
-  obstacle: [0.38, 0.38, 0.38],
-  region: [0.99, 0.94, 0.54],
-  checkpoint: [0.66, 0.33, 0.96],
-  trap: [0.94, 0.27, 0.27],
-  key: [0.92, 0.70, 0.02],
-  door: [0.97, 0.45, 0.09],
-  custom: [0.61, 0.64, 0.64],
-}
-
-const OBJECT_EMISSIVE: Record<ObjectType, [number, number, number]> = {
-  wall: [0, 0, 0],
-  agent: [0.1, 0.2, 0.4],
-  goal: [0.2, 0.5, 0.3],
-  obstacle: [0, 0, 0],
-  region: [0.3, 0.3, 0.1],
-  checkpoint: [0.3, 0.1, 0.4],
-  trap: [0.4, 0.1, 0.1],
-  key: [0.4, 0.3, 0.1],
-  door: [0.4, 0.2, 0.1],
-  custom: [0.1, 0.1, 0.1],
+// Helper to convert hex color to RGB array
+function hexToRgb(hex: string): [number, number, number] {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result
+    ? [
+        parseInt(result[1], 16) / 255,
+        parseInt(result[2], 16) / 255,
+        parseInt(result[3], 16) / 255,
+      ]
+    : [0.5, 0.5, 0.5]
 }
 
 // Grid Cell Component
@@ -50,7 +38,8 @@ function GridCell({
   agent, 
   isSelected,
   onClick,
-  onRightClick 
+  onRightClick,
+  assets
 }: {
   x: number
   y: number
@@ -59,18 +48,51 @@ function GridCell({
   isSelected: boolean
   onClick: () => void
   onRightClick: (e: any) => void
+  assets: Asset[]
 }) {
-  const color = object 
-    ? OBJECT_COLORS[object.type]
-    : agent 
-      ? OBJECT_COLORS.agent
-      : [0.95, 0.95, 0.95]
+  // Get color from assets
+  let color: [number, number, number] = [0.95, 0.95, 0.95]
+  let emissive: [number, number, number] = [0, 0, 0]
 
-  const emissive = object 
-    ? OBJECT_EMISSIVE[object.type]
-    : agent
-      ? OBJECT_EMISSIVE.agent
-      : [0, 0, 0]
+  if (object) {
+    // Try to find asset by assetId stored in properties
+    let asset: Asset | undefined
+    if (object.properties?.assetId) {
+      asset = assets.find(a => a._id === object.properties.assetId)
+    }
+    // Fallback: find asset by type
+    if (!asset) {
+      asset = assets.find(a => {
+        const objectType = assetToObjectType(a)
+        return objectType === object.type
+      })
+    }
+    if (asset) {
+      const hexColor = asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
+      color = hexToRgb(hexColor)
+      // Emissive based on object type
+      if (object.type === 'goal') {
+        emissive = [color[0] * 0.5, color[1] * 0.5, color[2] * 0.5]
+      }
+    } else {
+      // Fallback colors
+      color = [0.2, 0.2, 0.2]
+    }
+  } else if (agent) {
+    // Find agent asset
+    const agentAsset = assets.find(a => {
+      const objectType = assetToObjectType(a)
+      return objectType === 'agent'
+    })
+    if (agentAsset) {
+      const hexColor = agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
+      color = hexToRgb(hexColor)
+      emissive = [color[0] * 0.3, color[1] * 0.3, color[2] * 0.5]
+    } else {
+      color = [0.23, 0.51, 0.96]
+      emissive = [0.1, 0.2, 0.4]
+    }
+  }
 
   const handleClick = (e: any) => {
     e.stopPropagation()
@@ -138,7 +160,8 @@ function SceneContent({
   onCellClick,
   onCellRightClick,
   selectedObjectId,
-  selectedAgentId 
+  selectedAgentId,
+  assets
 }: {
   envSpec: EnvSpec
   rolloutState?: { agents: Array<{ id: string; position: Vec2 }> }
@@ -146,6 +169,7 @@ function SceneContent({
   onCellRightClick: (e: any, x: number, y: number) => void
   selectedObjectId?: string
   selectedAgentId?: string
+  assets: Asset[]
 }) {
   const world = envSpec.world
   const width = world.width
@@ -273,7 +297,30 @@ function SceneContent({
 
 export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutState }: GridCanvasThreeProps) {
   const { selection, selectObject, selectAgent } = useSelection()
-  const [selectedTool, setSelectedTool] = useState<ObjectType>('wall')
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null) // Asset from backend
+  const [assets, setAssets] = useState<Asset[]>([])
+
+  // Load assets when component mounts
+  useEffect(() => {
+    async function loadAssets() {
+      try {
+        const { listAssets } = await import('~/lib/assetClient')
+        const loadedAssets = await listAssets({ mode: 'grid' })
+        const primaryAssets = loadedAssets
+          .filter((asset) => asset.meta?.palette === 'primary')
+          .sort((a, b) => a.name.localeCompare(b.name))
+        setAssets(primaryAssets)
+      } catch (err) {
+        console.warn('Failed to load assets:', err)
+      }
+    }
+    loadAssets()
+  }, [])
+
+  // When asset is selected
+  const handleAssetSelect = (asset: Asset | null) => {
+    setSelectedAsset(asset)
+  }
 
   const world = envSpec.world
   const width = world.width
@@ -351,24 +398,25 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
       return
     }
 
-    // Place new object/agent
-    const worldPos = gridToWorld(gridX, gridY)
+    // Place new object/agent using selected asset
+    if (!selectedAsset) return
 
-    if (selectedTool === 'agent') {
+    const worldPos = gridToWorld(gridX, gridY)
+    const objectType = assetToObjectType(selectedAsset) as ObjectType
+
+    if (objectType === 'agent') {
       // Remove existing agent if placing new one
       const agents = Array.isArray(envSpec.agents) ? envSpec.agents : []
       if (agents.length > 0) {
         sceneGraph.removeAgent(agents[0].id)
       }
-      // Use the same method as original GridCanvas
       sceneGraph.addAgent('Agent', worldPos, { type: 'grid-step' })
-    } else {
-      // Use the same method as original GridCanvas
+    } else if (objectType) {
       sceneGraph.addObject(
-        selectedTool,
+        objectType,
         worldPos,
         { type: 'rect', width: cellSize, height: cellSize },
-        {}
+        { assetId: selectedAsset._id } // Store asset reference
       )
     }
 
@@ -393,38 +441,15 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
     }
   }
 
-  const OBJECT_COLORS_TAILWIND: Record<ObjectType, string> = {
-    wall: 'bg-gray-800',
-    agent: 'bg-blue-500',
-    goal: 'bg-green-500',
-    obstacle: 'bg-gray-600',
-    region: 'bg-yellow-200',
-    checkpoint: 'bg-purple-500',
-    trap: 'bg-red-500',
-    key: 'bg-yellow-500',
-    door: 'bg-orange-500',
-    custom: 'bg-gray-400',
-  }
-
   return (
     <div className="h-full flex flex-col">
-      {/* Tool Palette */}
-      <div className="p-2 border-b border-border flex gap-2 flex-wrap bg-card">
-        {Object.entries(OBJECT_COLORS_TAILWIND).map(([type, color]) => (
-          <button
-            key={type}
-            onClick={() => setSelectedTool(type as ObjectType)}
-            className={`px-3 py-1 rounded text-sm border transition-all ${
-              selectedTool === type
-                ? 'border-primary bg-primary text-primary-foreground shadow-md'
-                : 'border-border hover:bg-muted'
-            }`}
-          >
-            <span className={`inline-block w-3 h-3 ${color} rounded mr-2`} />
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-          </button>
-        ))}
-      </div>
+      {/* Asset Palette from Backend */}
+      <AssetPalette
+        mode="grid"
+        selectedAssetId={selectedAsset?._id}
+        onSelectAsset={handleAssetSelect}
+        className="bg-card"
+      />
 
       {/* 3D Canvas */}
       <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -446,6 +471,7 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
             onCellRightClick={handleCellRightClick}
             selectedObjectId={selection.selectedObjectId}
             selectedAgentId={selection.selectedAgentId}
+            assets={assets}
           />
 
           <OrbitControls

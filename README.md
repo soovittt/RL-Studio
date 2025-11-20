@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="rl-stuido-logo-1.png" alt="RL Studio Logo" width="120" />
+
 # 🎮 RL Studio
 
 **A full-stack platform for designing reinforcement learning environments, running GPU-backed training, and monitoring agents in real-time.**
@@ -63,6 +65,10 @@ RL Studio is a comprehensive platform that brings together environment design, t
 
 ### 🎨 Visual Environment Editor
 
+- **Figma-Style World Builder**: Generic scene builder with reusable assets, prefabs, and templates
+- **Asset Library**: Reusable components (characters, vehicles, props, tiles) that can be shared across projects
+- **Scene Graph System**: Flexible entity-component system supporting any environment type
+- **Template System**: Pre-built templates (Gridworld, Cliff Walking, Key & Door, Maze, Multi-Agent) ready to use
 - **Drag-and-Drop Interface**: Design gridworld and continuous environments visually
 - **Multi-Agent Support**: Create complex multi-agent scenarios
 - **Custom Geometry**: Define custom shapes and obstacles
@@ -188,15 +194,32 @@ RL Studio is a comprehensive platform that brings together environment design, t
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Super Easy Setup (Recommended)
 
-- **Node.js** 18+ and npm
-- **Python** 3.9+
-- **Convex account** ([free tier available](https://www.convex.dev/))
-- **AWS account** (for GPU training jobs, optional)
-- **OpenAI API key** (optional, for code generation)
+**Just run one command and add your API keys!**
 
-### Installation
+```bash
+# 1. Run automated setup
+python setup.py
+
+# 2. Add your API keys to .env files (see below)
+
+# 3. Start the servers
+cd backend && source venv/bin/activate && python main.py  # Terminal 1
+npm run dev  # Terminal 2
+```
+
+The setup script automatically:
+- ✅ Installs all dependencies
+- ✅ Creates virtual environments  
+- ✅ Sets up infrastructure
+- ✅ Creates .env templates
+
+**You only need to add API keys!** See [Environment Variables Setup](#-environment-variables-setup) below.
+
+### Manual Setup (Alternative)
+
+If you prefer manual setup:
 
 1. **Clone the repository**
 
@@ -373,7 +396,75 @@ npx convex env set CODERABBIT_API_KEY your-coderabbit-key
 **Problem**: "OpenAI API key invalid"  
 **Solution**: Check that your API key starts with `sk-` and is not a placeholder value
 
-5. **Start the development servers**
+5. **Seed the database (REQUIRED for Templates & Assets)**
+
+**⚠️ IMPORTANT:** The new template library and asset palette won't show up until you seed the database!
+
+### Quick Seeding (Recommended)
+
+```bash
+# 1. Get your user_id (see methods below)
+# 2. Run the seeding script
+./seed_database.sh <your_user_id> [optional_project_id]
+```
+
+### What Gets Seeded
+
+**8 Templates:**
+- Basic Gridworld, Cliff Walking, Key & Door, Maze, Multi-Agent Grid
+- 2D Continuous Navigation, 3D Navigation, Driving Simulator
+
+**25+ Assets:**
+- Grid tiles: Agent, Goal, Wall, Key, Door, Trap, Checkpoint, etc.
+- Vehicles: Car, Truck
+- 3D assets: 3D Agent, 3D Obstacle, Platform
+- Continuous 2D assets: Continuous Agent, Continuous Obstacle
+
+### Where to Find Them After Seeding
+
+1. **Templates:** Click "New Environment" → "From Template" → Look for **"Templates from Library"** section (top of dialog)
+2. **Assets:** When editing an environment → Top of canvas shows **Asset Palette** with colored buttons
+
+### Getting Your User ID
+
+**Method 1: Browser Console**
+```javascript
+// Open browser console (F12) and run:
+localStorage.getItem('rl_studio_user_id')
+```
+
+**Method 2: Convex Dashboard**
+- Go to https://dashboard.convex.dev
+- Select your project → "Data" → "users" table
+- Copy any user's `_id`
+
+**Method 3: From Existing Environment**
+- Open any environment in the app
+- Check its `ownerId` in Convex dashboard
+
+### Alternative Seeding Methods
+
+**Using Python:**
+```bash
+cd backend
+source venv/bin/activate
+python -m rl_studio.api.seed_database <user_id> [project_id]
+```
+
+**Using API:**
+```bash
+# Seed everything
+curl -X POST http://localhost:8000/api/admin/seed/all \
+  -H "Content-Type: application/json" \
+  -d '{"created_by": "<user_id>", "project_id": "<project_id>"}'
+```
+
+**Verify setup:**
+```bash
+python -m rl_studio.api.verify_setup <user_id> <project_id>
+```
+
+6. **Start the development servers**
 
 ```bash
 # Terminal 1: Start backend
@@ -734,6 +825,121 @@ npx convex deploy        # Deploy to production
 - **Backend**: Black (Python formatter)
 - **TypeScript**: Strict mode enabled
 - **Python**: Type hints required
+
+---
+
+## 🏗️ Figma-Style World Builder Architecture
+
+RL Studio now includes a powerful, generic world builder inspired by Figma's component system. This allows you to create any type of RL environment using reusable building blocks.
+
+### Core Concepts
+
+- **Assets**: Reusable definitions (characters, vehicles, props, tiles, etc.)
+- **Prefabs**: Composed assets made from other assets (e.g., "road intersection")
+- **Scenes**: A graph of entities (instances of assets/prefabs) with transforms and components
+- **Templates**: Saved scenes that users can clone (e.g., "10×10 Grid World")
+- **Components**: Attach semantics to entities (physics, render info, RL agent, reward zone)
+- **RL Config**: How the scene is interpreted as an RL environment (observation, actions, rewards, episode config)
+
+### Data Model
+
+The system uses a flexible schema stored in Convex:
+
+- **assetTypes**: Categories of assets (tile, character, vehicle, prop, prefab)
+- **assets**: Reusable asset definitions with visual, physics, and behavior profiles
+- **scenes**: Scene metadata (name, mode, environment settings)
+- **sceneVersions**: Versioned snapshots of scene graphs and RL configs
+- **templates**: Pre-built scenes ready to instantiate
+
+### API Services
+
+- **Scene Service** (`/api/scenes`): CRUD for scenes and scene versions
+- **Asset Service** (`/api/assets`): CRUD for assets, search/filter by type/tags, clone assets
+- **Template Service** (`/api/templates`): List templates, create templates, instantiate into projects
+- **Compile Service** (`/api/compile`): Convert scene_graph + rl_config to runtime specs
+
+### Performance Features
+
+- **Caching**: In-memory TTL cache for assets and templates (5-10 minute TTL)
+- **Cache Invalidation**: Automatic cache invalidation on create/update/delete operations
+- **Pagination**: Support for limiting and offsetting results in list queries
+- **Asset Safety**: Validation prevents deleting assets that are referenced in scenes
+
+### Seeding Initial Data
+
+The system comes with pre-built assets and templates:
+
+**Assets:**
+- Grid tiles: Wall, Agent, Goal, Key, Door, Trap, Checkpoint, Moving Obstacle, Floor, Spawn Point
+- All assets include visual profiles (colors, sizes), physics profiles (colliders, mass), and behavior profiles
+
+**Templates:**
+- Basic Gridworld: Simple 10×10 grid with agent and goal
+- Cliff Walking: Agent must avoid cliff cells
+- Key & Door Grid: Sequential task requiring key collection
+- Maze Generator: Randomly generated mazes
+- Multi-Agent Grid (Cooperative): Multiple agents working together
+- 2D Continuous Navigation: Continuous 2D space with obstacles
+- 3D Navigation: 3D environment with spatial reasoning
+- Driving Simulator: Vehicle control with steering and acceleration
+
+### Usage Example
+
+```python
+# List available templates
+templates = await list_templates(mode="grid", category="grid")
+
+# Instantiate a template into your project
+scene = await instantiate_template(
+    template_id="template_id",
+    project_id="project_id",
+    name="My Gridworld"
+)
+
+# Get scene with active version
+scene_data = await get_scene(scene_id)
+scene_graph = scene_data["activeVersion"]["sceneGraph"]
+rl_config = scene_data["activeVersion"]["rlConfig"]
+
+# Compile to runtime spec
+runtime_spec = await compile_scene_version(scene_data["activeVersion"]["_id"])
+
+# Clone an asset to a project scope
+cloned_asset = await clone_asset(asset_id, project_id="project_id")
+
+# Create a template from a scene version
+template = await create_template(
+    name="My Template",
+    sceneVersionId=version_id,
+    category="grid",
+    tags=["custom"],
+    isPublic=False
+)
+```
+
+### Asset Management
+
+Assets can be:
+- **Created**: Define new reusable assets with visual, physics, and behavior profiles
+- **Cloned**: Copy global assets to project scope or duplicate within same scope
+- **Updated**: Modify asset properties while maintaining references
+- **Deleted**: Safe deletion with validation (prevents deletion if referenced in scenes)
+- **Searched**: Filter by type, mode, tags, or project
+
+### Template Management
+
+Templates can be:
+- **Created**: Save any scene version as a reusable template
+- **Listed**: Filter by mode, category, or public/private status
+- **Instantiated**: Clone templates into new scenes with copied scene graphs and RL configs
+- **Shared**: Mark templates as public for team-wide access
+
+For more details, see the API documentation and code in:
+- `backend/rl_studio/api/scenes.py`
+- `backend/rl_studio/api/assets.py`
+- `backend/rl_studio/api/templates.py`
+- `backend/rl_studio/api/compile.py`
+- `backend/rl_studio/api/cache.py` (caching implementation)
 
 ---
 

@@ -7,7 +7,7 @@ from .trainer import RLTrainer, TrainingConfig
 from .hyperparameter_suggestions import HyperparameterSuggester
 from .curriculum import CurriculumLearningEngine
 from .algorithms import AlgorithmRegistry
-from .orchestrator import launch_training_job, get_job_status, stop_job
+from .orchestrator import launch_training_job, get_job_status, get_job_logs, stop_job
 
 __all__ = [
     'RLTrainer',

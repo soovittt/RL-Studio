@@ -67,10 +67,18 @@ export default defineSchema({
     skyPilotJobId: v.optional(v.string()),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    // SkyPilot metadata
+    skyPilotStatus: v.optional(v.string()), // PENDING, RUNNING, SUCCEEDED, FAILED, CANCELLED
+    skyPilotResources: v.optional(v.any()), // GPU type, instance type, etc.
+    skyPilotCost: v.optional(v.number()), // Estimated cost
+    skyPilotDuration: v.optional(v.number()), // Duration in seconds
+    skyPilotLogs: v.optional(v.string()), // Latest logs (truncated)
+    lastLogUpdate: v.optional(v.number()), // Timestamp of last log update
   })
     .index('by_owner', ['ownerId'])
     .index('by_env', ['envId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_skyPilotJobId', ['skyPilotJobId']),
 
   metrics: defineTable({
     runId: v.id('runs'),
@@ -112,5 +120,84 @@ export default defineSchema({
     .index('by_token', ['token'])
     .index('by_user', ['userId'])
     .index('by_expires', ['expiresAt']),
+
+  trainingLogs: defineTable({
+    runId: v.id('runs'),
+    logLevel: v.union(v.literal('info'), v.literal('warning'), v.literal('error'), v.literal('debug')),
+    message: v.string(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index('by_run', ['runId'])
+    .index('by_run_created', ['runId', 'createdAt']),
+
+  // New schema for Figma-style scene builder
+  assetTypes: defineTable({
+    key: v.string(), // 'character', 'vehicle', 'prop', 'tile', 'prefab'
+    displayName: v.string(),
+  })
+    .index('by_key', ['key']),
+
+  assets: defineTable({
+    projectId: v.optional(v.id('environments')), // NULL = global asset
+    assetTypeId: v.id('assetTypes'),
+    name: v.string(),
+    slug: v.optional(v.string()),
+    thumbnailUrl: v.optional(v.string()),
+    modelUrl: v.optional(v.string()), // 3D model, sprite, or optional for abstract
+    geometry: v.optional(v.any()), // procedural geometry: { primitive: 'rectangle' | 'box' | 'sphere' | 'cylinder' | 'curve', params: {...} }
+    visualProfile: v.any(), // colors, size, sprite info, etc.
+    physicsProfile: v.any(), // mass, collider, friction, etc.
+    behaviorProfile: v.any(), // speed, health, AI params...
+    meta: v.any(), // tags, paletteColor, labelColor, etc.
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_type', ['assetTypeId'])
+    .index('by_created', ['createdAt'])
+    .index('by_name', ['name']),
+
+  scenes: defineTable({
+    projectId: v.optional(v.id('environments')), // NULL = global scene (for templates)
+    name: v.string(),
+    description: v.optional(v.string()),
+    mode: v.string(), // '2d', '3d', 'grid', 'topdown', etc.
+    environmentSettings: v.any(), // gravity, time-step, lighting, etc.
+    activeVersionId: v.optional(v.id('sceneVersions')),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_mode', ['mode'])
+    .index('by_created', ['createdAt']),
+
+  sceneVersions: defineTable({
+    sceneId: v.id('scenes'),
+    versionNumber: v.number(),
+    sceneGraph: v.any(), // full entity/component graph
+    rlConfig: v.any(), // RL configuration
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+  })
+    .index('by_scene', ['sceneId'])
+    .index('by_scene_version', ['sceneId', 'versionNumber']),
+
+  templates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    sceneVersionId: v.id('sceneVersions'),
+    category: v.optional(v.string()), // 'grid', 'road', 'maze', 'navigation', 'traffic'
+    tags: v.array(v.string()),
+    meta: v.optional(v.any()), // difficulty, taskFamily, supportedAlgos, etc.
+    isPublic: v.boolean(),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+  })
+    .index('by_category', ['category'])
+    .index('by_public', ['isPublic'])
+    .index('by_created', ['createdAt']),
 })
 

@@ -143,3 +143,22 @@ wheels/
 !backend/README.md
 !convex/README.md
 
+# Git credentials and secrets (never commit)
+.git-credentials*
+*credentials*
+*secret*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Personal scripts with tokens
+push-personal.sh
+*personal*.sh
+
+# Local environment files (keep .env.example)
+.env
+.env.local
+.env.*.local
+!.env.example
+!backend/.env.example

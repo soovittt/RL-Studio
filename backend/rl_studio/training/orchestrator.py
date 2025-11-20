@@ -14,13 +14,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Auto-setup AWS infrastructure on import
+# This happens automatically - users just need API keys in .env
 try:
     from .aws_setup import setup_infrastructure, setup_aws_credentials_from_env
     _setup_result = setup_aws_credentials_from_env()
     if _setup_result:
         logger.info("✅ AWS credentials auto-configured from .env")
+    else:
+        logger.debug("AWS credentials not set (optional - only needed for GPU training)")
 except Exception as e:
-    logger.warning(f"Could not auto-configure AWS: {e}")
+    logger.debug(f"AWS auto-configuration skipped: {e}")
 
 
 def generate_skypilot_yaml(run_id: str, config: Dict[str, Any], output_path: str, env_spec: Optional[Dict[str, Any]] = None) -> str:
@@ -272,21 +275,77 @@ def launch_skypilot_job(yaml_path: str, use_managed_jobs: bool = True) -> str:
 
 def get_job_status(job_id: str) -> Dict[str, Any]:
     """
-    Get status of a SkyPilot job.
+    Get comprehensive status of a SkyPilot job.
     
-    Status values: PENDING, RUNNING, SUCCEEDED, FAILED, CANCELLED
+    Returns:
+        Dict with status, resources, cost estimate, duration, and other metadata
     """
     try:
-        # Try JSON output first (newer SkyPilot versions)
+        # Try to get detailed info from sky jobs queue (for managed jobs)
         result = subprocess.run(
-            ["sky", "status", "--json"],
+            ["sky", "jobs", "queue"],
             capture_output=True,
             text=True,
             check=True,
             timeout=30,
         )
         
+        # Parse job info from queue output
+        lines = result.stdout.split("\n")
+        job_info = None
+        
+        for i, line in enumerate(lines):
+            if job_id in line or str(job_id) in line:
+                # Found job - parse info from this line and surrounding lines
+                job_info = {
+                    "job_id": job_id,
+                    "status": "unknown",
+                    "resources": {},
+                    "duration": None,
+                    "cost": None,
+                }
+                
+                # Try to extract status
+                line_lower = line.lower()
+                if "running" in line_lower:
+                    job_info["status"] = "RUNNING"
+                elif "pending" in line_lower:
+                    job_info["status"] = "PENDING"
+                elif "succeeded" in line_lower or "completed" in line_lower:
+                    job_info["status"] = "SUCCEEDED"
+                elif "failed" in line_lower:
+                    job_info["status"] = "FAILED"
+                elif "cancelled" in line_lower or "canceled" in line_lower:
+                    job_info["status"] = "CANCELLED"
+                
+                # Try to extract resources (GPU type, etc.)
+                import re
+                gpu_match = re.search(r'(\w+):(\d+)', line)
+                if gpu_match:
+                    job_info["resources"] = {
+                        "accelerator": f"{gpu_match.group(1)}:{gpu_match.group(2)}"
+                    }
+                
+                # Try to extract duration
+                duration_match = re.search(r'(\d+[mh]?\s*\d*[sm]?)', line)
+                if duration_match:
+                    job_info["duration"] = duration_match.group(1)
+                
+                break
+        
+        if job_info:
+            return job_info
+        
+        # Fallback: try JSON output
         try:
+            result = subprocess.run(
+                ["sky", "status", "--json"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=30,
+            )
+            
             jobs = json.loads(result.stdout)
             if isinstance(jobs, list):
                 for job in jobs:
@@ -296,41 +355,11 @@ def get_job_status(job_id: str) -> Dict[str, Any]:
                             "job_id": job_id,
                             "name": job.get("name", ""),
                             "resources": job.get("resources", {}),
+                            "duration": job.get("duration"),
+                            "cost": job.get("cost"),
                         }
-        except json.JSONDecodeError:
-            # Fallback to text parsing
+        except (json.JSONDecodeError, subprocess.CalledProcessError):
             pass
-        
-        # Fallback: parse text output
-        result = subprocess.run(
-            ["sky", "status"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=30,
-        )
-        
-        # Look for job_id in output
-        lines = result.stdout.split("\n")
-        for line in lines:
-            if job_id in line:
-                # Parse status from line (format varies)
-                status = "unknown"
-                if "running" in line.lower():
-                    status = "RUNNING"
-                elif "pending" in line.lower():
-                    status = "PENDING"
-                elif "succeeded" in line.lower() or "completed" in line.lower():
-                    status = "SUCCEEDED"
-                elif "failed" in line.lower():
-                    status = "FAILED"
-                elif "cancelled" in line.lower() or "canceled" in line.lower():
-                    status = "CANCELLED"
-                
-                return {
-                    "status": status,
-                    "job_id": job_id,
-                }
         
         return {"status": "not_found", "job_id": job_id}
 
@@ -340,6 +369,72 @@ def get_job_status(job_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get job status: {e}")
         return {"status": "error", "job_id": job_id, "error": str(e)}
+
+
+def get_job_logs(job_id: str, max_lines: int = 1000) -> Dict[str, Any]:
+    """
+    Get logs from a SkyPilot job.
+    
+    Args:
+        job_id: SkyPilot job ID
+        max_lines: Maximum number of log lines to retrieve
+    
+    Returns:
+        Dict with logs, truncated flag, and metadata
+    """
+    try:
+        # Get logs from SkyPilot (no-follow mode to get current logs)
+        result = subprocess.run(
+            ["sky", "jobs", "logs", "--no-follow", job_id],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,  # 1 minute timeout for log retrieval
+        )
+        
+        logs = result.stdout
+        log_lines = logs.split("\n")
+        
+        # Truncate if too long
+        truncated = len(log_lines) > max_lines
+        if truncated:
+            log_lines = log_lines[-max_lines:]  # Keep last N lines
+            logs = "\n".join(log_lines)
+        
+        return {
+            "logs": logs,
+            "line_count": len(log_lines),
+            "truncated": truncated,
+            "job_id": job_id,
+        }
+        
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Could not get logs for job {job_id}: {e.stderr}")
+        return {
+            "logs": "",
+            "line_count": 0,
+            "truncated": False,
+            "job_id": job_id,
+            "error": str(e.stderr),
+        }
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Log retrieval timed out for job {job_id}")
+        return {
+            "logs": "",
+            "line_count": 0,
+            "truncated": False,
+            "job_id": job_id,
+            "error": "timeout",
+        }
+    except Exception as e:
+        logger.error(f"Failed to get job logs: {e}")
+        return {
+            "logs": "",
+            "line_count": 0,
+            "truncated": False,
+            "job_id": job_id,
+            "error": str(e),
+        }
 
 
 def stop_job(job_id: str) -> bool:

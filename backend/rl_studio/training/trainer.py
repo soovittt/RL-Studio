@@ -63,15 +63,22 @@ class TrainingMetricsCallback(BaseCallback):
 class RLStudioEnv(gym.Env):
     """Gymnasium environment wrapper for RL Studio EnvSpec"""
     
-    def __init__(self, env_spec: Dict[str, Any]):
+    def __init__(self, env_spec: Dict[str, Any], max_steps: int = 1000):
         super().__init__()
         self.env_spec = env_spec
         self.state = None
+        self.max_steps = max_steps
         
         # Validate environment
         validation = validate_env_spec(env_spec)
-        if not validation["valid"]:
-            raise ValueError(f"Invalid env_spec: {validation['error']}")
+        # Handle both tuple and dict returns
+        if isinstance(validation, tuple):
+            is_valid, error_msg = validation
+            if not is_valid:
+                raise ValueError(f"Invalid env_spec: {error_msg}")
+        elif isinstance(validation, dict):
+            if not validation.get("valid", False):
+                raise ValueError(f"Invalid env_spec: {validation.get('error', 'Unknown error')}")
         
         # Define action space
         action_space_spec = env_spec.get("actionSpace", {})
@@ -158,10 +165,38 @@ class RLStudioEnv(gym.Env):
             env_action = action.tolist()
         
         # Step simulator
-        self.state = step_simulator(self.state, env_action, self.env_spec)
+        try:
+            new_state = step_simulator(self.state, env_action, self.env_spec, self.max_steps)
+            # Ensure state is a dict
+            if not isinstance(new_state, dict):
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"step_simulator returned non-dict: {type(new_state)}, value: {new_state}")
+                raise ValueError(f"step_simulator returned invalid type: {type(new_state)}")
+            self.state = new_state
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in step_simulator: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
         
         # Extract reward and done
-        reward = self.state.get("totalReward", 0.0) - (self.state.get("info", {}).get("previous_total_reward", 0.0))
+        # Ensure state is a dict
+        if not isinstance(self.state, dict):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"State is not a dict: {type(self.state)}, value: {self.state}")
+            raise ValueError(f"Invalid state type: {type(self.state)}")
+        
+        # Initialize info if not present
+        if "info" not in self.state:
+            self.state["info"] = {}
+        if "previous_total_reward" not in self.state["info"]:
+            self.state["info"]["previous_total_reward"] = 0.0
+        
+        reward = self.state.get("totalReward", 0.0) - self.state["info"].get("previous_total_reward", 0.0)
         done = self.state.get("done", False)
         
         # Store previous total reward for next step

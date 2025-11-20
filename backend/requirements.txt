@@ -24,3 +24,9 @@ openai>=1.12.0
 # SkyPilot - ML workload orchestration
 skypilot[aws,gcp,azure]>=0.5.0
 
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+httpx>=0.24.0  # For async HTTP testing
+
