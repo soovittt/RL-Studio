@@ -14,11 +14,37 @@ echo -e "${BLUE}🚀 RL Studio Backend - Google Cloud Run Deployment${NC}"
 echo "=================================================="
 echo ""
 
-# Check if gcloud CLI is installed
+# Check if gcloud CLI is installed and activate if needed
 if ! command -v gcloud &> /dev/null; then
-    echo -e "${RED}❌ gcloud CLI not found${NC}"
-    echo "Install it with: brew install --cask google-cloud-sdk"
-    exit 1
+    # Try to source Google Cloud SDK if installed but not in PATH
+    if [ -f ~/google-cloud-sdk/path.zsh.inc ]; then
+        echo -e "${YELLOW}Activating Google Cloud SDK...${NC}"
+        source ~/google-cloud-sdk/path.zsh.inc
+        source ~/google-cloud-sdk/completion.zsh.inc
+    elif [ -f ~/google-cloud-sdk/path.bash.inc ]; then
+        echo -e "${YELLOW}Activating Google Cloud SDK...${NC}"
+        source ~/google-cloud-sdk/path.bash.inc
+        source ~/google-cloud-sdk/completion.bash.inc
+    fi
+    
+    # Check again after sourcing
+    if ! command -v gcloud &> /dev/null; then
+        # Try adding to PATH manually
+        if [ -f ~/google-cloud-sdk/bin/gcloud ]; then
+            export PATH="$PATH:$HOME/google-cloud-sdk/bin"
+        elif [ -f /usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin/gcloud ]; then
+            export PATH="$PATH:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin"
+        fi
+    fi
+    
+    # Final check
+    if ! command -v gcloud &> /dev/null; then
+        echo -e "${RED}❌ gcloud CLI not found${NC}"
+        echo "Install it with: brew install --cask google-cloud-sdk"
+        echo "Or if already installed, add to your shell:"
+        echo "  source ~/google-cloud-sdk/path.zsh.inc"
+        exit 1
+    fi
 fi
 
 # Configuration
