@@ -100,7 +100,12 @@ out/
 # Deployment
 .netlify/
 .vercel/
-# Note: deploy-gcp.sh is tracked (useful deployment script)
+# Deployment scripts (keep local, don't push to remote)
+deploy-gcp.sh
+backend/deploy-gcp.sh
+deploy.sh
+*deploy*.sh
+!deploy.sh.example
 
 # AWS credentials (if accidentally created)
 .aws/
