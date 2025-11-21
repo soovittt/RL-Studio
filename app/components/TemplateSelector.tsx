@@ -141,8 +141,17 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
 
   const handleSelectBackendTemplate = async (template: Template) => {
     try {
+      console.log('Loading template:', template._id, template.name)
+      setLoading(true)
+      setError(null)
+      
       // Load template data with scene version
       const templateData = await import('~/lib/templateClient').then(m => m.getTemplate(template._id))
+      console.log('Template data loaded:', templateData)
+      
+      if (!templateData.sceneVersion) {
+        throw new Error('Template does not have a scene version')
+      }
       
       // Convert sceneGraph + rlConfig to EnvSpec using proper converter
       const { sceneGraphToEnvSpec } = await import('~/lib/sceneGraphToEnvSpec')
@@ -151,12 +160,17 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
         templateData.sceneVersion.rlConfig,
         template.name
       )
+      console.log('Converted to EnvSpec:', envSpec)
 
       onSelect(envSpec)
       onClose()
     } catch (err) {
       console.error('Failed to load template:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load template')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load template'
+      setError(errorMessage)
+      alert(`Failed to create from template: ${errorMessage}`)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -244,13 +258,18 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
                           )}
                         </div>
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation()
-                            handleSelectBackendTemplate(template)
+                            try {
+                              await handleSelectBackendTemplate(template)
+                            } catch (err) {
+                              console.error('Error in Use Template button:', err)
+                            }
                           }}
-                          className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
+                          disabled={loading}
+                          className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Use Template
+                          {loading ? 'Loading...' : 'Use Template'}
                         </button>
                       </div>
                     </div>
@@ -284,7 +303,12 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleSelect(template)
+                    try {
+                      handleSelect(template)
+                    } catch (err) {
+                      console.error('Error in Use Template button (legacy):', err)
+                      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
+                    }
                   }}
                   className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
                 >
@@ -375,20 +399,29 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => {
-                  if (selectedTemplate) {
-                    handleSelect(selectedTemplate)
-                  } else if (selectedBackendTemplate) {
-                    handleSelectBackendTemplate(selectedBackendTemplate)
+                onClick={async () => {
+                  try {
+                    if (selectedTemplate) {
+                      handleSelect(selectedTemplate)
+                    } else if (selectedBackendTemplate) {
+                      await handleSelectBackendTemplate(selectedBackendTemplate)
+                    } else {
+                      alert('Please select a template first')
+                    }
+                  } catch (err) {
+                    console.error('Error in Create from Template button:', err)
+                    alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
                   }
                 }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:opacity-90"
+                disabled={loading || (!selectedTemplate && !selectedBackendTemplate)}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create from Template
+                {loading ? 'Loading...' : 'Create from Template'}
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 border border-border rounded hover:bg-muted"
+                disabled={loading}
+                className="px-4 py-2 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>

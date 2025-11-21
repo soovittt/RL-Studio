@@ -6,7 +6,7 @@ Uses Firecrawl + code parsing
 import os
 import re
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from ..base import BaseExtractor, SourceType, ExtractionResult, ExtractionMetadata
 from .firecrawl_extractor import FirecrawlExtractor
@@ -104,7 +104,7 @@ class GitHubExtractor(BaseExtractor):
                 error=str(e)
             )
     
-    def _parse_github_url(self, url: str) -> Dict[str, str] | None:
+    def _parse_github_url(self, url: str) -> Optional[Dict[str, str]]:
         """Parse GitHub URL to extract owner and repo"""
         match = re.match(r'https?://github\.com/([^/]+)/([^/]+)', url)
         if match:

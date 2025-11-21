@@ -45,8 +45,12 @@ const ASSET_TYPES = [
   { key: "prefab", displayName: "Prefab" },
 ];
 
-// Initial grid assets
+// Comprehensive assets organized by environment type
+// All assets have: geometry, visualProfile, physicsProfile, behaviorProfile, meta
 const GRID_ASSETS = [
+  // ============================================
+  // GRID ENVIRONMENT ASSETS (Primary Palette)
+  // ============================================
   {
     name: "Wall",
     assetTypeKey: "tile",
@@ -575,7 +579,483 @@ const GRID_ASSETS = [
       palette: "primary",
     },
   },
-  // Prefab example: Road Intersection (composed from multiple assets)
+  // ============================================
+  // MAZE-SPECIFIC ASSETS
+  // ============================================
+  {
+    name: "Maze Wall",
+    assetTypeKey: "tile",
+    geometry: {
+      primitive: "box",
+      params: {
+        width: 1,
+        height: 1.5,
+        depth: 1,
+      },
+    },
+    visualProfile: {
+      color: "#2c3e50",
+      labelColor: "#ffffff",
+      size: [1, 1.5, 1],
+    },
+    physicsProfile: {
+      collider: "box",
+      static: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["wall", "maze", "obstacle", "grid"],
+      mode: "grid",
+      paletteColor: "#2c3e50",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Maze Path",
+    assetTypeKey: "tile",
+    geometry: {
+      primitive: "box",
+      params: {
+        width: 1,
+        height: 0.05,
+        depth: 1,
+      },
+    },
+    visualProfile: {
+      color: "#ecf0f1",
+      labelColor: "#000000",
+      size: [1, 1, 1],
+    },
+    physicsProfile: {
+      collider: "box",
+      static: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["path", "maze", "floor", "grid"],
+      mode: "grid",
+      paletteColor: "#ecf0f1",
+      labelColor: "#000000",
+      palette: "secondary",
+    },
+  },
+  {
+    name: "Maze Entrance",
+    assetTypeKey: "tile",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.5,
+        radiusBottom: 0.5,
+        height: 0.1,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#3498db",
+      labelColor: "#ffffff",
+      size: [1, 1, 1],
+    },
+    physicsProfile: {
+      collider: "box",
+      trigger: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["entrance", "maze", "spawn", "grid"],
+      mode: "grid",
+      paletteColor: "#3498db",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Maze Exit",
+    assetTypeKey: "tile",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.5,
+        radiusBottom: 0.5,
+        height: 0.1,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#27ae60",
+      labelColor: "#ffffff",
+      size: [1, 1, 1],
+    },
+    physicsProfile: {
+      collider: "box",
+      trigger: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["exit", "maze", "goal", "grid"],
+      mode: "grid",
+      paletteColor: "#27ae60",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  // ============================================
+  // CONTINUOUS 2D ENVIRONMENT ASSETS
+  // ============================================
+  {
+    name: "Continuous Goal",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.5,
+        radiusBottom: 0.5,
+        height: 0.1,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#00ff88",
+      labelColor: "#000000",
+      size: [1, 1, 1],
+    },
+    physicsProfile: {
+      collider: "circle",
+      trigger: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["goal", "reward", "2d", "continuous"],
+      mode: "2d",
+      paletteColor: "#00ff88",
+      labelColor: "#000000",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Continuous Reward Zone",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.8,
+        radiusBottom: 0.8,
+        height: 0.1,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#ffd700",
+      labelColor: "#000000",
+      size: [1.6, 1.6, 1],
+    },
+    physicsProfile: {
+      collider: "circle",
+      trigger: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["reward", "zone", "2d", "continuous"],
+      mode: "2d",
+      paletteColor: "#ffd700",
+      labelColor: "#000000",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Continuous Hazard",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.4,
+        radiusBottom: 0.4,
+        height: 0.1,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#ff4444",
+      labelColor: "#ffffff",
+      size: [0.8, 0.8, 1],
+    },
+    physicsProfile: {
+      collider: "circle",
+      trigger: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["hazard", "trap", "2d", "continuous"],
+      mode: "2d",
+      paletteColor: "#ff4444",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Continuous Collectible",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "sphere",
+      params: {
+        radius: 0.2,
+        widthSegments: 16,
+        heightSegments: 16,
+      },
+    },
+    visualProfile: {
+      color: "#ff6b35",
+      labelColor: "#ffffff",
+      size: [0.4, 0.4, 0.4],
+    },
+    physicsProfile: {
+      collider: "circle",
+      trigger: true,
+    },
+    behaviorProfile: {
+      collectible: true,
+    },
+    meta: {
+      tags: ["collectible", "reward", "2d", "continuous"],
+      mode: "2d",
+      paletteColor: "#ff6b35",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  // ============================================
+  // MULTI-AGENT GRID ASSETS
+  // ============================================
+  {
+    name: "Agent 2",
+    assetTypeKey: "character",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.4,
+        radiusBottom: 0.4,
+        height: 0.4,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#e74c3c",
+      labelColor: "#ffffff",
+      size: [0.8, 0.8, 0.8],
+    },
+    physicsProfile: {
+      collider: "box",
+      dynamic: true,
+    },
+    behaviorProfile: {
+      speed: 1.0,
+    },
+    meta: {
+      tags: ["agent", "multi-agent", "player", "grid"],
+      mode: "grid",
+      paletteColor: "#e74c3c",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Agent 3",
+    assetTypeKey: "character",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.4,
+        radiusBottom: 0.4,
+        height: 0.4,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#9b59b6",
+      labelColor: "#ffffff",
+      size: [0.8, 0.8, 0.8],
+    },
+    physicsProfile: {
+      collider: "box",
+      dynamic: true,
+    },
+    behaviorProfile: {
+      speed: 1.0,
+    },
+    meta: {
+      tags: ["agent", "multi-agent", "player", "grid"],
+      mode: "grid",
+      paletteColor: "#9b59b6",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Agent 4",
+    assetTypeKey: "character",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.4,
+        radiusBottom: 0.4,
+        height: 0.4,
+        radialSegments: 32,
+      },
+    },
+    visualProfile: {
+      color: "#f39c12",
+      labelColor: "#000000",
+      size: [0.8, 0.8, 0.8],
+    },
+    physicsProfile: {
+      collider: "box",
+      dynamic: true,
+    },
+    behaviorProfile: {
+      speed: 1.0,
+    },
+    meta: {
+      tags: ["agent", "multi-agent", "player", "grid"],
+      mode: "grid",
+      paletteColor: "#f39c12",
+      labelColor: "#000000",
+      palette: "primary",
+    },
+  },
+  // ============================================
+  // KEY & DOOR SCENARIO ASSETS
+  // ============================================
+  {
+    name: "Locked Door",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "box",
+      params: {
+        width: 1,
+        height: 1.5,
+        depth: 0.1,
+      },
+    },
+    visualProfile: {
+      color: "#654321",
+      labelColor: "#ffffff",
+      size: [1, 1, 1],
+    },
+    physicsProfile: {
+      collider: "box",
+      static: true,
+    },
+    behaviorProfile: {
+      locked: true,
+      requiresKey: true,
+    },
+    meta: {
+      tags: ["door", "locked", "key-door", "obstacle", "grid"],
+      mode: "grid",
+      paletteColor: "#654321",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Unlocked Door",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "box",
+      params: {
+        width: 1,
+        height: 1.5,
+        depth: 0.1,
+      },
+    },
+    visualProfile: {
+      color: "#8b6914",
+      labelColor: "#ffffff",
+      size: [1, 1, 1],
+    },
+    physicsProfile: {
+      collider: "box",
+      static: false,
+    },
+    behaviorProfile: {
+      locked: false,
+    },
+    meta: {
+      tags: ["door", "unlocked", "key-door", "grid"],
+      mode: "grid",
+      paletteColor: "#8b6914",
+      labelColor: "#ffffff",
+      palette: "secondary",
+    },
+  },
+  {
+    name: "Golden Key",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "sphere",
+      params: {
+        radius: 0.25,
+        widthSegments: 16,
+        heightSegments: 16,
+      },
+    },
+    visualProfile: {
+      color: "#ffd700",
+      labelColor: "#000000",
+      size: [0.5, 0.5, 0.5],
+    },
+    physicsProfile: {
+      collider: "box",
+      trigger: true,
+    },
+    behaviorProfile: {
+      collectible: true,
+      keyType: "golden",
+    },
+    meta: {
+      tags: ["key", "golden", "collectible", "key-door", "grid"],
+      mode: "grid",
+      paletteColor: "#ffd700",
+      labelColor: "#000000",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Silver Key",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "sphere",
+      params: {
+        radius: 0.25,
+        widthSegments: 16,
+        heightSegments: 16,
+      },
+    },
+    visualProfile: {
+      color: "#c0c0c0",
+      labelColor: "#000000",
+      size: [0.5, 0.5, 0.5],
+    },
+    physicsProfile: {
+      collider: "box",
+      trigger: true,
+    },
+    behaviorProfile: {
+      collectible: true,
+      keyType: "silver",
+    },
+    meta: {
+      tags: ["key", "silver", "collectible", "key-door", "grid"],
+      mode: "grid",
+      paletteColor: "#c0c0c0",
+      labelColor: "#000000",
+      palette: "secondary",
+    },
+  },
+  // ============================================
+  // PREFAB ASSETS
+  // ============================================
   {
     name: "Road Intersection",
     assetTypeKey: "prefab",
@@ -604,7 +1084,6 @@ const GRID_ASSETS = [
       labelColor: "#ffffff",
       palette: "secondary",
       prefabChildren: [
-        // This would be resolved when instantiating the prefab
         { assetName: "Floor", position: [0, 0, 0] },
         { assetName: "Wall", position: [-1, 0, 0] },
         { assetName: "Wall", position: [1, 0, 0] },

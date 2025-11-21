@@ -4,8 +4,6 @@ import { action } from './_generated/server'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 
-const authInternal = (internal as any).auth
-
 const TOKEN_EXPIRY_HOURS = 24 * 7 // 7 days
 const TOKEN_LENGTH = 32
 
@@ -30,7 +28,8 @@ export const signUp = action({
       throw new Error('Invalid email address')
     }
 
-    const existing = await ctx.runQuery(authInternal.findUserByEmail, {
+    // Check if user exists
+    const existing = await ctx.runQuery((internal as any).auth.findUserByEmail, {
       email: args.email.toLowerCase(),
     })
 
@@ -43,7 +42,7 @@ export const signUp = action({
     const passwordHash = `${salt}:${hash}`
     const authProviderId = `password:${crypto.randomUUID()}`
 
-    const userId = await ctx.runMutation(authInternal.createUser, {
+    const userId = await ctx.runMutation((internal as any).auth.createUser, {
       authProviderId,
       email: args.email.toLowerCase(),
       displayName: args.displayName.trim(),
@@ -63,7 +62,7 @@ export const signIn = action({
   handler: async (ctx, args) => {
     const crypto = require('crypto')
     
-    const user = await ctx.runQuery(authInternal.findUserByEmail, {
+    const user = await ctx.runQuery((internal as any).auth.findUserByEmail, {
       email: args.email.toLowerCase(),
     })
 
@@ -84,7 +83,7 @@ export const signIn = action({
     const token = crypto.randomBytes(TOKEN_LENGTH).toString('hex')
     const expiresAt = getExpiryTime()
 
-    await ctx.runMutation(authInternal.createSession, {
+    await ctx.runMutation((internal as any).auth.createSession, {
       userId: user._id,
       token,
       expiresAt,
@@ -99,7 +98,7 @@ export const refreshToken = action({
   handler: async (ctx, args) => {
     const crypto = require('crypto')
     
-    const session = await ctx.runQuery(authInternal.getSessionByToken, {
+    const session = await ctx.runQuery((internal as any).auth.getSessionByToken, {
       token: args.token,
     })
 
@@ -107,7 +106,7 @@ export const refreshToken = action({
       throw new Error('Invalid or expired token')
     }
 
-    const user = await ctx.runQuery(authInternal.getUserById, {
+    const user = await ctx.runQuery((internal as any).auth.getUserById, {
       userId: session.userId,
     })
 
@@ -118,8 +117,8 @@ export const refreshToken = action({
     const newToken = crypto.randomBytes(TOKEN_LENGTH).toString('hex')
     const expiresAt = getExpiryTime()
 
-    await ctx.runMutation(authInternal.revokeSession, { token: args.token })
-    await ctx.runMutation(authInternal.createSession, {
+    await ctx.runMutation((internal as any).auth.revokeSession, { token: args.token })
+    await ctx.runMutation((internal as any).auth.createSession, {
       userId: user._id,
       token: newToken,
       expiresAt,

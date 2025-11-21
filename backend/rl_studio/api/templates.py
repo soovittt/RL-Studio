@@ -4,6 +4,7 @@ Template Service - List templates and instantiate them into scenes
 import logging
 import copy
 from typing import List, Optional
+import requests
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import ValidationError
 
@@ -41,11 +42,27 @@ async def list_templates(
             return cached
         
         client = get_client()
-        templates = client.query("templates/list", {
-            "mode": mode,
-            "category": category,
-            "isPublic": is_public,
-        }) or []
+        if not client:
+            # Convex not configured - return empty list (graceful degradation)
+            logger.warning("Convex client not available, returning empty template list")
+            return []
+        
+        try:
+            templates = client.query("templates/list", {
+                "mode": mode,
+                "category": category,
+                "isPublic": is_public,
+            }) or []
+        except requests.exceptions.HTTPError as e:
+            # Handle 404 (route not found) or other HTTP errors gracefully
+            if e.response and e.response.status_code == 404:
+                logger.warning(f"Convex route not found (dev server may not be running): {e}")
+            else:
+                logger.error(f"Convex HTTP error querying templates: {e}")
+            return []  # Return empty list on error (graceful degradation)
+        except Exception as e:
+            logger.error(f"Failed to query templates from Convex: {e}")
+            return []  # Return empty list on error (graceful degradation)
         
         # Apply pagination
         if limit is not None:
@@ -54,9 +71,12 @@ async def list_templates(
         # Cache result
         template_cache.set(cache_key, templates)
         return templates
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error listing templates: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return empty list instead of 500 error for better UX
+        return []
 
 
 @router.get("/{template_id}")

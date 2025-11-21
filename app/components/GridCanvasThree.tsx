@@ -19,6 +19,18 @@ interface GridCanvasThreeProps {
   }
 }
 
+// Hardcoded tool palette (fallback when assets aren't available)
+const TOOL_PALETTE: Array<{ type: ObjectType | 'agent'; label: string; color: string }> = [
+  { type: 'agent', label: 'Agent', color: '#4a90e2' },
+  { type: 'wall', label: 'Wall', color: '#1b263b' },
+  { type: 'goal', label: 'Goal', color: '#50c878' },
+  { type: 'trap', label: 'Trap', color: '#dc143c' },
+  { type: 'key', label: 'Key', color: '#ffd700' },
+  { type: 'door', label: 'Door', color: '#8b4513' },
+  { type: 'checkpoint', label: 'Checkpoint', color: '#9370db' },
+  { type: 'obstacle', label: 'Obstacle', color: '#696969' },
+]
+
 // Helper to convert hex color to RGB array
 function hexToRgb(hex: string): [number, number, number] {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
@@ -39,7 +51,7 @@ function GridCell({
   isSelected,
   onClick,
   onRightClick,
-  assets
+  assets = []
 }: {
   x: number
   y: number
@@ -48,7 +60,7 @@ function GridCell({
   isSelected: boolean
   onClick: () => void
   onRightClick: (e: any) => void
-  assets: Asset[]
+  assets?: Asset[]
 }) {
   // Get color from assets
   let color: [number, number, number] = [0.95, 0.95, 0.95]
@@ -57,11 +69,11 @@ function GridCell({
   if (object) {
     // Try to find asset by assetId stored in properties
     let asset: Asset | undefined
-    if (object.properties?.assetId) {
+    if (object.properties?.assetId && assets && Array.isArray(assets) && assets.length > 0) {
       asset = assets.find(a => a._id === object.properties.assetId)
     }
     // Fallback: find asset by type
-    if (!asset) {
+    if (!asset && assets && Array.isArray(assets) && assets.length > 0) {
       asset = assets.find(a => {
         const objectType = assetToObjectType(a)
         return objectType === object.type
@@ -80,10 +92,12 @@ function GridCell({
     }
   } else if (agent) {
     // Find agent asset
-    const agentAsset = assets.find(a => {
-      const objectType = assetToObjectType(a)
-      return objectType === 'agent'
-    })
+    const agentAsset = (assets && Array.isArray(assets) && assets.length > 0) 
+      ? assets.find(a => {
+          const objectType = assetToObjectType(a)
+          return objectType === 'agent'
+        })
+      : undefined
     if (agentAsset) {
       const hexColor = agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
       color = hexToRgb(hexColor)
@@ -256,12 +270,13 @@ function SceneContent({
             isSelected={isSelected}
             onClick={() => onCellClick(x, y)}
             onRightClick={(e) => onCellRightClick(e, x, y)}
+            assets={assets}
           />
         )
       }
     }
     return result
-  }, [envSpec, rolloutState, selectedObjectId, selectedAgentId, width, height, cellSize, onCellClick, onCellRightClick])
+  }, [envSpec, rolloutState, selectedObjectId, selectedAgentId, width, height, cellSize, onCellClick, onCellRightClick, assets])
 
   return (
     <>
@@ -299,6 +314,7 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
   const { selection, selectObject, selectAgent } = useSelection()
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null) // Asset from backend
   const [assets, setAssets] = useState<Asset[]>([])
+  const [selectedTool, setSelectedTool] = useState<ObjectType | 'agent' | null>(null)
 
   // Load assets when component mounts
   useEffect(() => {
@@ -320,6 +336,14 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
   // When asset is selected
   const handleAssetSelect = (asset: Asset | null) => {
     setSelectedAsset(asset)
+    if (asset) {
+      const objectType = assetToObjectType(asset) as ObjectType
+      if (objectType) {
+        setSelectedTool(objectType)
+      }
+    } else {
+      setSelectedTool(null)
+    }
   }
 
   const world = envSpec.world
@@ -398,11 +422,18 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
       return
     }
 
-    // Place new object/agent using selected asset
-    if (!selectedAsset) return
-
+    // Place new object or agent using selected asset or hardcoded tool
     const worldPos = gridToWorld(gridX, gridY)
-    const objectType = assetToObjectType(selectedAsset) as ObjectType
+
+    // Use selected tool (from hardcoded palette) or asset
+    let objectType: ObjectType | 'agent' | null = null
+    if (selectedTool) {
+      objectType = selectedTool
+    } else if (selectedAsset) {
+      objectType = assetToObjectType(selectedAsset) as ObjectType
+    }
+
+    if (!objectType) return
 
     if (objectType === 'agent') {
       // Remove existing agent if placing new one
@@ -416,7 +447,7 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         objectType,
         worldPos,
         { type: 'rect', width: cellSize, height: cellSize },
-        { assetId: selectedAsset._id } // Store asset reference
+        selectedAsset ? { assetId: selectedAsset._id } : {} // Store asset reference if available
       )
     }
 
@@ -450,6 +481,33 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         onSelectAsset={handleAssetSelect}
         className="bg-card"
       />
+
+      {/* Fallback Hardcoded Tool Palette (temporary) */}
+      {assets.length === 0 && (
+        <div className="p-2 border-b border-border flex gap-2 flex-wrap bg-card">
+          {TOOL_PALETTE.map((tool) => (
+            <button
+              key={tool.type}
+              onClick={() => {
+                setSelectedTool(tool.type)
+                setSelectedAsset(null) // Clear asset selection when using hardcoded tool
+              }}
+              className={`px-3 py-1 rounded text-sm border transition-all ${
+                selectedTool === tool.type
+                  ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                  : 'border-border hover:bg-muted'
+              }`}
+              title={tool.label}
+            >
+              <span
+                className="inline-block w-3 h-3 rounded mr-2"
+                style={{ backgroundColor: tool.color }}
+              />
+              <span>{tool.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 3D Canvas */}
       <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

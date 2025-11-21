@@ -1,4 +1,4 @@
-import { mutation, query } from './_generated/server'
+import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
 
@@ -37,7 +37,7 @@ export const getUserById = query({
   },
 })
 
-export const findUserByEmail = query({
+export const findUserByEmail = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -48,7 +48,7 @@ export const findUserByEmail = query({
 })
 
 
-export const createUser = mutation({
+export const createUser = internalMutation({
   args: {
     authProviderId: v.string(),
     email: v.string(),
@@ -62,7 +62,7 @@ export const createUser = mutation({
 })
 
 
-export const createSession = mutation({
+export const createSession = internalMutation({
   args: {
     userId: v.id('users'),
     token: v.string(),
@@ -76,7 +76,7 @@ export const createSession = mutation({
   },
 })
 
-export const revokeSession = mutation({
+export const revokeSession = internalMutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const session = await ctx.db
@@ -105,7 +105,7 @@ export const revokeAllUserSessions = mutation({
 })
 
 
-export const getSessionByToken = query({
+export const getSessionByToken = internalQuery({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db

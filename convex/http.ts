@@ -1,6 +1,6 @@
 import { httpRouter } from 'convex/server'
 import { httpAction } from './_generated/server'
-import { api } from './_generated/api'
+import { api, internal } from './_generated/api'
 
 // Import trainingLogs API (will be generated)
 // Note: This will be available after Convex generates types
@@ -110,7 +110,7 @@ http.route({
         )
       }
 
-      await ctx.runMutation(api.auth.revokeSession, { token })
+      await ctx.runMutation((internal as any).auth.revokeSession, { token })
       
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' },

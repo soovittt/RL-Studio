@@ -345,9 +345,15 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   }
 
   const handleTemplateSelect = (envSpec: EnvSpec) => {
-    // Navigate to new environment with template data
-    sessionStorage.setItem('rl_studio_template', JSON.stringify(envSpec))
-    navigate({ to: '/environments/new' })
+    try {
+      console.log('Template selected, navigating to new environment:', envSpec)
+      // Navigate to new environment with template data
+      sessionStorage.setItem('rl_studio_template', JSON.stringify(envSpec))
+      navigate({ to: '/environments/new' })
+    } catch (err) {
+      console.error('Error in handleTemplateSelect:', err)
+      alert(`Failed to create environment from template: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
   }
 
   const handleDuplicate = async (envId: string) => {

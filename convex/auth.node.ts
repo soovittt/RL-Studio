@@ -2,7 +2,9 @@
 
 import { action } from './_generated/server'
 import { v } from 'convex/values'
-import { api } from './_generated/api'
+import { internal } from './_generated/api'
+
+const authInternal = (internal as any).auth
 
 const TOKEN_EXPIRY_HOURS = 24 * 7 // 7 days
 const TOKEN_LENGTH = 32
@@ -28,7 +30,7 @@ export const signUp = action({
       throw new Error('Invalid email address')
     }
 
-    const existing = await ctx.runQuery(api.auth.findUserByEmail, {
+    const existing = await ctx.runQuery(authInternal.findUserByEmail, {
       email: args.email.toLowerCase(),
     })
 
@@ -41,7 +43,7 @@ export const signUp = action({
     const passwordHash = `${salt}:${hash}`
     const authProviderId = `password:${crypto.randomUUID()}`
 
-    const userId = await ctx.runMutation(api.auth.createUser, {
+    const userId = await ctx.runMutation(authInternal.createUser, {
       authProviderId,
       email: args.email.toLowerCase(),
       displayName: args.displayName.trim(),
@@ -61,7 +63,7 @@ export const signIn = action({
   handler: async (ctx, args) => {
     const crypto = require('crypto')
     
-    const user = await ctx.runQuery(api.auth.findUserByEmail, {
+    const user = await ctx.runQuery(authInternal.findUserByEmail, {
       email: args.email.toLowerCase(),
     })
 
@@ -82,7 +84,7 @@ export const signIn = action({
     const token = crypto.randomBytes(TOKEN_LENGTH).toString('hex')
     const expiresAt = getExpiryTime()
 
-    await ctx.runMutation(api.auth.createSession, {
+    await ctx.runMutation(authInternal.createSession, {
       userId: user._id,
       token,
       expiresAt,
@@ -97,7 +99,7 @@ export const refreshToken = action({
   handler: async (ctx, args) => {
     const crypto = require('crypto')
     
-    const session = await ctx.runQuery(api.auth.getSessionByToken, {
+    const session = await ctx.runQuery(authInternal.getSessionByToken, {
       token: args.token,
     })
 
@@ -105,7 +107,7 @@ export const refreshToken = action({
       throw new Error('Invalid or expired token')
     }
 
-    const user = await ctx.runQuery(api.auth.getUserById, {
+    const user = await ctx.runQuery(authInternal.getUserById, {
       userId: session.userId,
     })
 
@@ -116,8 +118,8 @@ export const refreshToken = action({
     const newToken = crypto.randomBytes(TOKEN_LENGTH).toString('hex')
     const expiresAt = getExpiryTime()
 
-    await ctx.runMutation(api.auth.revokeSession, { token: args.token })
-    await ctx.runMutation(api.auth.createSession, {
+    await ctx.runMutation(authInternal.revokeSession, { token: args.token })
+    await ctx.runMutation(authInternal.createSession, {
       userId: user._id,
       token: newToken,
       expiresAt,

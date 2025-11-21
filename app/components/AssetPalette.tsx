@@ -83,11 +83,13 @@ export function AssetPalette({
           // Still fetch in background to update cache
           listAssets({ mode, projectId })
             .then((loadedAssets) => {
-              const primaryAssets = loadedAssets
-                .filter((asset) => asset.meta?.palette === 'primary')
-                .sort((a, b) => a.name.localeCompare(b.name))
-              setCachedAssets(mode, primaryAssets)
-              setAssets(primaryAssets)
+              if (loadedAssets && Array.isArray(loadedAssets)) {
+                const primaryAssets = loadedAssets
+                  .filter((asset) => asset && asset.meta?.palette === 'primary')
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                setCachedAssets(mode, primaryAssets)
+                setAssets(primaryAssets)
+              }
             })
             .catch(() => {
               // Ignore background fetch errors
@@ -101,10 +103,16 @@ export function AssetPalette({
           projectId,
         })
         
+        // Check if loadedAssets is valid array
+        if (!loadedAssets || !Array.isArray(loadedAssets)) {
+          setAssets([])
+          return
+        }
+        
         // Filter to primary palette assets (those with meta.palette === 'primary')
         // and sort by name
         const primaryAssets = loadedAssets
-          .filter((asset) => asset.meta?.palette === 'primary')
+          .filter((asset) => asset && asset.meta?.palette === 'primary')
           .sort((a, b) => a.name.localeCompare(b.name))
         
         // Cache the results
@@ -195,8 +203,8 @@ export function assetToObjectType(asset: Asset | null): string | null {
   if (!asset) return null
   
   // Try to infer from asset name or meta tags
-  const name = asset.name.toLowerCase()
-  const tags = asset.meta?.tags || []
+  const name = (asset.name || '').toLowerCase()
+  const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
   
   // Common mappings
   if (name.includes('wall') || tags.includes('wall')) return 'wall'

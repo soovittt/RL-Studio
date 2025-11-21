@@ -8,15 +8,21 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file from backend directory
-env_path = Path(__file__).parent / '.env'
-if env_path.exists():
-    load_dotenv(env_path)
-    logging.info(f"✅ Loaded .env from {env_path}")
-else:
-    # Try loading from current directory as fallback
-    load_dotenv()
-    logging.info("⚠️ No .env file found in backend directory, using environment variables")
+# Load .env files (backend/.env first, then root .env as fallback)
+backend_env_path = Path(__file__).parent / '.env'
+root_env_path = Path(__file__).parent.parent / '.env'
+
+if backend_env_path.exists():
+    load_dotenv(backend_env_path)
+    logging.info(f"✅ Loaded .env from {backend_env_path}")
+
+# Also load root .env for VITE_CONVEX_URL (used as fallback)
+if root_env_path.exists():
+    load_dotenv(root_env_path, override=False)  # Don't override backend/.env values
+    logging.info(f"✅ Also loaded root .env from {root_env_path}")
+
+if not backend_env_path.exists() and not root_env_path.exists():
+    logging.info("⚠️ No .env file found, using environment variables")
 
 # Set up logging IMMEDIATELY - this must happen first
 logging.basicConfig(

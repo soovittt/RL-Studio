@@ -3,6 +3,7 @@ Asset/Library Service - CRUD operations for assets
 """
 import logging
 from typing import List, Optional, Dict, Any
+import requests
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import ValidationError
 
@@ -43,19 +44,39 @@ async def list_assets(
             return cached
         
         client = get_client()
+        if not client:
+            # Convex not configured - return empty list (graceful degradation)
+            logger.warning("Convex client not available, returning empty asset list")
+            return []
+        
         # First, get asset type ID if asset_type provided
         asset_type_id = None
         if asset_type:
-            asset_type_obj = client.query("assetTypes/getByKey", {"key": asset_type})
-            if asset_type_obj:
-                asset_type_id = asset_type_obj["_id"]
+            try:
+                asset_type_obj = client.query("assetTypes/getByKey", {"key": asset_type})
+                if asset_type_obj:
+                    asset_type_id = asset_type_obj["_id"]
+            except Exception as e:
+                logger.warning(f"Failed to get asset type: {e}")
         
-        result = client.query("assets/list", {
-            "projectId": project_id,
-            "assetTypeId": asset_type_id,
-            "mode": mode,
-            "tag": tag,
-        }) or []
+        try:
+            result = client.query("assets/list", {
+                "projectId": project_id,
+                "assetTypeId": asset_type_id,
+                "mode": mode,
+                "tag": tag,
+            }) or []
+        except requests.exceptions.HTTPError as e:
+            # Handle 404 (route not found) or other HTTP errors gracefully
+            if e.response and e.response.status_code == 404:
+                logger.warning(f"Convex route not found (dev server may not be running): {e}")
+            else:
+                logger.error(f"Convex HTTP error querying assets: {e}")
+            return []  # Return empty list on error (graceful degradation)
+        except Exception as e:
+            logger.error(f"Failed to query assets from Convex: {e}")
+            # Return empty list on error (graceful degradation)
+            return []
         
         # Apply pagination
         if limit is not None:

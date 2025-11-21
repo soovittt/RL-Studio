@@ -3,20 +3,27 @@
  * Handles scene and scene version CRUD operations
  */
 
-// Get backend service URL
+// Get backend service URL with proper local vs production handling
 const getBackendUrl = (): string => {
+  // In development, always use localhost (ignore env vars)
+  if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
+    return 'http://localhost:8000'
+  }
+  
+  // In production, use env var if set
   const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_ROLLOUT_SERVICE_URL
   
   if (envUrl) {
     return envUrl
   }
   
-  // Default to localhost in development
-  if (import.meta.env.DEV) {
-    return 'http://localhost:8000'
-  }
+  // In production, warn if not set but still default to localhost
+  console.warn(
+    '⚠️ VITE_API_URL or VITE_ROLLOUT_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
+    'Please set your production backend URL in environment variables.'
+  )
   
-  throw new Error('VITE_API_URL or VITE_ROLLOUT_SERVICE_URL must be set')
+  return 'http://localhost:8000'
 }
 
 export interface Scene {
@@ -103,7 +110,7 @@ export async function getScene(sceneId: string): Promise<{ scene: Scene; activeV
  * Create a new scene
  */
 export async function createScene(request: CreateSceneRequest): Promise<{ id: string; name: string }> {
-  const response = await fetch(`${getBackendUrl()}/api/scenes/`, {
+  const response = await fetch(`${getBackendUrl()}/api/scenes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

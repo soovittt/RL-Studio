@@ -27,12 +27,19 @@ async def get_scene(scene_id: str):
     """
     try:
         client = get_client()
+        if not client:
+            raise HTTPException(status_code=404, detail="Scene not found (Convex not configured)")
         result = client.query("scenes/get", {"id": scene_id})
         if not result:
             raise HTTPException(status_code=404, detail="Scene not found")
         return result
     except HTTPException:
         raise
+    except requests.exceptions.HTTPError as e:
+        if e.response and e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Scene not found")
+        logger.error(f"Convex HTTP error getting scene: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get scene from Convex")
     except Exception as e:
         logger.error(f"Error getting scene: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
