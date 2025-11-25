@@ -171,5 +171,6 @@ push.sh
 .env
 .env.local
 .env.*.local
+.env.test
 !.env.example
 !backend/.env.example
