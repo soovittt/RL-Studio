@@ -106,6 +106,8 @@ backend/deploy-gcp.sh
 deploy.sh
 *deploy*.sh
 !deploy.sh.example
+!deploy-frontend-gcp.sh
+!cloudbuild-frontend.yaml
 
 # AWS credentials (if accidentally created)
 .aws/
