@@ -1,0 +1,39 @@
+steps:
+  # Build the frontend Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_URL=${_VITE_API_URL}'
+      - '--build-arg'
+      - 'VITE_CONVEX_URL=${_VITE_CONVEX_URL}'
+      - '--build-arg'
+      - 'VITE_ROLLOUT_SERVICE_URL=${_VITE_ROLLOUT_SERVICE_URL}'
+      - '--build-arg'
+      - 'VITE_TRAINING_SERVICE_URL=${_VITE_TRAINING_SERVICE_URL}'
+      - '-f'
+      - 'Dockerfile.frontend'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/rl-studio-frontend:${_TAG}'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/rl-studio-frontend:latest'
+      - '.'
+    id: 'build-frontend'
+
+images:
+  - 'gcr.io/$PROJECT_ID/rl-studio-frontend:${_TAG}'
+  - 'gcr.io/$PROJECT_ID/rl-studio-frontend:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'
+
+substitutions:
+  _VITE_API_URL: 'https://rl-studio-backend-290319355713.us-central1.run.app'
+  _VITE_CONVEX_URL: 'https://capable-goose-697.convex.cloud'
+  _VITE_ROLLOUT_SERVICE_URL: 'https://rl-studio-backend-290319355713.us-central1.run.app'
+  _VITE_TRAINING_SERVICE_URL: 'https://rl-studio-backend-290319355713.us-central1.run.app'
+  _TAG: 'latest'
+
