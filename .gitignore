@@ -160,6 +160,7 @@ wheels/
 
 # Personal scripts with tokens
 push-personal.sh
+push.sh
 *personal*.sh
 
 # Local environment files (keep .env.example)
