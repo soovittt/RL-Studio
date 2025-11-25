@@ -1,0 +1,78 @@
+version: '3.8'
+
+# Production Docker Compose configuration
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rl-studio-backend-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - CONVEX_URL=${CONVEX_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-s3}
+      - S3_BUCKET=${S3_BUCKET}
+      - GCS_BUCKET=${GCS_BUCKET}
+    volumes:
+      - backend_data:/app/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - rl-studio-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: rl-studio-frontend-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_CONVEX_URL=${VITE_CONVEX_URL}
+      - VITE_ROLLOUT_SERVICE_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - rl-studio-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: rl-studio-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    networks:
+      - rl-studio-network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+volumes:
+  backend_data:
+  redis_data:
+
+networks:
+  rl-studio-network:
+    driver: bridge
+

@@ -2,6 +2,7 @@
 API route handlers
 """
 import asyncio
+import os
 import logging
 from typing import Dict, Any
 from datetime import datetime
@@ -9,7 +10,9 @@ from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..rollout.simulator import run_rollout, validate_env_spec
+from ..rollout.model_loader import load_model_for_inference, run_rollout_with_model
 from ..training import launch_training_job, get_job_status, stop_job
+from ..utils.security import sanitize_env_spec, validate_env_spec_structure
 from .models import (
     RolloutRequest, RolloutResponse,
     LaunchJobRequest, LaunchJobResponse,
@@ -22,8 +25,9 @@ from .generation import router as generation_router
 from .benchmarks import router as benchmarks_router
 from .codegen import router as codegen_router
 from .infrastructure import router as infrastructure_router
-from .scenes import router as scenes_router
-from .assets import router as assets_router
+# Removed: scenes_router and assets_router - use GraphQL instead
+# from .scenes import router as scenes_router
+# from .assets import router as assets_router
 from .templates import router as templates_router
 from .compile import router as compile_router
 from .admin import router as admin_router
@@ -34,15 +38,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Include sub-routers
+# NOTE: assets_router and scenes_router have been REMOVED - all operations now use GraphQL
+# GraphQL endpoint: POST /graphql
 router.include_router(analysis_router)
-router.include_router(training_router)
+router.include_router(training_router)  # Contains some deprecated endpoints - use GraphQL for core operations
 router.include_router(verification_router)
 router.include_router(generation_router)
 router.include_router(benchmarks_router)
 router.include_router(codegen_router)
 router.include_router(infrastructure_router)
-router.include_router(scenes_router)
-router.include_router(assets_router)
+# Removed: scenes_router - use GraphQL instead
+# Removed: assets_router - use GraphQL instead
 router.include_router(templates_router)
 router.include_router(compile_router)
 router.include_router(admin_router)
@@ -51,18 +57,35 @@ router.include_router(ingestion_router)
 # ============================================================================
 # Rollout Routes
 # ============================================================================
+# NOTE: HTTP rollout endpoint has been REMOVED - use GraphQL instead
+# GraphQL endpoint: POST /graphql with mutation { runRollout(...) }
+# WebSocket endpoint (/ws/rollout) is kept as GraphQL doesn't support WebSocket subscriptions
 
-@router.post("/api/rollout", response_model=RolloutResponse)
+# Removed: @router.post("/api/rollout", ...) - use GraphQL mutation { runRollout(...) }
+# Function kept for potential internal use
 async def run_rollout_http(request: RolloutRequest):
-    """Run a rollout and return complete results"""
+    """Run a rollout and return complete results - OPTIMIZED"""
     start_time = asyncio.get_event_loop().time()
     
     try:
         if not isinstance(request.envSpec, dict):
             raise ValueError("envSpec must be a dictionary")
         
+        # Security: Validate and sanitize environment spec
+        is_valid, error_msg = validate_env_spec_structure(request.envSpec)
+        if not is_valid:
+            execution_time = asyncio.get_event_loop().time() - start_time
+            return RolloutResponse(
+                success=False,
+                error=f"Security validation failed: {error_msg}",
+                executionTime=execution_time
+            )
+        
+        # Sanitize input
+        sanitized_spec = sanitize_env_spec(request.envSpec)
+        
         # Validate environment first
-        is_valid, error_msg = validate_env_spec(request.envSpec)
+        is_valid, error_msg = validate_env_spec(sanitized_spec)
         if not is_valid:
             execution_time = asyncio.get_event_loop().time() - start_time
             return RolloutResponse(
@@ -71,11 +94,67 @@ async def run_rollout_http(request: RolloutRequest):
                 executionTime=execution_time
             )
         
-        result = run_rollout(
-            env_spec=request.envSpec,
-            policy=request.policy,
-            max_steps=request.maxSteps
-        )
+        # Handle trained model policy
+        if request.policy == "trained_model":
+            if not request.runId and not request.modelUrl:
+                execution_time = asyncio.get_event_loop().time() - start_time
+                return RolloutResponse(
+                    success=False,
+                    error="runId or modelUrl required for trained_model policy",
+                    executionTime=execution_time
+                )
+            
+            # Load model
+            convex_url = os.getenv("CONVEX_URL")
+            model = load_model_for_inference(
+                model_url=request.modelUrl,
+                run_id=request.runId,
+                convex_url=convex_url
+            )
+            
+            if not model:
+                execution_time = asyncio.get_event_loop().time() - start_time
+                return RolloutResponse(
+                    success=False,
+                    error="Failed to load model. Check that model exists and storage is configured.",
+                    executionTime=execution_time
+                )
+            
+            # Run rollout with model
+            result = run_rollout_with_model(
+                env_spec=sanitized_spec,
+                model=model,
+                max_steps=request.maxSteps
+            )
+        else:
+            # Use existing random/greedy rollout
+            # Check if batch processing requested
+            if request.batchSize and request.batchSize > 1 and request.useParallel:
+                from ..rollout.parallel_simulator import run_vectorized_batch
+                batch_result = run_vectorized_batch(
+                    env_spec=sanitized_spec,
+                    policy=request.policy,
+                    max_steps=request.maxSteps,
+                    batch_size=request.batchSize
+                )
+                # Return first result for compatibility, but include batch stats
+                if batch_result["results"]:
+                    result = batch_result["results"][0]
+                    result["batch_statistics"] = batch_result["statistics"]
+                else:
+                    result = {
+                        "success": False,
+                        "error": "No rollouts completed",
+                        "steps": [],
+                        "totalReward": 0.0,
+                        "episodeLength": 0
+                    }
+            else:
+                result = run_rollout(
+                    env_spec=sanitized_spec,
+                    policy=request.policy,
+                    max_steps=request.maxSteps
+                )
         
         result_dict = {
             "steps": [
@@ -142,6 +221,31 @@ async def run_rollout_websocket(websocket: WebSocket):
             })
             return
         
+        # Handle trained model policy
+        model = None
+        if request.policy == "trained_model":
+            if not request.runId and not request.modelUrl:
+                await websocket.send_json({
+                    "type": "error",
+                    "error": "runId or modelUrl required for trained_model policy"
+                })
+                return
+            
+            # Load model
+            convex_url = os.getenv("CONVEX_URL")
+            model = load_model_for_inference(
+                model_url=request.modelUrl,
+                run_id=request.runId,
+                convex_url=convex_url
+            )
+            
+            if not model:
+                await websocket.send_json({
+                    "type": "error",
+                    "error": "Failed to load model"
+            })
+            return
+        
         await websocket.send_json({
             "type": "started",
             "policy": request.policy,
@@ -169,12 +273,26 @@ async def run_rollout_websocket(websocket: WebSocket):
             except Exception as e:
                 logger.error(f"Failed to send step: {e}")
         
-        result = run_rollout(
-            env_spec=request.envSpec,
-            policy=request.policy,
-            max_steps=request.maxSteps,
-            stream_callback=stream_callback
-        )
+        if model:
+            # Run rollout with model (note: run_rollout_with_model doesn't support streaming yet)
+            result = run_rollout_with_model(
+                env_spec=request.envSpec,
+                model=model,
+                max_steps=request.maxSteps
+            )
+            # Send all steps at once for model rollouts
+            for step in result.get("steps", []):
+                await websocket.send_json({
+                    "type": "step",
+                    "step": step
+                })
+        else:
+            result = run_rollout(
+                env_spec=request.envSpec,
+                policy=request.policy,
+                max_steps=request.maxSteps,
+                stream_callback=stream_callback
+            )
         
         await websocket.send_json({
             "type": "complete",
@@ -201,8 +319,11 @@ async def run_rollout_websocket(websocket: WebSocket):
 # ============================================================================
 # Training Job Routes
 # ============================================================================
+# NOTE: Training REST endpoints have been REMOVED - use GraphQL instead
+# GraphQL endpoint: POST /graphql with mutation { launchTraining(...) }
 
-@router.post("/api/training/launch", response_model=LaunchJobResponse)
+# Removed: @router.post("/api/training/launch", ...) - use GraphQL mutation { launchTraining(...) }
+# Function kept for potential internal use
 async def launch_training(request: LaunchJobRequest):
     """
     Launch a training job via SkyPilot
@@ -316,7 +437,7 @@ async def launch_training(request: LaunchJobRequest):
             error=str(e)
         )
 
-@router.get("/api/training/status/{job_id}", response_model=JobStatusResponse)
+# Removed: @router.get("/api/training/status/{job_id}", ...) - use GraphQL query { trainingStatus(...) }
 async def get_training_status(job_id: str, sync: bool = True):
     """
     Get comprehensive status of a training job including SkyPilot metadata and logs.
@@ -406,7 +527,7 @@ async def get_training_logs(job_id: str, max_lines: int = 1000):
             "error": str(e)
         }
 
-@router.post("/api/training/stop/{job_id}")
+# Removed: @router.post("/api/training/stop/{job_id}", ...) - use GraphQL mutation { stopTraining(...) }
 async def stop_training(job_id: str):
     """Stop a running training job"""
     try:

@@ -5,6 +5,7 @@ import { ConvexProvider } from 'convex/react'
 import { routeTree } from './routeTree.gen'
 import { convex } from './lib/convex'
 import { AuthProvider } from './lib/auth'
+import { ThemeProvider } from './lib/theme'
 import './styles.css'
 import * as Sentry from '@sentry/react'
 
@@ -31,13 +32,15 @@ declare module '@tanstack/react-router' {
 
 function App() {
   return (
-    <ConvexProvider client={convex}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RouterProvider router={router} />
-        </AuthProvider>
-      </QueryClientProvider>
-    </ConvexProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="rl-studio-theme">
+      <ConvexProvider client={convex}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
+        </QueryClientProvider>
+      </ConvexProvider>
+    </ThemeProvider>
   )
 }
 

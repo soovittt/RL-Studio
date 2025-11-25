@@ -1,12 +1,15 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
+import { useState, memo, useMemo, useCallback } from 'react'
 
-export function RunList() {
+export const RunList = memo(function RunList() {
+  const navigate = useNavigate()
   const runs = useQuery(api.runs.listRecent, {})
   const isLoading = runs === undefined
+  const [selectedRuns, setSelectedRuns] = useState<Set<string>>(new Set())
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'running':
         return 'bg-blue-100 text-blue-800'
@@ -17,7 +20,7 @@ export function RunList() {
       default:
         return 'bg-gray-100 text-gray-800'
     }
-  }
+  }, [])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -26,6 +29,24 @@ export function RunList() {
           <h1 className="text-3xl font-bold">Training Runs</h1>
           <p className="mt-2 text-muted-foreground">Monitor and manage RL training jobs</p>
         </div>
+        {selectedRuns.size > 0 && (
+          <button
+            onClick={() => {
+              const runIds = Array.from(selectedRuns)
+              if (runIds.length >= 2 && runIds.length <= 5) {
+                navigate({
+                  to: '/runs/compare',
+                  search: { runs: runIds },
+                })
+              } else {
+                alert(`Please select 2-5 runs to compare. Currently selected: ${runIds.length}`)
+              }
+            }}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90"
+          >
+            Compare Selected ({selectedRuns.size})
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -35,6 +56,20 @@ export function RunList() {
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  <input
+                    type="checkbox"
+                    checked={selectedRuns.size === runs.length && runs.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRuns(new Set(runs.map((r) => r._id)))
+                      } else {
+                        setSelectedRuns(new Set())
+                      }
+                    }}
+                    className="rounded"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Run ID
                 </th>
@@ -55,6 +90,27 @@ export function RunList() {
             <tbody className="divide-y divide-border">
               {runs.map((run) => (
                 <tr key={run._id} className="hover:bg-muted/50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedRuns.has(run._id)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedRuns)
+                        if (e.target.checked) {
+                          if (newSelected.size < 5) {
+                            newSelected.add(run._id)
+                          } else {
+                            alert('Maximum 5 runs can be compared at once')
+                            return
+                          }
+                        } else {
+                          newSelected.delete(run._id)
+                        }
+                        setSelectedRuns(newSelected)
+                      }}
+                      className="rounded"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       to="/runs/$id"
@@ -94,5 +150,5 @@ export function RunList() {
       )}
     </div>
   )
-}
+})
 

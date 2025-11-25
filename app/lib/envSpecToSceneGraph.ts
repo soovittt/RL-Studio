@@ -1,9 +1,11 @@
 /**
  * Converter: EnvSpec -> sceneGraph + rlConfig
  * Converts the universal EnvSpec format to the new scene builder format
+ * Uses component-based architecture (GridTransform, Render2D, Collision2D, etc.)
  */
 
 import { EnvSpec, ObjectSpec, AgentSpec } from './envSpec'
+import { getDefaultRender2D } from './procedural/gridRenderer'
 
 export interface ConvertedSceneGraph {
   entities: Array<{
@@ -83,8 +85,24 @@ export interface ConvertedRLConfig {
 export function envSpecToSceneGraph(envSpec: EnvSpec): ConvertedSceneGraph {
   const entities: ConvertedSceneGraph['entities'] = []
 
-  // Convert objects to entities
+  // Convert objects to entities with component-based architecture
   envSpec.objects.forEach((obj: ObjectSpec) => {
+    const isGrid = envSpec.world.coordinateSystem === 'grid'
+    const row = isGrid ? Math.floor(obj.position[1] || 0) : 0
+    const col = isGrid ? Math.floor(obj.position[0]) : 0
+
+    // Determine render properties from object type
+    const defaultRender = getDefaultRender2D(`asset_${obj.type}`)
+    const render2D = {
+      shape: defaultRender.shape,
+      size: defaultRender.size,
+      color: obj.properties?.color || defaultRender.color,
+      opacity: defaultRender.opacity ?? 1.0,
+    }
+
+    // Determine collision properties
+    const isSolid = obj.collision?.enabled && (obj.type === 'wall' || obj.type === 'obstacle')
+    
     entities.push({
       id: obj.id,
       assetId: `asset_${obj.type}`, // Map to asset ID (will need asset lookup)
@@ -92,62 +110,122 @@ export function envSpecToSceneGraph(envSpec: EnvSpec): ConvertedSceneGraph {
       parentId: null,
       transform: {
         position: [obj.position[0], obj.position[1] || 0, 0],
-        rotation: [0, 0, 0],
+        rotation: [0, 0, obj.rotation || 0],
         scale: [1, 1, 1],
       },
       components: {
-        // Map object properties to components
-        physics: {
-          enabled: obj.collision?.enabled || false,
-          bodyType: obj.collision?.enabled ? 'static' : 'none',
+        // Grid-specific: GridTransform component
+        ...(isGrid && {
+          GridTransform: {
+            row,
+            col,
+            layer: 0,
+          },
+        }),
+        // Render2D component for procedural rendering
+        Render2D: render2D,
+        // Collision2D component
+        Collision2D: {
+          isSolid,
+          isTrigger: obj.collision?.enabled && !isSolid,
         },
-        render: {
-          visible: true,
-          colorOverride: null,
-        },
-        // Grid-specific component
-        ...(envSpec.world.coordinateSystem === 'grid' && {
-          gridCell: {
-            row: Math.floor(obj.position[1] || 0),
-            col: Math.floor(obj.position[0]),
+        // Additional components based on object type
+        ...(obj.type === 'key' && {
+          Pickable: {
+            itemId: obj.id,
+            onPickup: [],
+          },
+        }),
+        ...(obj.type === 'door' && {
+          Door: {
+            doorId: obj.id,
+            isOpen: false,
+            requiresKey: obj.properties?.requiresKey,
+          },
+        }),
+        ...(obj.type === 'goal' && {
+          TriggerZone: {
+            onEnter: ['reward:+10', 'endEpisode'],
+            once: true,
+          },
+        }),
+        ...(obj.type === 'trap' && {
+          TriggerZone: {
+            onEnter: ['penalty:-1'],
+            once: false,
           },
         }),
       },
     })
   })
 
-  // Convert agents to entities
+  // Convert agents to entities with component-based architecture
   envSpec.agents.forEach((agent: AgentSpec) => {
+    const isGrid = envSpec.world.coordinateSystem === 'grid'
+    const row = isGrid ? Math.floor(agent.position[1] || 0) : 0
+    const col = isGrid ? Math.floor(agent.position[0]) : 0
+
+    // Determine action space
+    const actionSpace = envSpec.actionSpace?.type === 'discrete'
+      ? 'grid_moves_4'
+      : envSpec.actionSpace?.type === 'continuous'
+      ? 'custom'
+      : 'grid_moves_4'
+
+    // Default agent render (circle, blue)
+    const render2D = {
+      shape: 'circle' as const,
+      radius: 0.4,
+      color: '#4a90e2',
+      opacity: 1.0,
+    }
+
     entities.push({
       id: agent.id,
-      assetId: 'asset_agent', // Map to agent asset
+      assetId: 'asset_agent_human', // Default to human agent
       name: agent.name || 'Agent',
       parentId: null,
       transform: {
         position: [agent.position[0], agent.position[1] || 0, 0],
-        rotation: [0, 0, 0],
+        rotation: [0, 0, agent.rotation || 0],
         scale: [1, 1, 1],
       },
       components: {
-        physics: {
-          enabled: true,
-          bodyType: 'dynamic',
-          mass: 1,
-        },
-        render: {
-          visible: true,
-        },
-        rlAgent: {
-          agentId: agent.id,
-          role: 'learning_agent',
-        },
-        // Grid-specific component
-        ...(envSpec.world.coordinateSystem === 'grid' && {
-          gridCell: {
-            row: Math.floor(agent.position[1] || 0),
-            col: Math.floor(agent.position[0]),
+        // Grid-specific: GridTransform component
+        ...(isGrid && {
+          GridTransform: {
+            row,
+            col,
+            layer: 1, // Agents on top of tiles
           },
         }),
+        // Render2D component for procedural rendering
+        Render2D: render2D,
+        // Collision2D component
+        Collision2D: {
+          isSolid: true,
+        },
+        // GridMovement component
+        ...(isGrid && {
+          GridMovement: {
+            allowDiagonal: false,
+            canFly: false,
+            speed: 1.0,
+          },
+        }),
+        // Agent component for RL
+        Agent: {
+          observation: {
+            radius: 2,
+            type: 'partial' as const,
+          },
+          actionSpace,
+          customActions: actionSpace === 'custom' ? envSpec.actionSpace?.actions : undefined,
+        },
+        // Inventory component (for key-door puzzles)
+        Inventory: {
+          items: [],
+        },
       },
     })
   })

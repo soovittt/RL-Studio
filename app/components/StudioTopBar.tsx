@@ -1,5 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { ExperimentTrackingSettings } from './ExperimentTrackingSettings'
+import { useTheme } from '~/lib/theme'
+import { getExperimentTrackingSettings } from '~/lib/researchClient'
 
 interface StudioTopBarProps {
   envName: string
@@ -30,8 +33,19 @@ export function StudioTopBar({
   canUndo = false,
   canRedo = false,
 }: StudioTopBarProps) {
+  const { theme, setTheme } = useTheme()
   const [isEditingName, setIsEditingName] = useState(false)
   const [editingValue, setEditingValue] = useState(envName)
+  const [showTrackingSettings, setShowTrackingSettings] = useState(false)
+  const [trackingSettings, setTrackingSettings] = useState(() => getExperimentTrackingSettings())
+
+  // Update tracking settings when they change
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrackingSettings(getExperimentTrackingSettings())
+    }, 1000) // Check every second
+    return () => clearInterval(interval)
+  }, [])
 
   // Update editing value when envName prop changes (but not while editing)
   useEffect(() => {
@@ -154,7 +168,48 @@ export function StudioTopBar({
         >
           Export
         </button>
+        <button
+          onClick={() => setShowTrackingSettings(true)}
+          className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted flex items-center gap-2 relative"
+          title="Experiment Tracking Settings"
+        >
+          ⚙️ Settings
+          {/* Authentication Status Indicator */}
+          {trackingSettings.backend === 'wandb' && trackingSettings.wandbAuthenticated && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-background" title="W&B Authenticated" />
+          )}
+          {trackingSettings.backend === 'mlflow' && trackingSettings.mlflowAuthenticated && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border-2 border-background" title="MLflow Authenticated" />
+          )}
+        </button>
+        <button
+          onClick={() => {
+            // Get current effective theme (resolve system if needed)
+            const getEffectiveTheme = () => {
+              if (theme === 'system') {
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+              }
+              return theme
+            }
+            const current = getEffectiveTheme()
+            // Toggle to opposite
+            setTheme(current === 'dark' ? 'light' : 'dark')
+          }}
+          className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors"
+          title="Toggle theme"
+        >
+          {(() => {
+            const effectiveTheme = theme === 'system' 
+              ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+              : theme
+            return effectiveTheme === 'dark' ? '☀️' : '🌙'
+          })()}
+        </button>
       </div>
+
+      {showTrackingSettings && (
+        <ExperimentTrackingSettings onClose={() => setShowTrackingSettings(false)} />
+      )}
     </div>
   )
 }

@@ -486,6 +486,221 @@ export const suggestHyperparameters = action({
   },
 })
 
+export const analyzeFailure = action({
+  args: {
+    runId: v.id('runs'),
+  },
+  handler: async (ctx, args) => {
+    // Load run, evaluation, and metrics
+    const run = await ctx.runQuery(api.runs.get, { id: args.runId })
+    if (!run) {
+      return {
+        success: false,
+        error: 'Run not found',
+      }
+    }
+
+    const evaluation = await ctx.runQuery(api.evaluations.get, { runId: args.runId })
+
+    const metrics = await ctx.runQuery(api.metrics.get, { runId: args.runId })
+
+    // Analyze patterns
+    const analysis: {
+      issues: Array<{ type: string; severity: 'high' | 'medium' | 'low'; message: string; suggestion: string }>
+      summary: string
+      recommendations: Array<{ action: string; description: string; priority: 'high' | 'medium' | 'low' }>
+    } = {
+      issues: [],
+      summary: '',
+      recommendations: [],
+    }
+
+    // Check evaluation results
+    if (evaluation) {
+      const meanReward = evaluation.meanReward
+      const successRate = evaluation.successRate || 0
+      const stdReward = evaluation.stdReward
+      const meanLength = evaluation.meanLength
+
+      // Low reward analysis
+      if (meanReward < 0) {
+        analysis.issues.push({
+          type: 'low_reward',
+          severity: 'high',
+          message: `Mean reward is negative (${meanReward.toFixed(2)}). The agent is performing worse than random.`,
+          suggestion: 'Check reward function - rewards may be misaligned or too sparse. Consider reward shaping.',
+        })
+        analysis.recommendations.push({
+          action: 'adjust_reward',
+          description: 'Review and adjust reward function. Consider adding intermediate rewards for progress.',
+          priority: 'high',
+        })
+      } else if (meanReward < 10 && successRate < 0.1) {
+        analysis.issues.push({
+          type: 'poor_performance',
+          severity: 'high',
+          message: `Low mean reward (${meanReward.toFixed(2)}) and success rate (${(successRate * 100).toFixed(1)}%).`,
+          suggestion: 'Agent is not learning effectively. Try lower learning rate or different algorithm.',
+        })
+        analysis.recommendations.push({
+          action: 'lower_learning_rate',
+          description: `Try reducing learning rate from ${(run.hyperparams as any)?.learning_rate || 3e-4} to ${((run.hyperparams as any)?.learning_rate || 3e-4) * 0.5}`,
+          priority: 'high',
+        })
+      }
+
+      // High variance analysis
+      if (stdReward > Math.abs(meanReward) * 2) {
+        analysis.issues.push({
+          type: 'high_variance',
+          severity: 'medium',
+          message: `High variance in rewards (std: ${stdReward.toFixed(2)} vs mean: ${meanReward.toFixed(2)}).`,
+          suggestion: 'High variance suggests exploration issues. Try increasing entropy coefficient or using curriculum learning.',
+        })
+        analysis.recommendations.push({
+          action: 'increase_exploration',
+          description: 'Increase entropy coefficient or add exploration bonus to improve stability.',
+          priority: 'medium',
+        })
+      }
+
+      // Success rate analysis
+      if (successRate < 0.2 && meanReward > 0) {
+        analysis.issues.push({
+          type: 'low_success_rate',
+          severity: 'medium',
+          message: `Low success rate (${(successRate * 100).toFixed(1)}%) despite positive rewards.`,
+          suggestion: 'Reward function may not align with goal. Consider adding large terminal reward for success.',
+        })
+        analysis.recommendations.push({
+          action: 'adjust_reward',
+          description: 'Add large terminal reward (e.g., +100) when goal is reached to align rewards with success.',
+          priority: 'medium',
+        })
+      }
+
+      // Episode length analysis
+      if (meanLength < 10) {
+        analysis.issues.push({
+          type: 'early_termination',
+          severity: 'medium',
+          message: `Episodes terminate very early (avg: ${meanLength.toFixed(1)} steps).`,
+          suggestion: 'Environment may be too difficult or termination conditions too strict.',
+        })
+        analysis.recommendations.push({
+          action: 'review_termination',
+          description: 'Review termination conditions. Consider making environment easier or increasing max steps.',
+          priority: 'medium',
+        })
+      } else if (meanLength > 1000) {
+        analysis.issues.push({
+          type: 'long_episodes',
+          severity: 'low',
+          message: `Episodes are very long (avg: ${meanLength.toFixed(1)} steps).`,
+          suggestion: 'Agent may be stuck or environment too large. Consider reducing world size or adding time limits.',
+        })
+      }
+    }
+
+    // Analyze training metrics
+    if (metrics && metrics.length > 0) {
+      const rewards = metrics.map((m) => m.reward || 0).filter((r) => r !== undefined)
+      if (rewards.length > 10) {
+        const earlyReward = rewards.slice(0, Math.floor(rewards.length / 3)).reduce((a, b) => a + b, 0) / Math.floor(rewards.length / 3)
+        const lateReward = rewards.slice(-Math.floor(rewards.length / 3)).reduce((a, b) => a + b, 0) / Math.floor(rewards.length / 3)
+
+        // No convergence analysis
+        if (lateReward <= earlyReward * 1.1) {
+          analysis.issues.push({
+            type: 'no_convergence',
+            severity: 'high',
+            message: 'Training shows no improvement. Reward did not increase significantly during training.',
+            suggestion: 'Learning rate may be too high or too low. Try different hyperparameters or algorithm.',
+          })
+          analysis.recommendations.push({
+            action: 'try_different_hyperparams',
+            description: 'Try different learning rate or switch algorithm (e.g., PPO to DQN or vice versa).',
+            priority: 'high',
+          })
+        }
+      }
+    }
+
+    // Generate summary
+    if (analysis.issues.length === 0) {
+      analysis.summary = 'No major issues detected. Training appears to be progressing normally.'
+    } else {
+      const highIssues = analysis.issues.filter((i) => i.severity === 'high').length
+      const mediumIssues = analysis.issues.filter((i) => i.severity === 'medium').length
+      analysis.summary = `Found ${analysis.issues.length} issue(s): ${highIssues} high priority, ${mediumIssues} medium priority.`
+    }
+
+    return {
+      success: true,
+      analysis,
+    }
+  },
+})
+
+export const suggestRewardFunction = action({
+  args: {
+    runId: v.id('runs'),
+    envSpec: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.runQuery(api.runs.get, { id: args.runId })
+    if (!run) {
+      return {
+        success: false,
+        error: 'Run not found',
+      }
+    }
+
+    const evaluation = await ctx.runQuery(
+      ctx.db.query('evaluations').withIndex('by_run', (q) => q.eq('runId', args.runId)).first
+    )
+
+    const suggestions: Array<{ type: string; description: string; example: string }> = []
+
+    if (evaluation) {
+      const successRate = evaluation.successRate || 0
+      const meanReward = evaluation.meanReward
+
+      // If low success rate, suggest terminal reward
+      if (successRate < 0.3) {
+        suggestions.push({
+          type: 'terminal_reward',
+          description: 'Add large terminal reward when goal is reached to align rewards with success.',
+          example: 'if goal_reached: reward += 100.0',
+        })
+      }
+
+      // If negative rewards, suggest shaping
+      if (meanReward < 0) {
+        suggestions.push({
+          type: 'reward_shaping',
+          description: 'Add intermediate rewards for progress (e.g., distance to goal, steps taken).',
+          example: 'reward += -0.1 * distance_to_goal  # Closer = better',
+        })
+      }
+
+      // If high variance, suggest smoothing
+      if (evaluation.stdReward > Math.abs(meanReward) * 2) {
+        suggestions.push({
+          type: 'reward_smoothing',
+          description: 'Consider reward normalization or clipping to reduce variance.',
+          example: 'reward = np.clip(reward, -1.0, 1.0)  # Clip rewards',
+        })
+      }
+    }
+
+    return {
+      success: true,
+      suggestions,
+    }
+  },
+})
+
 export const reviewCustomScript = action({
   args: {
     script: v.string(),

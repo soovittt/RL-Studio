@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { EnvSpec, Vec2 } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { GridCanvasThree } from './GridCanvasThree'
@@ -12,9 +12,11 @@ interface EnvironmentCanvasProps {
   rolloutState?: {
     agents: Array<{ id: string; position: Vec2 }>
   }
+  selectedAssetId?: string
+  onAssetSelect?: (asset: any) => void
 }
 
-export function EnvironmentCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: EnvironmentCanvasProps) {
+export const EnvironmentCanvas = memo(function EnvironmentCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState, selectedAssetId, onAssetSelect }: EnvironmentCanvasProps) {
   const envType = envSpec.envType
 
   switch (envType) {
@@ -25,6 +27,8 @@ export function EnvironmentCanvas({ envSpec, sceneGraph, onSpecChange, rolloutSt
           sceneGraph={sceneGraph}
           onSpecChange={onSpecChange}
           rolloutState={rolloutState}
+          selectedAssetId={selectedAssetId}
+          onAssetSelect={onAssetSelect}
         />
       )
     case 'continuous2d':
@@ -43,5 +47,5 @@ export function EnvironmentCanvas({ envSpec, sceneGraph, onSpecChange, rolloutSt
         </div>
       )
   }
-}
+})
 

@@ -11,6 +11,7 @@
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![GraphQL](https://img.shields.io/badge/GraphQL-E10098?logo=graphql&logoColor=white)](https://graphql.org/)
 [![Convex](https://img.shields.io/badge/Convex-FF4D00?logo=convex)](https://www.convex.dev/)
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
@@ -141,7 +142,8 @@ RL Studio is a comprehensive platform that brings together environment design, t
 - **Charts**: Recharts
 
 ### Backend
-- **API**: FastAPI (Python)
+- **API**: FastAPI (Python) with GraphQL support
+- **GraphQL**: Strawberry GraphQL (type-safe, efficient queries)
 - **Database**: Convex (realtime DB)
 - **Training**: SkyPilot (GPU orchestration)
 - **RL Libraries**: Stable-Baselines3, Gymnasium, PyTorch
@@ -244,18 +246,54 @@ pip install -r requirements.txt
 cd ..
 ```
 
-3. **Set up Convex**
+3. **Set up Convex (Your Own Deployment)**
 
 ```bash
+# This creates YOUR OWN Convex deployment (not shared with production)
 npx convex dev
 ```
 
 This will:
-- Create a Convex account if needed
+- Create a Convex account if needed (free tier available)
 - Set up your local development environment
-- Generate a deployment URL
+- Generate YOUR deployment URL (e.g., https://your-deployment.convex.cloud)
 
-4. **Configure environment variables**
+**Important**: Each user gets their own Convex deployment. This is required for open-source use.
+
+4. **Seed Local Development Data**
+
+```bash
+# Seed sample environments, runs, and data for local development
+npx convex run seed_local_data:seedAll
+```
+
+This creates sample data so you can develop without needing production data.
+
+5. **Configure Infrastructure (Optional)**
+
+RL Studio supports multiple cloud providers and local development:
+
+**Quick Start (Local Only - No Cloud Required):**
+```bash
+# Everything runs locally - no cloud setup needed!
+# Just set your Convex URL from step 3
+export CONVEX_URL=https://your-deployment.convex.cloud
+```
+
+**For Cloud Storage (S3/GCS/Azure):**
+See `INFRASTRUCTURE_SETUP.md` for detailed instructions. It's very easy - just set environment variables!
+
+**Quick Example (AWS S3):**
+```bash
+export STORAGE_PROVIDER=s3
+export S3_BUCKET_NAME=rl-studio-models
+export AWS_ACCESS_KEY_ID=your-key
+export AWS_SECRET_ACCESS_KEY=your-secret
+```
+
+The framework auto-detects your provider from credentials - no code changes needed!
+
+6. **Configure environment variables**
 
 > ⚠️ **Important**: Since this is an open-source project, you'll need to set up your own environment variables. The `.env` files are not included in the repository for security reasons.
 
@@ -722,53 +760,237 @@ After running rollouts, use the **"RL Analysis"** tab to:
 
 ## 🔌 API Documentation
 
-### Backend API
+### GraphQL API (Primary) ✅
 
-The backend API is documented using FastAPI's automatic OpenAPI documentation. Once the backend is running, visit:
+RL Studio uses **GraphQL as the primary API** for all core operations. The GraphQL API provides type-safe, efficient queries and mutations with a single endpoint.
 
-- **Swagger UI**: http://localhost:8000/docs
+**Status**: ✅ **Fully Operational** - All core operations use GraphQL. The frontend and backend are fully migrated to GraphQL.
+
+**GraphQL Endpoint**: `http://localhost:8000/graphql`
+
+**GraphQL Playground**: Visit `http://localhost:8000/graphql` in your browser for an interactive query explorer with auto-completion and documentation.
+
+#### Why GraphQL?
+
+- ✅ **Type-Safe**: Compile-time type checking with Strawberry GraphQL
+- ✅ **Efficient**: Fetch only the fields you need, reducing payload size
+- ✅ **Single Endpoint**: All operations through one endpoint
+- ✅ **Introspection**: Auto-generated documentation and schema exploration
+- ✅ **Flexible**: Combine multiple queries in a single request
+
+#### Example Queries
+
+**List Assets:**
+```graphql
+query {
+  assets(filter: { mode: "grid" }) {
+    id
+    name
+    assetType
+    geometry
+    visualProfile
+  }
+}
+```
+
+**Get Single Asset:**
+```graphql
+query {
+  asset(id: "asset_id_here") {
+    id
+    name
+    geometry
+    visualProfile
+    physicsProfile
+    behaviorProfile
+  }
+}
+```
+
+**Create Asset:**
+```graphql
+mutation {
+  createAsset(input: {
+    name: "My Asset"
+    assetTypeKey: "tile"
+    visualProfile: "{\"color\": \"#FF0000\"}"
+  }) {
+    id
+    name
+  }
+}
+```
+
+**List Scenes:**
+```graphql
+query {
+  scenes(filter: { search: "gridworld" }) {
+    id
+    name
+    createdAt
+    createdBy
+  }
+}
+```
+
+**Run Rollout:**
+```graphql
+mutation {
+  runRollout(input: {
+    envSpec: "{\"world\": {\"width\": 10, \"height\": 10}}"
+    policy: "random"
+    maxSteps: 100
+  }) {
+    success
+    totalReward
+    episodeLength
+    steps {
+      stepNumber
+      reward
+      done
+    }
+  }
+}
+```
+
+**Launch Training:**
+```graphql
+mutation {
+  launchTraining(input: {
+    runId: "run_123"
+    envSpec: "{\"world\": {\"width\": 10}}"
+    config: "{\"algorithm\": \"ppo\"}"
+    useManagedJobs: true
+  }) {
+    id
+    status {
+      status
+      jobId
+    }
+  }
+}
+```
+
+**Training Status:**
+```graphql
+query {
+  trainingStatus(jobId: "job_123") {
+    status
+    jobId
+    progress
+    logs
+  }
+}
+```
+
+**Research Operations:**
+```graphql
+# Hyperparameter Sweep
+mutation {
+  generateHyperparameterSweep(input: {
+    algorithm: "ppo"
+    envSpec: "{...}"
+    baseConfig: "{...}"
+    searchSpace: "{...}"
+    searchType: "grid"
+    nTrials: 10
+  }) {
+    success
+    nTrials
+    trials {
+      trialNumber
+      hyperparameters
+    }
+  }
+}
+
+# Compare Runs
+mutation {
+  compareRuns(input: {
+    runResults: "[{...}]"
+    metric: "mean_reward"
+    alpha: 0.05
+  }) {
+    success
+    comparison {
+      metric
+      bestRun
+      worstRun
+      statisticalTest
+    }
+  }
+}
+
+# Model Versioning
+query {
+  listCheckpoints(runId: "run_123") {
+    checkpointName
+    path
+    createdAt
+  }
+  
+  listModelVersions(runId: "run_123") {
+    versionName
+    checkpointName
+    tags
+    modelPath
+  }
+}
+```
+
+**W&B Integration:**
+```graphql
+# Test Connection
+mutation {
+  testWandbConnection(input: {
+    apiKey: "your-api-key"
+  }) {
+    success
+    message
+    wandbAuthenticated
+  }
+}
+
+# List Runs
+query {
+  listWandbRuns(project: "rl-studio", apiKey: "your-key") {
+    id
+    name
+    state
+    url
+  }
+}
+
+# Get Run Details
+query {
+  getWandbRun(runId: "run_id", project: "rl-studio", apiKey: "your-key") {
+    runId
+    runName
+    metrics
+    summary
+    url
+  }
+}
+```
+
+### Additional API Endpoints
+
+Some operations still use REST endpoints (not yet migrated to GraphQL):
+
+- `/ws/rollout` - WebSocket endpoint for real-time rollout streaming (GraphQL doesn't support WebSocket subscriptions)
+- `/api/codegen/*` - Code generation utilities
+- `/api/templates/*` - Template management
+- `/api/analysis/*` - Analysis operations
+- `/api/verification/*` - Verification utilities
+- `/api/benchmarks/*` - Benchmark operations
+- `/api/infrastructure/*` - Infrastructure management
+- `/api/admin/*` - Admin operations
+- `/api/ingestion/*` - Data ingestion
+
+**API Documentation**:
+- **GraphQL Playground**: http://localhost:8000/graphql (interactive query explorer with auto-completion)
+- **Swagger UI**: http://localhost:8000/docs (for REST endpoints)
 - **ReDoc**: http://localhost:8000/redoc
-
-### Key Endpoints
-
-#### Rollout API
-
-```http
-POST /api/rollout
-Content-Type: application/json
-
-{
-  "env_spec": {...},
-  "max_steps": 1000,
-  "policy": "random"
-}
-```
-
-#### Training API
-
-```http
-POST /api/training/launch
-Content-Type: application/json
-
-{
-  "run_id": "run_123",
-  "algorithm": "ppo",
-  "hyperparams": {...},
-  "gpu": "A10:1"
-}
-```
-
-#### Analysis API
-
-```http
-POST /api/analysis/reward
-Content-Type: application/json
-
-{
-  "rollout_steps": [...],
-  "env_spec": {...}
-}
-```
 
 ---
 
@@ -784,7 +1006,9 @@ rl-studio/
 │   └── routes/            # Page routes
 ├── backend/               # Python backend
 │   ├── rl_studio/        # Core RL logic
-│   │   ├── api/          # FastAPI endpoints
+│   │   ├── api/          # API layer
+│   │   │   ├── graphql/   # GraphQL API (primary)
+│   │   │   └── ...       # Business logic functions (used by GraphQL)
 │   │   ├── rollout/      # Rollout simulator
 │   │   ├── training/     # Training orchestration
 │   │   ├── analysis/     # RL analysis (NumPy/SciPy)
@@ -853,10 +1077,17 @@ The system uses a flexible schema stored in Convex:
 
 ### API Services
 
-- **Scene Service** (`/api/scenes`): CRUD for scenes and scene versions
-- **Asset Service** (`/api/assets`): CRUD for assets, search/filter by type/tags, clone assets
-- **Template Service** (`/api/templates`): List templates, create templates, instantiate into projects
-- **Compile Service** (`/api/compile`): Convert scene_graph + rl_config to runtime specs
+**GraphQL (Primary API):**
+- **Assets**: `assets`, `asset`, `createAsset`, `updateAsset`, `deleteAsset` mutations/queries
+- **Scenes**: `scenes`, `scene`, `createScene`, `updateScene`, `createSceneVersion` mutations/queries
+- **Training**: `launchTraining`, `stopTraining`, `trainingStatus` mutations/queries
+- **Rollout**: `runRollout` mutation
+- **Research**: `generateHyperparameterSweep`, `compareRuns`, `calculateConfidenceInterval`, `calculateEffectSize`, model versioning, W&B/MLflow operations
+
+**Additional Services (REST):**
+- **Template Service** (`/api/templates`): Template management
+- **Compile Service** (`/api/compile`): Scene compilation
+- **WebSocket** (`/ws/rollout`): Real-time rollout streaming
 
 ### Performance Features
 
@@ -935,11 +1166,13 @@ Templates can be:
 - **Shared**: Mark templates as public for team-wide access
 
 For more details, see the API documentation and code in:
-- `backend/rl_studio/api/scenes.py`
-- `backend/rl_studio/api/assets.py`
-- `backend/rl_studio/api/templates.py`
-- `backend/rl_studio/api/compile.py`
-- `backend/rl_studio/api/cache.py` (caching implementation)
+- **GraphQL API** (Primary): `backend/rl_studio/api/graphql/` - Complete GraphQL implementation
+  - Types: `backend/rl_studio/api/graphql/types/` - GraphQL type definitions
+  - Resolvers: `backend/rl_studio/api/graphql/resolvers/` - Query/mutation resolvers
+  - Schema: `backend/rl_studio/api/graphql/schema.py` - Main schema definition
+- **Templates**: `backend/rl_studio/api/templates.py` - Template management (REST)
+- **Compile**: `backend/rl_studio/api/compile.py` - Scene compilation (REST)
+- **Caching**: `backend/rl_studio/api/cache.py` - Shared caching layer
 
 ---
 

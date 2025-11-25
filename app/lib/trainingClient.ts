@@ -1,10 +1,13 @@
 /**
- * Training Client - Connects to Python backend training service
+ * Training Client - Connects to Python backend training service via GraphQL
  * Handles job launch, status checks, and job management
  */
 
+import { query, mutate } from './graphqlClient'
+
 export interface LaunchTrainingRequest {
   runId: string
+  envSpec?: any // Required for GraphQL, optional for backward compatibility
   config: {
     accelerator?: string
     metrics_interval?: number
@@ -20,6 +23,9 @@ export interface LaunchTrainingRequest {
       imitation?: boolean
       explorationBonus?: boolean
     }
+    training_config?: any
+    use_spot?: boolean
+    use_managed_jobs?: boolean
   }
 }
 
@@ -36,51 +42,55 @@ export interface JobStatusResponse {
   error?: string
 }
 
-// Get backend service URL with proper local vs production handling
-const getBackendUrl = (): string => {
-  const envUrl = import.meta.env.VITE_ROLLOUT_SERVICE_URL
-  
-  // If explicitly set, use it
-  if (envUrl) {
-    return envUrl
-  }
-  
-  // In production, warn if not set (should be set)
-  if (import.meta.env.MODE === 'production') {
-    console.warn(
-      '⚠️ VITE_ROLLOUT_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
-      'Please set your production backend URL in environment variables.'
-    )
-  }
-  
-  // Default to localhost for local development
-  return 'http://localhost:8000'
-}
-
-const TRAINING_SERVICE_URL = getBackendUrl()
-
 /**
- * Launch a training job via backend API
+ * Launch a training job via GraphQL
  */
 export async function launchTrainingJob(request: LaunchTrainingRequest): Promise<LaunchTrainingResponse> {
-  try {
-    const response = await fetch(`${TRAINING_SERVICE_URL}/api/training/launch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        runId: request.runId,
-        config: request.config,
-      }),
-    })
+  if (!request.envSpec) {
+    throw new Error('envSpec is required for GraphQL training launch')
+  }
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(error.error || `HTTP ${response.status}`)
+  const gqlMutation = `
+    mutation LaunchTraining($input: TrainingRunInput!) {
+      launchTraining(input: $input) {
+        id
+        runId
+        status {
+          status
+          jobId
+          progress
+          metadata
+          logs
+          error
+        }
+      }
+    }
+  `
+
+  try {
+    const variables = {
+      input: {
+        run_id: request.runId,
+        env_spec: JSON.stringify(request.envSpec),
+        config: JSON.stringify(request.config),
+        use_managed_jobs: request.config.use_managed_jobs ?? true,
+      },
     }
 
-    return await response.json()
+    const data = await mutate<{ launchTraining: any }>(gqlMutation, variables)
+
+    if (!data?.launchTraining) {
+      throw new Error('Failed to launch training job')
+    }
+
+    const result = data.launchTraining
+    const jobId = result.status?.jobId
+
+    return {
+      success: !!jobId,
+      jobId: jobId || undefined,
+      error: result.status?.error || (!jobId ? 'No job ID returned' : undefined),
+    }
   } catch (error) {
     console.error('Training launch request failed:', error)
     throw error
@@ -88,23 +98,48 @@ export async function launchTrainingJob(request: LaunchTrainingRequest): Promise
 }
 
 /**
- * Get status of a training job
+ * Get status of a training job via GraphQL
  */
 export async function getTrainingJobStatus(jobId: string): Promise<JobStatusResponse> {
-  try {
-    const response = await fetch(`${TRAINING_SERVICE_URL}/api/training/status/${jobId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+  const gqlQuery = `
+    query GetTrainingStatus($jobId: String!) {
+      trainingStatus(jobId: $jobId) {
+        status
+        jobId
+        progress
+        metadata
+        logs
+        error
+      }
+    }
+  `
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(error.error || `HTTP ${response.status}`)
+  try {
+    const data = await query<{ trainingStatus: any }>(gqlQuery, { jobId })
+
+    if (!data?.trainingStatus) {
+      return {
+        success: false,
+        status: 'not_found',
+        error: 'Job not found',
+      }
     }
 
-    return await response.json()
+    const status = data.trainingStatus
+    const statusMap: Record<string, 'queued' | 'running' | 'completed' | 'error' | 'stopped' | 'not_found'> = {
+      PENDING: 'queued',
+      RUNNING: 'running',
+      SUCCEEDED: 'completed',
+      FAILED: 'error',
+      STOPPED: 'stopped',
+    }
+
+    return {
+      success: true,
+      status: statusMap[status.status] || 'not_found',
+      jobId: status.jobId,
+      error: status.error || undefined,
+    }
   } catch (error) {
     console.error('Training status request failed:', error)
     throw error
@@ -112,23 +147,22 @@ export async function getTrainingJobStatus(jobId: string): Promise<JobStatusResp
 }
 
 /**
- * Stop a running training job
+ * Stop a running training job via GraphQL
  */
 export async function stopTrainingJob(jobId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`${TRAINING_SERVICE_URL}/api/training/stop/${jobId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(error.error || `HTTP ${response.status}`)
+  const gqlMutation = `
+    mutation StopTraining($jobId: String!) {
+      stopTraining(jobId: $jobId)
     }
+  `
 
-    return await response.json()
+  try {
+    const data = await mutate<{ stopTraining: boolean }>(gqlMutation, { jobId })
+
+    return {
+      success: data?.stopTraining ?? false,
+      error: data?.stopTraining ? undefined : 'Failed to stop training job',
+    }
   } catch (error) {
     console.error('Training stop request failed:', error)
     throw error
@@ -136,15 +170,20 @@ export async function stopTrainingJob(jobId: string): Promise<{ success: boolean
 }
 
 /**
- * Check if training service is available
+ * Check if training service is available via GraphQL health query
  */
 export async function checkTrainingServiceHealth(): Promise<boolean> {
+  const gqlQuery = `
+    query Health {
+      health {
+        status
+      }
+    }
+  `
+
   try {
-    const response = await fetch(`${TRAINING_SERVICE_URL}/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000), // 5 second timeout
-    })
-    return response.ok
+    const data = await query<{ health: { status: string } }>(gqlQuery)
+    return data?.health?.status === 'healthy'
   } catch {
     return false
   }

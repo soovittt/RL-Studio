@@ -15,6 +15,7 @@ import { Route as EnvironmentsRouteImport } from './routes/environments'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RunsCompareRouteImport } from './routes/runs/compare'
 import { Route as RunsIdRouteImport } from './routes/runs/$id'
 import { Route as EnvironmentsNewRouteImport } from './routes/environments/new'
 import { Route as EnvironmentsIdRouteImport } from './routes/environments/$id'
@@ -49,6 +50,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunsCompareRoute = RunsCompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => RunsRoute,
+} as any)
 const RunsIdRoute = RunsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/environments/$id': typeof EnvironmentsIdRoute
   '/environments/new': typeof EnvironmentsNewRoute
   '/runs/$id': typeof RunsIdRoute
+  '/runs/compare': typeof RunsCompareRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/environments/$id': typeof EnvironmentsIdRoute
   '/environments/new': typeof EnvironmentsNewRoute
   '/runs/$id': typeof RunsIdRoute
+  '/runs/compare': typeof RunsCompareRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/environments/$id': typeof EnvironmentsIdRoute
   '/environments/new': typeof EnvironmentsNewRoute
   '/runs/$id': typeof RunsIdRoute
+  '/runs/compare': typeof RunsCompareRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/environments/$id'
     | '/environments/new'
     | '/runs/$id'
+    | '/runs/compare'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/environments/$id'
     | '/environments/new'
     | '/runs/$id'
+    | '/runs/compare'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/environments/$id'
     | '/environments/new'
     | '/runs/$id'
+    | '/runs/compare'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/runs/compare': {
+      id: '/runs/compare'
+      path: '/compare'
+      fullPath: '/runs/compare'
+      preLoaderRoute: typeof RunsCompareRouteImport
+      parentRoute: typeof RunsRoute
+    }
     '/runs/$id': {
       id: '/runs/$id'
       path: '/$id'
@@ -228,10 +247,12 @@ const EnvironmentsRouteWithChildren = EnvironmentsRoute._addFileChildren(
 
 interface RunsRouteChildren {
   RunsIdRoute: typeof RunsIdRoute
+  RunsCompareRoute: typeof RunsCompareRoute
 }
 
 const RunsRouteChildren: RunsRouteChildren = {
   RunsIdRoute: RunsIdRoute,
+  RunsCompareRoute: RunsCompareRoute,
 }
 
 const RunsRouteWithChildren = RunsRoute._addFileChildren(RunsRouteChildren)

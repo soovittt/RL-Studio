@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from .api.routes import router as api_router
 from .api.health import router as health_router
+from .api.graphql import graphql_router
 
 # Configure logging
 logging.basicConfig(
@@ -25,9 +26,27 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Default origins for local development
+default_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+# Get CORS origins from environment, or use defaults
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+if cors_origins_env:
+    # Split by comma and strip whitespace
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+    cors_origins = default_origins
+
+logger.info(f"CORS allowed origins: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,6 +55,10 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router)
 app.include_router(api_router)
+
+# Include GraphQL router (alongside REST APIs)
+# GraphQLRouter from Strawberry is a FastAPI router, add it directly
+app.include_router(graphql_router)
 
 # Global exception handler
 @app.exception_handler(Exception)

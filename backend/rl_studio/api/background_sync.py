@@ -158,3 +158,8 @@ def sync_detailed_logs_to_convex(
         logger.error(f"Failed to sync logs to Convex: {e}")
         return False
 
+
+
+
+
+

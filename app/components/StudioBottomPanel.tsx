@@ -26,7 +26,29 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
   const [rolloutResult, setRolloutResult] = useState<SimulatorResult | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [policy, setPolicy] = useState<'random' | 'greedy'>('random')
+  const [policy, setPolicy] = useState<'random' | 'greedy' | 'trained_model'>(() => {
+    // Check URL params for testModel
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const testModel = params.get('testModel')
+      const policyParam = params.get('policy')
+      if (testModel && policyParam === 'trained_model') {
+        return 'trained_model'
+      }
+    }
+    return 'random'
+  })
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(() => {
+    // Check URL params for testModel
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const testModel = params.get('testModel')
+      if (testModel) {
+        return testModel
+      }
+    }
+    return null
+  })
   const [maxSteps, setMaxSteps] = useState<number>(() => {
     // Get maxSteps from timeout rule or default to 100
     const timeoutRule = envSpec?.rules?.terminations?.find((r) => r.condition.type === 'timeout')
@@ -69,6 +91,12 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
         const goals = envSpec.objects?.filter((o) => o?.type === 'goal') || []
         if (policy === 'greedy' && goals.length === 0) {
           alert('⚠️ Greedy policy requires at least one goal object. Please add a goal to your environment.')
+          return
+        }
+        
+        // Check if runId is provided for trained_model policy
+        if (policy === 'trained_model' && !selectedRunId) {
+          alert('⚠️ Trained model policy requires a Run ID. Please enter a Run ID or select a completed training run.')
           return
         }
     
@@ -132,6 +160,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
             envSpec,
             policy,
             maxSteps: effectiveMaxSteps,
+            ...(policy === 'trained_model' && selectedRunId && { runId: selectedRunId }),
           })
           
           console.log('📥 Backend response:', {
@@ -383,7 +412,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
               <select
                 value={policy}
                 onChange={(e) => {
-                  setPolicy(e.target.value as 'random' | 'greedy')
+                  setPolicy(e.target.value as 'random' | 'greedy' | 'trained_model')
                   setIsPlaying(false)
                 }}
                 disabled={isRunning || isPlaying}
@@ -391,7 +420,18 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
               >
                 <option value="random">Random Policy</option>
                 <option value="greedy">Greedy Policy</option>
+                <option value="trained_model">Trained Model</option>
               </select>
+              {policy === 'trained_model' && (
+                <input
+                  type="text"
+                  placeholder="Run ID (e.g., j1234567890)"
+                  value={selectedRunId || ''}
+                  onChange={(e) => setSelectedRunId(e.target.value)}
+                  disabled={isRunning || isPlaying}
+                  className="px-2 py-1 text-sm border border-border rounded bg-background flex-1 min-w-[200px]"
+                />
+              )}
               <div className="flex items-center gap-2">
                 <label htmlFor="maxSteps" className="text-sm text-muted-foreground">
                   Max Steps:

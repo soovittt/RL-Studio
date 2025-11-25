@@ -231,8 +231,6 @@ def run_verification() -> bool:
         print("\n✅ All critical checks passed!")
     else:
         print("\n⚠ Some checks failed or have warnings.")
-        print("   Run seeding scripts to populate missing data:")
-        print("   - python -m rl_studio.api.seed_database <user_id> [project_id]")
     
     return all_passed
 

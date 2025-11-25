@@ -4,7 +4,7 @@ Asset/Library Service - CRUD operations for assets
 import logging
 from typing import List, Optional, Dict, Any
 import requests
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import HTTPException
 from pydantic import ValidationError
 
 from .models import CreateAssetRequest, UpdateAssetRequest
@@ -12,17 +12,19 @@ from .convex_client import get_client
 from .cache import asset_cache, get_cache_key
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/assets", tags=["assets"])
 
+# NOTE: REST HTTP endpoints have been REMOVED - use GraphQL instead
+# GraphQL endpoint: POST /graphql with query/mutation
+# These functions are kept for internal use by GraphQL resolvers
 
-@router.get("/")
+# Removed: @router.get("", ...) - use GraphQL query { assets(...) }
 async def list_assets(
-    project_id: Optional[str] = Query(None, description="Filter by project ID"),
-    asset_type: Optional[str] = Query(None, description="Filter by asset type key"),
-    mode: Optional[str] = Query(None, description="Filter by mode (grid, 2d, 3d, etc.)"),
-    tag: Optional[str] = Query(None, description="Filter by tag"),
-    limit: Optional[int] = Query(None, description="Limit number of results"),
-    offset: Optional[int] = Query(0, description="Offset for pagination"),
+    project_id: Optional[str] = None,
+    asset_type: Optional[str] = None,
+    mode: Optional[str] = None,
+    tag: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: Optional[int] = 0,
 ):
     """
     List assets with optional filters and pagination
@@ -60,21 +62,43 @@ async def list_assets(
                 logger.warning(f"Failed to get asset type: {e}")
         
         try:
-            result = client.query("assets/list", {
-                "projectId": project_id,
-                "assetTypeId": asset_type_id,
-                "mode": mode,
-                "tag": tag,
-            }) or []
+            # Build args dict, only including non-None values
+            # Convex v.optional() doesn't accept null, only undefined (omitted)
+            query_args = {}
+            if project_id is not None:
+                query_args["projectId"] = project_id
+            if asset_type_id is not None:
+                query_args["assetTypeId"] = asset_type_id
+            if mode is not None:
+                query_args["mode"] = mode
+            if tag is not None:
+                query_args["tag"] = tag
+            
+            logger.info(f"Querying Convex for assets with args: {query_args}")
+            result = client.query("assets/list", query_args)
+            
+            logger.info(f"Convex query result type: {type(result)}, length: {len(result) if isinstance(result, list) else 'N/A'}")
+            
+            # Ensure result is always a list
+            if not isinstance(result, list):
+                logger.warning(f"Convex query returned non-list for assets/list: {result}")
+                # If it's an error object, return empty list
+                if isinstance(result, dict) and result.get("status") == "error":
+                    logger.warning(f"Convex returned error: {result.get('errorMessage', 'Unknown')}")
+                return []
+            
+            logger.info(f"Returning {len(result)} assets from Convex")
+            return result or []
         except requests.exceptions.HTTPError as e:
-            # Handle 404 (route not found) or other HTTP errors gracefully
+            # Handle 404 (route not found) - HTTP routes may not be deployed
+            # Return empty list silently (graceful degradation)
             if e.response and e.response.status_code == 404:
-                logger.warning(f"Convex route not found (dev server may not be running): {e}")
+                logger.debug(f"Convex HTTP route not available (404): assets/list")
             else:
-                logger.error(f"Convex HTTP error querying assets: {e}")
+                logger.warning(f"Convex HTTP error querying assets: {e}")
             return []  # Return empty list on error (graceful degradation)
         except Exception as e:
-            logger.error(f"Failed to query assets from Convex: {e}")
+            logger.debug(f"Failed to query assets from Convex: {e}")
             # Return empty list on error (graceful degradation)
             return []
         
@@ -90,7 +114,7 @@ async def list_assets(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{asset_id}")
+# Removed: @router.get("/{asset_id}", ...) - use GraphQL query { asset(id: "...") }
 async def get_asset(asset_id: str):
     """
     Get full asset details including all profiles
@@ -117,7 +141,7 @@ async def get_asset(asset_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/")
+# Removed: @router.post("/", ...) - use GraphQL mutation { createAsset(...) }
 async def create_asset(request: CreateAssetRequest):
     """
     Create a new asset
@@ -165,7 +189,7 @@ async def create_asset(request: CreateAssetRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.patch("/{asset_id}")
+# Removed: @router.patch("/{asset_id}", ...) - use GraphQL mutation { updateAsset(...) }
 async def update_asset(asset_id: str, request: UpdateAssetRequest):
     """
     Update an asset
@@ -224,7 +248,7 @@ async def update_asset(asset_id: str, request: UpdateAssetRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{asset_id}")
+# Removed: @router.delete("/{asset_id}", ...) - use GraphQL mutation { deleteAsset(...) }
 async def delete_asset(asset_id: str):
     """
     Delete an asset (only if not referenced by any scenes)
@@ -268,8 +292,8 @@ async def delete_asset(asset_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{asset_id}/clone")
-async def clone_asset(asset_id: str, project_id: Optional[str] = Query(None)):
+# Removed: @router.post("/{asset_id}/clone", ...) - use GraphQL mutation { cloneAsset(...) }
+async def clone_asset(asset_id: str, project_id: Optional[str] = None):
     """
     Clone a global asset to a project scope (or clone within same scope)
     Creates a copy of the asset with "(Copy)" appended to the name

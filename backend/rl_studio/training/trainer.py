@@ -5,7 +5,7 @@ Professional RL training with PPO, DQN, and other algorithms
 
 from typing import Dict, Any, Optional, List, Callable
 import numpy as np
-from stable_baselines3 import PPO, DQN, A2C
+from stable_baselines3 import PPO, DQN, A2C, TD3, SAC
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -212,7 +212,7 @@ class RLStudioEnv(gym.Env):
 
 
 class TrainingConfig:
-    """Training configuration"""
+    """Training configuration with reproducibility support"""
     
     def __init__(
         self,
@@ -228,6 +228,7 @@ class TrainingConfig:
         ent_coef: float = 0.01,
         vf_coef: float = 0.5,
         max_grad_norm: float = 0.5,
+        seed: Optional[int] = None,
         **kwargs
     ):
         self.algorithm = algorithm
@@ -242,6 +243,7 @@ class TrainingConfig:
         self.ent_coef = ent_coef
         self.vf_coef = vf_coef
         self.max_grad_norm = max_grad_norm
+        self.seed = seed
         self.extra_kwargs = kwargs
 
 
@@ -261,9 +263,19 @@ class RLTrainer:
         return self.env
     
     def create_model(self, env: Optional[gym.Env] = None):
-        """Create RL model"""
+        """Create RL model with seed management for reproducibility"""
         if env is None:
             env = self.create_env()
+        
+        # Set seeds for reproducibility
+        if self.config.seed is not None:
+            import random
+            random.seed(self.config.seed)
+            np.random.seed(self.config.seed)
+            torch.manual_seed(self.config.seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(self.config.seed)
+            env.reset(seed=self.config.seed)
         
         # Model hyperparameters
         model_kwargs = {
@@ -271,6 +283,10 @@ class RLTrainer:
             "gamma": self.config.gamma,
             "device": "cuda" if torch.cuda.is_available() else "cpu",
         }
+        
+        # Add seed to model kwargs if supported
+        if self.config.seed is not None:
+            model_kwargs["seed"] = self.config.seed
         
         # Algorithm-specific parameters
         if self.config.algorithm == "PPO":
@@ -301,6 +317,40 @@ class RLTrainer:
             })
             self.model = A2C("MlpPolicy", env, **model_kwargs)
         
+        elif self.config.algorithm == "TD3":
+            # TD3 requires continuous action space
+            if not isinstance(env.action_space, spaces.Box):
+                raise ValueError("TD3 requires continuous action space")
+            model_kwargs.update({
+                "buffer_size": 100000,
+                "learning_starts": 1000,
+                "batch_size": self.config.batch_size,
+                "tau": 0.005,  # Soft update coefficient
+                "gamma": self.config.gamma,
+                "train_freq": (1, "step"),
+                "gradient_steps": 1,
+                "action_noise": None,  # Can be configured via extra_kwargs
+            })
+            model_kwargs.update(self.config.extra_kwargs)
+            self.model = TD3("MlpPolicy", env, **model_kwargs)
+        
+        elif self.config.algorithm == "SAC":
+            # SAC requires continuous action space
+            if not isinstance(env.action_space, spaces.Box):
+                raise ValueError("SAC requires continuous action space")
+            model_kwargs.update({
+                "buffer_size": 100000,
+                "learning_starts": 1000,
+                "batch_size": self.config.batch_size,
+                "tau": 0.005,  # Soft update coefficient
+                "gamma": self.config.gamma,
+                "train_freq": (1, "step"),
+                "gradient_steps": 1,
+                "ent_coef": "auto",  # Automatic entropy coefficient
+            })
+            model_kwargs.update(self.config.extra_kwargs)
+            self.model = SAC("MlpPolicy", env, **model_kwargs)
+        
         else:
             raise ValueError(f"Unknown algorithm: {self.config.algorithm}")
         
@@ -309,9 +359,10 @@ class RLTrainer:
     def train(
         self,
         metrics_callback: Optional[Callable] = None,
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        log_interval: int = 10
     ):
-        """Train the model"""
+        """Train the model with experiment tracking support"""
         if self.model is None:
             self.create_model()
         
@@ -323,43 +374,66 @@ class RLTrainer:
             total_timesteps=self.config.total_timesteps,
             callback=callback,
             progress_bar=True,
+            log_interval=log_interval,
         )
         
         return self.model
     
-    def evaluate(self, n_episodes: int = 10) -> Dict[str, Any]:
-        """Evaluate the trained model"""
+    def evaluate(self, n_episodes: int = 10, deterministic: bool = True, seed: Optional[int] = None) -> Dict[str, Any]:
+        """Evaluate the trained model with comprehensive metrics"""
         if self.model is None:
             raise ValueError("Model not trained yet")
         
         if self.env is None:
             self.create_env()
         
+        # Set evaluation seed if provided
+        eval_seed = seed if seed is not None else self.config.seed
+        
         episode_rewards = []
         episode_lengths = []
+        episode_successes = []
         
-        for _ in range(n_episodes):
-            obs, _ = self.env.reset()
+        for episode_idx in range(n_episodes):
+            # Use different seed for each episode if base seed provided
+            ep_seed = eval_seed + episode_idx if eval_seed is not None else None
+            obs, _ = self.env.reset(seed=ep_seed)
             done = False
             episode_reward = 0
             episode_length = 0
+            episode_success = False
             
             while not done:
-                action, _ = self.model.predict(obs, deterministic=True)
+                action, _ = self.model.predict(obs, deterministic=deterministic)
                 obs, reward, done, _, info = self.env.step(action)
                 episode_reward += reward
                 episode_length += 1
+                
+                # Check for success (if goal reached)
+                if info.get("state", {}).get("done") and reward > 0:
+                    episode_success = True
             
             episode_rewards.append(episode_reward)
             episode_lengths.append(episode_length)
+            episode_successes.append(episode_success)
+        
+        # Calculate comprehensive statistics
+        rewards_array = np.array(episode_rewards)
+        lengths_array = np.array(episode_lengths)
         
         return {
-            "mean_reward": np.mean(episode_rewards),
-            "std_reward": np.std(episode_rewards),
-            "mean_length": np.mean(episode_lengths),
-            "std_length": np.std(episode_lengths),
-            "episode_rewards": episode_rewards,
-            "episode_lengths": episode_lengths,
+            "mean_reward": float(np.mean(rewards_array)),
+            "std_reward": float(np.std(rewards_array)),
+            "min_reward": float(np.min(rewards_array)),
+            "max_reward": float(np.max(rewards_array)),
+            "median_reward": float(np.median(rewards_array)),
+            "mean_length": float(np.mean(lengths_array)),
+            "std_length": float(np.std(lengths_array)),
+            "success_rate": float(np.mean(episode_successes)) if episode_successes else 0.0,
+            "episode_rewards": [float(r) for r in episode_rewards],
+            "episode_lengths": [int(l) for l in episode_lengths],
+            "episode_successes": episode_successes,
+            "n_episodes": n_episodes,
         }
     
     def save(self, path: str):
@@ -376,6 +450,10 @@ class RLTrainer:
             self.model = DQN.load(path)
         elif self.config.algorithm == "A2C":
             self.model = A2C.load(path)
+        elif self.config.algorithm == "TD3":
+            self.model = TD3.load(path)
+        elif self.config.algorithm == "SAC":
+            self.model = SAC.load(path)
         else:
             raise ValueError(f"Unknown algorithm: {self.config.algorithm}")
 

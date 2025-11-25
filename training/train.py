@@ -86,6 +86,213 @@ def send_metrics(
         # Don't raise - metrics are non-critical, training should continue
 
 
+def evaluate_model(model, env, env_spec: Dict[str, Any], n_episodes: int = 20):
+    """Evaluate trained model and return metrics."""
+    import numpy as np
+    
+    episode_rewards = []
+    episode_lengths = []
+    successes = []
+    
+    logger.info(f"Running evaluation with {n_episodes} episodes...")
+    
+    for episode_idx in range(n_episodes):
+        obs, _ = env.reset()
+        done = False
+        episode_reward = 0.0
+        episode_length = 0
+        reached_goal = False
+        
+        while not done:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, done, truncated, info = env.step(action)
+            episode_reward += float(reward)
+            episode_length += 1
+            
+            # Check if goal reached
+            # This depends on the environment - check info or state
+            if isinstance(info, dict):
+                if info.get("reached_goal") or info.get("success"):
+                    reached_goal = True
+                # Also check if reward indicates success (large positive reward)
+                if reward > 10.0:  # Threshold for goal reward
+                    reached_goal = True
+            
+            # Check truncated vs done
+            if truncated:
+                done = True
+        
+        episode_rewards.append(episode_reward)
+        episode_lengths.append(episode_length)
+        successes.append(1 if reached_goal else 0)
+        
+        if (episode_idx + 1) % 5 == 0:
+            logger.info(f"Evaluation progress: {episode_idx + 1}/{n_episodes} episodes")
+    
+    # Compute statistics
+    mean_reward = float(np.mean(episode_rewards))
+    std_reward = float(np.std(episode_rewards))
+    mean_length = float(np.mean(episode_lengths))
+    std_length = float(np.std(episode_lengths))
+    success_rate = float(np.mean(successes)) if successes else 0.0
+    
+    logger.info(f"Evaluation complete: mean_reward={mean_reward:.2f} ± {std_reward:.2f}, success_rate={success_rate:.2%}")
+    
+    return {
+        "mean_reward": mean_reward,
+        "std_reward": std_reward,
+        "mean_length": mean_length,
+        "std_length": std_length,
+        "episode_rewards": [float(r) for r in episode_rewards],
+        "episode_lengths": [int(l) for l in episode_lengths],
+        "success_rate": success_rate,
+        "num_episodes": n_episodes,
+    }
+
+
+def send_evaluation(run_id: str, evaluation: Dict[str, Any], convex_url: str):
+    """Send evaluation results to Convex HTTP endpoint."""
+    try:
+        http_url = convex_url.replace("/api", "")
+        if not http_url.startswith("http"):
+            http_url = f"https://{http_url}" if not http_url.startswith("http") else http_url
+        
+        response = requests.post(
+            f"{http_url}/evaluations",
+            json={
+                "runId": run_id,
+                "meanReward": evaluation["mean_reward"],
+                "stdReward": evaluation["std_reward"],
+                "meanLength": evaluation["mean_length"],
+                "stdLength": evaluation["std_length"],
+                "episodeRewards": evaluation["episode_rewards"],
+                "episodeLengths": evaluation["episode_lengths"],
+                "successRate": evaluation.get("success_rate"),
+                "numEpisodes": evaluation["num_episodes"],
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        logger.info(f"Sent evaluation results for run {run_id}")
+    except Exception as e:
+        logger.warning(f"Failed to send evaluation: {e}")
+        # Don't raise - evaluation is important but shouldn't fail training
+
+
+def save_and_upload_model(
+    model,
+    run_id: str,
+    algorithm: str,
+    config: Dict[str, Any],
+    convex_url: str,
+    evaluation_id: Optional[str] = None
+):
+    """
+    Save model locally, upload to cloud storage, and send metadata to Convex.
+    
+    Args:
+        model: Trained model object
+        run_id: Training run ID
+        algorithm: Algorithm name
+        config: Training configuration
+        convex_url: Convex URL for sending metadata
+        evaluation_id: Optional evaluation ID to link
+    """
+    try:
+        import os
+        import tempfile
+        from pathlib import Path
+        
+        # Create model directory
+        model_dir = Path(f"/tmp/models/{run_id}")
+        model_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save model locally
+        model_path = model_dir / f"{algorithm}_model"
+        logger.info(f"Saving model to {model_path}")
+        model.save(str(model_path))
+        
+        # Get file size
+        file_size = None
+        try:
+            if model_path.is_dir():
+                total_size = sum(f.stat().st_size for f in model_path.rglob('*') if f.is_file())
+            else:
+                total_size = model_path.stat().st_size if model_path.exists() else 0
+            file_size = total_size
+        except Exception as e:
+            logger.warning(f"Could not get file size: {e}")
+        
+        # Upload to cloud storage (if configured)
+        model_url = None
+        try:
+            from rl_studio.utils.storage import upload_model, get_file_size
+            from rl_studio.utils.infrastructure_config import get_infrastructure_config
+            
+            # Check if storage is configured
+            config = get_infrastructure_config()
+            storage_config = config.get_storage_config()
+            valid, error = config.validate_storage_config()
+            
+            if valid and storage_config["provider"] != "local":
+                try:
+                    model_url = upload_model(str(model_path), run_id, algorithm)
+                    if model_url:
+                        logger.info(f"✅ Model uploaded to: {model_url}")
+                    else:
+                        logger.warning("Model upload returned None, but continuing...")
+                except Exception as upload_error:
+                    logger.warning(f"Model upload failed: {upload_error}")
+                    logger.info("Continuing with local storage only...")
+            else:
+                if storage_config["provider"] == "local":
+                    logger.info("Using local storage (no cloud configured)")
+                else:
+                    logger.info(f"Storage not configured: {error}")
+        except ImportError as import_error:
+            logger.warning(f"Storage utilities not available: {import_error}")
+            logger.info("Continuing with local storage only...")
+        except Exception as e:
+            logger.warning(f"Model upload check failed: {e}")
+            logger.info("Continuing with local storage only...")
+        
+        # Send model metadata to Convex
+        try:
+            http_url = convex_url.replace("/api", "")
+            if not http_url.startswith("http"):
+                http_url = f"https://{http_url}" if not http_url.startswith("http") else http_url
+            
+            metadata = {
+                "runId": run_id,
+                "modelUrl": model_url or f"file://{model_path}",
+                "modelPath": str(model_path),
+                "algorithm": algorithm,
+                "hyperparams": config.get("hyperparams", {}),
+            }
+            
+            if evaluation_id:
+                metadata["evaluationId"] = evaluation_id
+            
+            if file_size:
+                metadata["fileSize"] = file_size
+            
+            response = requests.post(
+                f"{http_url}/models",
+                json=metadata,
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+            response.raise_for_status()
+            logger.info(f"Sent model metadata for run {run_id}")
+        except Exception as e:
+            logger.warning(f"Failed to send model metadata: {e}")
+        
+    except Exception as e:
+        logger.error(f"Failed to save/upload model: {e}")
+        # Don't raise - model saving shouldn't fail training
+
+
 def create_env_from_spec(spec: Dict[str, Any]):
     """
     Create Gymnasium environment from EnvSpec.
@@ -646,22 +853,47 @@ def train(run_id: str):
         env = create_env_from_spec(env_spec)
 
         # Train based on algorithm
+        model = None
         if algorithm == "ppo":
-            train_ppo(env, config, run_id, CONVEX_URL)
+            model = train_ppo(env, config, run_id, CONVEX_URL)
         elif algorithm == "dqn":
-            train_dqn(env, config, run_id, CONVEX_URL)
+            model = train_dqn(env, config, run_id, CONVEX_URL)
         elif algorithm == "a2c":
-            train_a2c(env, config, run_id, CONVEX_URL)
+            model = train_a2c(env, config, run_id, CONVEX_URL)
         elif algorithm == "bc":
-            train_bc(env, config, run_id, CONVEX_URL)
+            model = train_bc(env, config, run_id, CONVEX_URL)
         elif algorithm == "imitation":
-            train_imitation(env, config, run_id, CONVEX_URL)
+            model = train_imitation(env, config, run_id, CONVEX_URL)
         elif algorithm == "random":
-            train_random(env, config, run_id, CONVEX_URL)
+            model = train_random(env, config, run_id, CONVEX_URL)
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}. Supported: ppo, dqn, a2c, bc, imitation, random")
 
         logger.info("Training finished successfully")
+        
+        evaluation_id = None
+        
+        # Run post-training evaluation
+        if model is not None:
+            try:
+                logger.info("Running post-training evaluation...")
+                evaluation = evaluate_model(model, env, env_spec, n_episodes=20)
+                send_evaluation(run_id, evaluation, CONVEX_URL)
+                logger.info(f"Evaluation complete: mean_reward={evaluation['mean_reward']:.2f}, success_rate={evaluation.get('success_rate', 0):.2%}")
+                # Note: evaluation_id would need to be returned from send_evaluation to link properly
+            except Exception as e:
+                logger.warning(f"Evaluation failed: {e}")
+                # Don't fail training if evaluation fails
+        
+        # Save and upload model
+        if model is not None:
+            try:
+                logger.info("Saving and uploading model...")
+                save_and_upload_model(model, run_id, algorithm, config, CONVEX_URL, evaluation_id)
+                logger.info("Model saved and uploaded successfully")
+            except Exception as e:
+                logger.warning(f"Model save/upload failed: {e}")
+                # Don't fail training if model save fails
         
         # Update run status to "completed" in database
         try:

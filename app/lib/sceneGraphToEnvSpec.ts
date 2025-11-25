@@ -144,10 +144,14 @@ export function sceneGraphToEnvSpec(
       else if (nameStr.includes('checkpoint')) objectType = 'checkpoint'
     }
 
-    // Get position from transform or gridCell component
+    // Get position from GridTransform component or transform
     let position: [number, number] = [0, 0]
-    if (entity.components?.gridCell) {
-      // Grid mode: use row/col
+    if (entity.components?.GridTransform) {
+      // Grid mode: use row/col from GridTransform
+      const { row, col } = entity.components.GridTransform
+      position = [col, row]
+    } else if (entity.components?.gridCell) {
+      // Legacy: support old gridCell component
       const { row, col } = entity.components.gridCell
       position = [col, row]
     } else {
@@ -166,17 +170,35 @@ export function sceneGraphToEnvSpec(
       },
     }
 
-    // Add collision info from physics component
-    if (entity.components?.physics) {
+    // Add collision info from Collision2D component
+    if (entity.components?.Collision2D) {
+      object.collision = {
+        enabled: entity.components.Collision2D.isSolid || entity.components.Collision2D.isTrigger || false,
+        shape: 'rect',
+        size: { type: 'rect', width: 1, height: 1 },
+      }
+    } else if (entity.components?.physics) {
+      // Legacy: support old physics component
       object.collision = {
         enabled: entity.components.physics.enabled !== false,
-        type: entity.components.physics.bodyType === 'static' ? 'static' : 'dynamic',
+        shape: 'rect',
+        size: { type: 'rect', width: 1, height: 1 },
       }
     }
 
-    // Add visual info from render component or visual profile
-    if (entity.components?.render) {
-      object.color = entity.components.render.colorOverride
+    // Add visual info from Render2D component
+    if (entity.components?.Render2D) {
+      object.properties = {
+        ...object.properties,
+        color: entity.components.Render2D.color,
+        shape: entity.components.Render2D.shape,
+      }
+    } else if (entity.components?.render) {
+      // Legacy: support old render component
+      object.properties = {
+        ...object.properties,
+        color: entity.components.render.colorOverride,
+      }
     }
 
     objects.push(object)
@@ -190,7 +212,12 @@ export function sceneGraphToEnvSpec(
     }
 
     let position: [number, number] = [0, 0]
-    if (entity.components?.gridCell) {
+    if (entity.components?.GridTransform) {
+      // Grid mode: use row/col from GridTransform
+      const { row, col } = entity.components.GridTransform
+      position = [col, row]
+    } else if (entity.components?.gridCell) {
+      // Legacy: support old gridCell component
       const { row, col } = entity.components.gridCell
       position = [col, row]
     } else {

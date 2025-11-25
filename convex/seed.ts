@@ -39,10 +39,14 @@ async function getOrCreateSystemUser(ctx: any): Promise<Id<"users">> {
 // Asset types to create
 const ASSET_TYPES = [
   { key: "tile", displayName: "Tile" },
-  { key: "character", displayName: "Character" },
-  { key: "vehicle", displayName: "Vehicle" },
-  { key: "prop", displayName: "Prop" },
-  { key: "prefab", displayName: "Prefab" },
+  { key: "agent", displayName: "Agent" },
+  { key: "item", displayName: "Item" },
+  { key: "npc", displayName: "NPC" },
+  { key: "logic", displayName: "Logic" },
+  { key: "character", displayName: "Character" }, // Legacy
+  { key: "vehicle", displayName: "Vehicle" }, // Legacy
+  { key: "prop", displayName: "Prop" }, // Legacy
+  { key: "prefab", displayName: "Prefab" }, // Legacy
 ];
 
 // Comprehensive assets organized by environment type
@@ -138,6 +142,68 @@ const GRID_ASSETS = [
       mode: "grid",
       paletteColor: "#50c878",
       labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Goal Flag",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "cylinder",
+      params: {
+        radiusTop: 0.1,
+        radiusBottom: 0.1,
+        height: 1.0,
+        radialSegments: 8,
+      },
+    },
+    visualProfile: {
+      color: "#e74c3c",
+      labelColor: "#ffffff",
+      size: [0.2, 1.0, 0.2],
+    },
+    physicsProfile: {
+      collider: "box",
+      trigger: true,
+    },
+    behaviorProfile: {},
+    meta: {
+      tags: ["goal", "flag", "reward", "grid"],
+      mode: "grid",
+      paletteColor: "#e74c3c",
+      labelColor: "#ffffff",
+      palette: "primary",
+    },
+  },
+  {
+    name: "Treasure Chest",
+    assetTypeKey: "prop",
+    geometry: {
+      primitive: "box",
+      params: {
+        width: 0.8,
+        height: 0.6,
+        depth: 0.6,
+      },
+    },
+    visualProfile: {
+      color: "#8B4513",
+      labelColor: "#ffd700",
+      size: [0.8, 0.6, 0.6],
+    },
+    physicsProfile: {
+      collider: "box",
+      trigger: true,
+    },
+    behaviorProfile: {
+      collectible: true,
+      reward: 10,
+    },
+    meta: {
+      tags: ["goal", "treasure", "reward", "chest", "grid"],
+      mode: "grid",
+      paletteColor: "#8B4513",
+      labelColor: "#ffd700",
       palette: "primary",
     },
   },
@@ -353,6 +419,206 @@ const GRID_ASSETS = [
       labelColor: "#000000",
       palette: "secondary",
     },
+  },
+  // ============================================
+  // CANONICAL GRID WORLD ASSETS (Component-Based)
+  // ============================================
+  // A. Base Grid Tiles
+  {
+    name: "Floor Tile",
+    assetTypeKey: "tile",
+    geometry: {
+      primitive: "box",
+      params: { width: 1, height: 0.05, depth: 1 },
+    },
+    visualProfile: { color: "#f0f0f0", labelColor: "#000000", size: [1, 1, 1] },
+    physicsProfile: { collider: "box", static: true },
+    behaviorProfile: {},
+    meta: { tags: ["floor", "tile", "grid"], mode: "grid", paletteColor: "#f0f0f0", labelColor: "#000000", palette: "primary" },
+  },
+  {
+    name: "Water Tile",
+    assetTypeKey: "tile",
+    geometry: {
+      primitive: "box",
+      params: { width: 1, height: 0.05, depth: 1 },
+    },
+    visualProfile: { color: "#2196F3", labelColor: "#ffffff", size: [1, 1, 1], opacity: 0.7 },
+    physicsProfile: { collider: "box", static: true },
+    behaviorProfile: { slowsMovement: true },
+    meta: { tags: ["water", "hazard", "tile", "grid"], mode: "grid", paletteColor: "#2196F3", labelColor: "#ffffff", palette: "primary" },
+  },
+  // B. Agent Types
+  {
+    name: "Human Agent",
+    assetTypeKey: "agent",
+    geometry: {
+      primitive: "cylinder",
+      params: { radiusTop: 0.4, radiusBottom: 0.4, height: 0.4, radialSegments: 32 },
+    },
+    visualProfile: { color: "#4a90e2", labelColor: "#ffffff", size: [0.8, 0.8, 0.8] },
+    physicsProfile: { collider: "box", dynamic: true },
+    behaviorProfile: { speed: 1.0 },
+    meta: { tags: ["agent", "human", "grid"], mode: "grid", paletteColor: "#4a90e2", labelColor: "#ffffff", palette: "primary" },
+  },
+  {
+    name: "Dog Agent",
+    assetTypeKey: "agent",
+    geometry: {
+      primitive: "cylinder",
+      params: { radiusTop: 0.4, radiusBottom: 0.4, height: 0.3, radialSegments: 32 },
+    },
+    visualProfile: { color: "#e86", labelColor: "#ffffff", size: [0.8, 0.6, 0.8] },
+    physicsProfile: { collider: "box", dynamic: true },
+    behaviorProfile: { speed: 1.2 },
+    meta: { tags: ["agent", "dog", "animal", "grid"], mode: "grid", paletteColor: "#e86", labelColor: "#ffffff", palette: "primary" },
+  },
+  {
+    name: "Drone Agent",
+    assetTypeKey: "agent",
+    geometry: {
+      primitive: "cylinder",
+      params: { radiusTop: 0.4, radiusBottom: 0.4, height: 0.2, radialSegments: 32 },
+    },
+    visualProfile: { color: "#21b6ff", labelColor: "#ffffff", size: [0.8, 0.4, 0.8] },
+    physicsProfile: { collider: "box", dynamic: true },
+    behaviorProfile: { speed: 1.5, canFly: true },
+    meta: { tags: ["agent", "drone", "flying", "grid"], mode: "grid", paletteColor: "#21b6ff", labelColor: "#ffffff", palette: "primary" },
+  },
+  {
+    name: "Robot Agent",
+    assetTypeKey: "agent",
+    geometry: {
+      primitive: "box",
+      params: { width: 0.8, height: 0.8, depth: 0.8 },
+    },
+    visualProfile: { color: "#9E9E9E", labelColor: "#ffffff", size: [0.8, 0.8, 0.8] },
+    physicsProfile: { collider: "box", dynamic: true },
+    behaviorProfile: { speed: 1.0 },
+    meta: { tags: ["agent", "robot", "grid"], mode: "grid", paletteColor: "#9E9E9E", labelColor: "#ffffff", palette: "primary" },
+  },
+  // C. Interactive Props
+  {
+    name: "Button",
+    assetTypeKey: "item",
+    geometry: {
+      primitive: "cylinder",
+      params: { radiusTop: 0.3, radiusBottom: 0.3, height: 0.1, radialSegments: 32 },
+    },
+    visualProfile: { color: "#FF5722", labelColor: "#ffffff", size: [0.6, 0.2, 0.6] },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { pressable: true },
+    meta: { tags: ["button", "switch", "interactive", "grid"], mode: "grid", paletteColor: "#FF5722", labelColor: "#ffffff", palette: "primary" },
+  },
+  {
+    name: "Portal",
+    assetTypeKey: "item",
+    geometry: {
+      primitive: "cylinder",
+      params: { radiusTop: 0.5, radiusBottom: 0.5, height: 0.1, radialSegments: 32 },
+    },
+    visualProfile: { color: "#9C27B0", labelColor: "#ffffff", size: [1, 0.2, 1], opacity: 0.8 },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { teleports: true },
+    meta: { tags: ["portal", "teleporter", "interactive", "grid"], mode: "grid", paletteColor: "#9C27B0", labelColor: "#ffffff", palette: "primary" },
+  },
+  {
+    name: "Pickup Item",
+    assetTypeKey: "item",
+    geometry: {
+      primitive: "sphere",
+      params: { radius: 0.2, widthSegments: 16, heightSegments: 16 },
+    },
+    visualProfile: { color: "#FFC107", labelColor: "#000000", size: [0.4, 0.4, 0.4] },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { collectible: true },
+    meta: { tags: ["pickup", "collectible", "item", "grid"], mode: "grid", paletteColor: "#FFC107", labelColor: "#000000", palette: "primary" },
+  },
+  // D. Dynamic / Scripted Entities
+  {
+    name: "Guard",
+    assetTypeKey: "npc",
+    geometry: {
+      primitive: "box",
+      params: { width: 0.8, height: 0.8, depth: 0.8 },
+    },
+    visualProfile: { color: "#607D8B", labelColor: "#ffffff", size: [0.8, 0.8, 0.8] },
+    physicsProfile: { collider: "box", dynamic: true },
+    behaviorProfile: { patrol: true, scripted: true },
+    meta: { tags: ["guard", "npc", "patrol", "grid"], mode: "grid", paletteColor: "#607D8B", labelColor: "#ffffff", palette: "primary" },
+  },
+  {
+    name: "Random Walker",
+    assetTypeKey: "npc",
+    geometry: {
+      primitive: "cylinder",
+      params: { radiusTop: 0.3, radiusBottom: 0.3, height: 0.3, radialSegments: 32 },
+    },
+    visualProfile: { color: "#9E9E9E", labelColor: "#ffffff", size: [0.6, 0.6, 0.6] },
+    physicsProfile: { collider: "box", dynamic: true },
+    behaviorProfile: { randomWalk: true, scripted: true },
+    meta: { tags: ["random", "walker", "npc", "grid"], mode: "grid", paletteColor: "#9E9E9E", labelColor: "#ffffff", palette: "secondary" },
+  },
+  {
+    name: "Light Cone",
+    assetTypeKey: "npc",
+    geometry: {
+      primitive: "box",
+      params: { width: 2, height: 0.05, depth: 2 },
+    },
+    visualProfile: { color: "#FFEB3B", labelColor: "#000000", size: [2, 0.1, 2], opacity: 0.5 },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { visionCone: true, scripted: true },
+    meta: { tags: ["light", "vision", "cone", "npc", "grid"], mode: "grid", paletteColor: "#FFEB3B", labelColor: "#000000", palette: "secondary" },
+  },
+  // E. Invisible Logic Assets
+  {
+    name: "Reward Trigger",
+    assetTypeKey: "logic",
+    geometry: {
+      primitive: "box",
+      params: { width: 1, height: 0.01, depth: 1 },
+    },
+    visualProfile: { color: "#4CAF50", labelColor: "#ffffff", size: [1, 0.02, 1], opacity: 0.3 },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { rewardOnEnter: true },
+    meta: { tags: ["reward", "trigger", "logic", "invisible", "grid"], mode: "grid", paletteColor: "#4CAF50", labelColor: "#ffffff", palette: "secondary" },
+  },
+  {
+    name: "Penalty Trigger",
+    assetTypeKey: "logic",
+    geometry: {
+      primitive: "box",
+      params: { width: 1, height: 0.01, depth: 1 },
+    },
+    visualProfile: { color: "#f44336", labelColor: "#ffffff", size: [1, 0.02, 1], opacity: 0.3 },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { penaltyOnEnter: true },
+    meta: { tags: ["penalty", "trigger", "logic", "invisible", "grid"], mode: "grid", paletteColor: "#f44336", labelColor: "#ffffff", palette: "secondary" },
+  },
+  {
+    name: "Episode End Trigger",
+    assetTypeKey: "logic",
+    geometry: {
+      primitive: "box",
+      params: { width: 1, height: 0.01, depth: 1 },
+    },
+    visualProfile: { color: "#FF9800", labelColor: "#ffffff", size: [1, 0.02, 1], opacity: 0.3 },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { endsEpisode: true },
+    meta: { tags: ["episode", "end", "trigger", "logic", "invisible", "grid"], mode: "grid", paletteColor: "#FF9800", labelColor: "#ffffff", palette: "secondary" },
+  },
+  {
+    name: "Event Zone",
+    assetTypeKey: "logic",
+    geometry: {
+      primitive: "box",
+      params: { width: 1, height: 0.01, depth: 1 },
+    },
+    visualProfile: { color: "#9C27B0", labelColor: "#ffffff", size: [1, 0.02, 1], opacity: 0.3 },
+    physicsProfile: { collider: "box", trigger: true },
+    behaviorProfile: { customEvents: true },
+    meta: { tags: ["event", "zone", "logic", "invisible", "grid"], mode: "grid", paletteColor: "#9C27B0", labelColor: "#ffffff", palette: "secondary" },
   },
   // Vehicle assets
   {

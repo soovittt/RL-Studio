@@ -1,30 +1,9 @@
 /**
- * Asset Client - Connects to backend Asset Service
+ * Asset Client - Connects to backend Asset Service via GraphQL
  * Handles asset library operations
  */
 
-// Get backend service URL with proper local vs production handling
-const getBackendUrl = (): string => {
-  // In development, always use localhost (ignore env vars)
-  if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
-    return 'http://localhost:8000'
-  }
-  
-  // In production, use env var if set
-  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_ROLLOUT_SERVICE_URL
-  
-  if (envUrl) {
-    return envUrl
-  }
-  
-  // In production, warn if not set but still default to localhost
-  console.warn(
-    '⚠️ VITE_API_URL or VITE_ROLLOUT_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
-    'Please set your production backend URL in environment variables.'
-  )
-  
-  return 'http://localhost:8000'
-}
+import { query, mutate } from './graphqlClient'
 
 export interface Asset {
   _id: string
@@ -76,60 +55,167 @@ export async function listAssets(params?: {
   mode?: string
   tag?: string
 }): Promise<Asset[]> {
-  const searchParams = new URLSearchParams()
-  if (params?.projectId) searchParams.append('project_id', params.projectId)
-  if (params?.assetType) searchParams.append('asset_type', params.assetType)
-  if (params?.mode) searchParams.append('mode', params.mode)
-  if (params?.tag) searchParams.append('tag', params.tag)
-  
-  const queryString = searchParams.toString()
-  const url = `${getBackendUrl()}/api/assets${queryString ? `?${queryString}` : ''}`
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-  })
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to list assets' }))
-    throw new Error(error.detail || `HTTP ${response.status}`)
+  const gqlQuery = `
+    query ListAssets($filter: AssetFilter) {
+      assets(filter: $filter) {
+        id
+        name
+        assetType
+        geometry
+        visualProfile
+        physicsProfile
+        behaviorProfile
+        meta
+        createdAt
+        updatedAt
+      }
+    }
+  `
+
+  const variables: any = {}
+  if (params) {
+    variables.filter = {}
+    if (params.projectId) variables.filter.projectId = params.projectId
+    if (params.assetType) variables.filter.assetType = params.assetType
+    if (params.mode) variables.filter.mode = params.mode
+    if (params.tag) variables.filter.tag = params.tag
   }
-  
-  return response.json()
+
+  try {
+    const data = await query<{ assets: any[] }>(gqlQuery, Object.keys(variables).length > 0 ? variables : undefined)
+    
+    if (!data?.assets || !Array.isArray(data.assets)) {
+      return []
+    }
+
+    // Convert GraphQL response to Asset interface
+    return data.assets.map((asset) => {
+      // Parse JSON string fields
+      const geometry = asset.geometry ? JSON.parse(asset.geometry) : undefined
+      const visualProfile = asset.visualProfile ? JSON.parse(asset.visualProfile) : {}
+      const physicsProfile = asset.physicsProfile ? JSON.parse(asset.physicsProfile) : {}
+      const behaviorProfile = asset.behaviorProfile ? JSON.parse(asset.behaviorProfile) : {}
+      const meta = asset.meta ? JSON.parse(asset.meta) : {}
+
+      return {
+        _id: asset.id,
+        assetTypeId: asset.assetType,
+        name: asset.name,
+        geometry,
+        visualProfile,
+        physicsProfile,
+        behaviorProfile,
+        meta,
+        createdBy: '', // GraphQL doesn't return this yet
+        createdAt: asset.createdAt ? new Date(asset.createdAt).getTime() : Date.now(),
+        updatedAt: asset.updatedAt ? new Date(asset.updatedAt).getTime() : Date.now(),
+      } as Asset
+    })
+  } catch (error) {
+    console.error('Failed to list assets via GraphQL:', error)
+    throw error
+  }
 }
 
 /**
  * Get asset by ID
  */
 export async function getAsset(assetId: string): Promise<Asset> {
-  const response = await fetch(`${getBackendUrl()}/api/assets/${assetId}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-  })
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to get asset' }))
-    throw new Error(error.detail || `HTTP ${response.status}`)
+  const gqlQuery = `
+    query GetAsset($id: String!) {
+      asset(id: $id) {
+        id
+        name
+        assetType
+        geometry
+        visualProfile
+        physicsProfile
+        behaviorProfile
+        meta
+        createdAt
+        updatedAt
+      }
+    }
+  `
+
+  try {
+    const data = await query<{ asset: any }>(gqlQuery, { id: assetId })
+    
+    if (!data?.asset) {
+      throw new Error('Asset not found')
+    }
+
+    const asset = data.asset
+
+    // Parse JSON string fields
+    const geometry = asset.geometry ? JSON.parse(asset.geometry) : undefined
+    const visualProfile = asset.visualProfile ? JSON.parse(asset.visualProfile) : {}
+    const physicsProfile = asset.physicsProfile ? JSON.parse(asset.physicsProfile) : {}
+    const behaviorProfile = asset.behaviorProfile ? JSON.parse(asset.behaviorProfile) : {}
+    const meta = asset.meta ? JSON.parse(asset.meta) : {}
+
+    return {
+      _id: asset.id,
+      assetTypeId: asset.assetType,
+      name: asset.name,
+      geometry,
+      visualProfile,
+      physicsProfile,
+      behaviorProfile,
+      meta,
+      createdBy: '', // GraphQL doesn't return this yet
+      createdAt: asset.createdAt ? new Date(asset.createdAt).getTime() : Date.now(),
+      updatedAt: asset.updatedAt ? new Date(asset.updatedAt).getTime() : Date.now(),
+    } as Asset
+  } catch (error) {
+    console.error('Failed to get asset via GraphQL:', error)
+    throw error
   }
-  
-  return response.json()
 }
 
 /**
- * Create a new asset
+ * Create a new asset via GraphQL
  */
 export async function createAsset(request: CreateAssetRequest): Promise<{ id: string; name: string }> {
-  const response = await fetch(`${getBackendUrl()}/api/assets`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  })
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to create asset' }))
-    throw new Error(error.detail || `HTTP ${response.status}`)
+  const gqlMutation = `
+    mutation CreateAsset($input: AssetInput!) {
+      createAsset(input: $input) {
+        id
+        name
+      }
+    }
+  `
+
+  const variables = {
+    input: {
+      projectId: request.projectId,
+      assetTypeKey: request.assetTypeKey,
+      name: request.name,
+      slug: request.slug,
+      thumbnailUrl: request.thumbnailUrl,
+      modelUrl: request.modelUrl,
+      geometry: request.geometry ? JSON.stringify(request.geometry) : null,
+      visualProfile: request.visualProfile ? JSON.stringify(request.visualProfile) : null,
+      physicsProfile: request.physicsProfile ? JSON.stringify(request.physicsProfile) : null,
+      behaviorProfile: request.behaviorProfile ? JSON.stringify(request.behaviorProfile) : null,
+      meta: request.meta ? JSON.stringify(request.meta) : null,
+    },
   }
-  
-  return response.json()
+
+  try {
+    const data = await mutate<{ createAsset: { id: string; name: string } }>(gqlMutation, variables)
+    
+    if (!data?.createAsset) {
+      throw new Error('Failed to create asset')
+    }
+
+    return {
+      id: data.createAsset.id,
+      name: data.createAsset.name,
+    }
+  } catch (error) {
+    console.error('Failed to create asset via GraphQL:', error)
+    throw error
+  }
 }
 

@@ -19,7 +19,7 @@
       "~/*": ["./app/*"]
     }
   },
-  "include": ["app", "vite.config.ts", "convex/_generated"],
+  "include": ["app", "vite.config.ts", "vite-env.d.ts", "convex/_generated"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
 

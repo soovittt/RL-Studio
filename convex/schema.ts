@@ -199,5 +199,31 @@ export default defineSchema({
     .index('by_category', ['category'])
     .index('by_public', ['isPublic'])
     .index('by_created', ['createdAt']),
+
+  evaluations: defineTable({
+    runId: v.id('runs'),
+    meanReward: v.number(),
+    stdReward: v.number(),
+    meanLength: v.number(),
+    stdLength: v.number(),
+    episodeRewards: v.array(v.number()),
+    episodeLengths: v.array(v.number()),
+    successRate: v.optional(v.number()),
+    numEpisodes: v.number(),
+    evaluatedAt: v.number(),
+  })
+    .index('by_run', ['runId']),
+
+  models: defineTable({
+    runId: v.id('runs'),
+    modelUrl: v.string(), // S3/GCS URL
+    modelPath: v.string(), // Local path on training instance
+    algorithm: v.string(),
+    hyperparams: v.any(),
+    evaluationId: v.optional(v.id('evaluations')),
+    fileSize: v.optional(v.number()),
+    uploadedAt: v.number(),
+  })
+    .index('by_run', ['runId']),
 })
 

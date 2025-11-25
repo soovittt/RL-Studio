@@ -88,16 +88,22 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
         // Load assets (all modes)
         try {
           const allAssets = await listAssets({})
-          console.log('Loaded assets:', allAssets.length, allAssets)
+          console.log('Loaded assets:', allAssets)
+          
+          // Ensure allAssets is an array
+          const assetsArray = Array.isArray(allAssets) ? allAssets : []
+          console.log('Assets array length:', assetsArray.length)
+          
           // Filter to primary palette assets (or show all if none have palette set)
-          const primaryAssets = allAssets
+          const primaryAssets = assetsArray
             .filter((asset) => !asset.meta?.palette || asset.meta.palette === 'primary')
             .sort((a, b) => a.name.localeCompare(b.name))
           console.log('Filtered primary assets:', primaryAssets.length)
           setAssets(primaryAssets)
         } catch (err) {
           console.error('Failed to load assets:', err)
-          setError(`Failed to load assets: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          // Don't set error for assets - it's not critical
+          setAssets([])
         }
         
       } catch (err) {
@@ -117,26 +123,49 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
   }, [])
 
   const handleSelect = (template: EnvironmentTemplate) => {
-    // Convert template spec to universal EnvSpec
-    let envSpec: EnvSpec
+    try {
+      console.log('Selecting built-in template:', template.name, template)
+      
+      // Convert template spec to universal EnvSpec
+      let envSpec: EnvSpec
 
-    if (template.spec.id && template.spec.world) {
-      // Already in universal format
-      envSpec = template.spec as EnvSpec
-    } else {
-      // Migrate from legacy format
-      envSpec = SceneGraphManager.migrateFromLegacy({
-        ...template.spec,
-        type: template.envType,
-        name: template.name,
-      })
+      if (template.spec && template.spec.id && template.spec.world) {
+        // Already in universal format
+        envSpec = template.spec as EnvSpec
+        console.log('Template already in universal format')
+      } else {
+        // Migrate from legacy format - template.spec is the legacy format
+        console.log('Migrating template from legacy format', template.spec)
+        
+        // The template spec has visuals.grid, reward.rules, etc. at the root level
+        // migrateFromLegacy expects them nested, so we need to restructure
+        const legacyFormat = {
+          ...template.spec,
+          type: template.envType,
+          name: template.name,
+          // Ensure visuals.grid is accessible
+          visuals: template.spec.visuals || {},
+          reward: template.spec.reward || {},
+          episode: template.spec.episode || {},
+          metadata: template.spec.metadata || {},
+        }
+        
+        envSpec = SceneGraphManager.migrateFromLegacy(legacyFormat)
+        console.log('Migrated EnvSpec:', envSpec)
+      }
+
+      // Ensure name is set
+      envSpec.name = template.name
+      console.log('Final EnvSpec:', envSpec)
+
+      onSelect(envSpec)
+      onClose()
+    } catch (err) {
+      console.error('Error in handleSelect:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load template'
+      setError(errorMessage)
+      alert(`Failed to create from template: ${errorMessage}`)
     }
-
-    // Ensure name is set
-    envSpec.name = template.name
-
-    onSelect(envSpec)
-    onClose()
   }
 
   const handleSelectBackendTemplate = async (template: Template) => {

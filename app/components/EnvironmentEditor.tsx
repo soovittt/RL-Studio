@@ -21,6 +21,7 @@ import { EnhancedImportDialog } from './EnhancedImportDialog'
 import { CodeReviewPanel } from './CodeReviewPanel'
 import { CodeValidationPanel } from './CodeValidationPanel'
 import { TemplateSelector } from './TemplateSelector'
+import { EnvironmentEditorInner } from './EnvironmentEditorInner'
 
 interface EnvironmentEditorProps {
   id?: string
@@ -52,6 +53,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const [exportedFiles, setExportedFiles] = useState<Record<string, string> | null>(null)
   const [showValidation, setShowValidation] = useState(false)
   const [selectedObjectId, setSelectedObjectId] = useState<string | undefined>()
+  const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>()
   const [rolloutState, setRolloutState] = useState<{ agents: Array<{ id: string; position: Vec2 }> } | null>(null)
 
   // Try to load from Scene Service first, fallback to old system
@@ -132,6 +134,18 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   }, [id, env, sceneData])
 
   const [localEnvSpec, setLocalEnvSpec] = useState(envSpec)
+  
+  // Track if we've manually set localEnvSpec (e.g., from template)
+  // Only reset when id changes FROM something else TO 'new'
+  const manuallySetRef = useRef(false)
+  const prevIdRef = useRef(id)
+  useEffect(() => {
+    // Only reset if we just navigated TO 'new' from a different page
+    if (id === 'new' && prevIdRef.current !== 'new') {
+      manuallySetRef.current = false // Reset when first creating new environment
+    }
+    prevIdRef.current = id
+  }, [id])
 
   // Create SceneGraphManager instance
   const sceneGraphRef = useRef<SceneGraphManager | null>(null)
@@ -178,9 +192,13 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   }, [])
 
   // Sync localEnvSpec when envSpec changes (e.g., template loaded or name updated from database)
+  // BUT: Don't overwrite if we just set it manually (e.g., from template selection)
   useEffect(() => {
     if (id === 'new') {
-      setLocalEnvSpec(envSpec)
+      // Only sync on initial mount, not after manual changes
+      if (!manuallySetRef.current) {
+        setLocalEnvSpec(envSpec)
+      }
     } else {
       // For existing environments, update local state when envSpec changes from query
       // This ensures the UI reflects database changes (like name updates)
@@ -200,6 +218,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     sceneGraphRef.current = new SceneGraphManager(newSpec)
     
     if (id === 'new') {
+      manuallySetRef.current = true // Mark as manually set
       setLocalEnvSpec(newSpec)
     } else {
       // Update in Convex using universal format (old system)
@@ -347,7 +366,18 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const handleTemplateSelect = (envSpec: EnvSpec) => {
     try {
       console.log('Template selected, navigating to new environment:', envSpec)
-      // Navigate to new environment with template data
+      
+      // If we're already on the new page, update state directly
+      if (id === 'new') {
+        console.log('Already on new page, updating state directly')
+        // Use handleSpecChange to ensure all state is properly updated
+        // This will update localEnvSpec, sceneGraph, and history
+        handleSpecChange(envSpec)
+        setShowTemplates(false)
+        return
+      }
+
+      // Otherwise navigate to new environment with template data
       sessionStorage.setItem('rl_studio_template', JSON.stringify(envSpec))
       navigate({ to: '/environments/new' })
     } catch (err) {
@@ -469,49 +499,29 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
 
   return (
     <SelectionProvider>
-      <StudioLayout
-        topBar={
-          <StudioTopBar
-            envName={currentSpec.name || 'Untitled Environment'}
-            envType={currentSpec.envType || 'grid'}
-            onNameChange={handleNameChange}
-            onEnvTypeChange={handleEnvTypeChange}
-            onTestRollout={handleTestRollout}
-            onLaunchTraining={handleLaunchTraining}
-            onExport={handleExport}
-            onValidateCode={handleValidateCode}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={historyManager?.canUndo() || false}
-            canRedo={historyManager?.canRedo() || false}
-          />
-        }
-        leftSidebar={
-          <StudioSidebar
-            currentEnvId={id !== 'new' ? id : undefined}
-            onNewEnvironment={handleNewEnvironment}
-            onNewFromTemplate={handleNewFromTemplate}
-            onDuplicate={handleDuplicate}
-            onImportFromPaper={handleImportFromPaper}
-          />
-        }
-        centerCanvas={
-              <EnvironmentCanvas
-                envSpec={currentSpec}
-                sceneGraph={sceneGraph}
-                onSpecChange={handleSpecChange}
-                rolloutState={rolloutState || undefined}
-              />
-            }
-        rightPanel={
-          <StudioPropertiesPanel
-            envSpec={currentSpec}
-            onSpecChange={handleSpecChange}
-            selectedObjectId={selectedObjectId}
-            sceneGraph={sceneGraph}
-          />
-        }
-        bottomPanel={<StudioBottomPanel envSpec={currentSpec} envId={id !== 'new' ? id : undefined} onRunRollout={handleTestRollout} onStepChange={setRolloutState} />}
+      <EnvironmentEditorInner
+        currentSpec={currentSpec}
+        sceneGraph={sceneGraph}
+        selectedAssetId={selectedAssetId}
+        setSelectedAssetId={setSelectedAssetId}
+        rolloutState={rolloutState}
+        setRolloutState={setRolloutState}
+        handleSpecChange={handleSpecChange}
+        handleNameChange={handleNameChange}
+        handleEnvTypeChange={handleEnvTypeChange}
+        handleTestRollout={handleTestRollout}
+        handleLaunchTraining={handleLaunchTraining}
+        handleExport={handleExport}
+        handleValidateCode={handleValidateCode}
+        handleUndo={handleUndo}
+        handleRedo={handleRedo}
+        canUndo={historyManager?.canUndo() || false}
+        canRedo={historyManager?.canRedo() || false}
+        handleNewEnvironment={handleNewEnvironment}
+        handleNewFromTemplate={handleNewFromTemplate}
+        handleDuplicate={handleDuplicate}
+        handleImportFromPaper={handleImportFromPaper}
+        currentEnvId={id !== 'new' ? id : undefined}
       />
 
       {/* Enhanced Import Modal */}

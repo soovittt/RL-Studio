@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { EnvSpec, ObjectSpec, Vec2, ObjectType } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { AssetPalette, assetToObjectType, getAssetColor } from './AssetPalette'
+import { AssetSelector } from './AssetSelector'
 import { useSelection } from '~/lib/selectionManager.js'
 import { Asset } from '~/lib/assetClient'
 
@@ -33,6 +34,8 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
   const [assets, setAssets] = useState<Asset[]>([]) // Initialize as empty array
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Vec2 | null>(null)
+  const [showAssetSelector, setShowAssetSelector] = useState(false)
+  const [selectedTool, setSelectedTool] = useState<ObjectType | 'agent' | null>(null)
 
   const world = envSpec.world
   const width = world.width
@@ -324,25 +327,56 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
 
   return (
     <div className="h-full flex flex-col">
-      {/* Asset Palette from Backend */}
-      <AssetPalette
-        mode="grid"
-        selectedAssetId={selectedAsset?._id}
-        onSelectAsset={(asset) => {
-          setSelectedAsset(asset)
-          if (asset) {
-            const objectType = assetToObjectType(asset) as ObjectType
-            if (objectType) {
-              setSelectedTool(objectType)
-            }
-          } else {
-            setSelectedTool(null)
-          }
-        }}
-        className="bg-card"
-      />
+      {/* Asset Selector Button */}
+      <div className="p-2 border-b border-border bg-card flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAssetSelector(true)}
+            className={`px-4 py-2 rounded text-sm border transition-all flex items-center gap-2 ${
+              selectedAsset
+                ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                : 'border-border hover:bg-muted'
+            }`}
+            title={selectedAsset ? `Selected: ${selectedAsset.name}` : 'Select an asset to place'}
+          >
+            {selectedAsset ? (
+              <>
+                <span
+                  className="inline-block w-3 h-3 rounded"
+                  style={{ 
+                    backgroundColor: selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af' 
+                  }}
+                />
+                <span>{selectedAsset.name}</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>Select Asset</span>
+              </>
+            )}
+          </button>
+          {selectedAsset && (
+            <button
+              onClick={() => {
+                setSelectedAsset(null)
+                setSelectedTool(null)
+              }}
+              className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              title="Clear selection"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {selectedAsset ? 'Click grid to place' : 'Click "Select Asset" to choose'}
+        </div>
+      </div>
 
-      {/* Fallback Hardcoded Tool Palette (temporary) */}
+      {/* Fallback Hardcoded Tool Palette (temporary - only show if no assets available) */}
       {assets.length === 0 && (
         <div className="p-2 border-b border-border flex gap-2 flex-wrap bg-card">
           {TOOL_PALETTE.map((tool) => (
@@ -367,6 +401,27 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
             </button>
           ))}
         </div>
+      )}
+
+      {/* Asset Selector Modal */}
+      {showAssetSelector && (
+        <AssetSelector
+          mode="grid"
+          selectedAssetId={selectedAsset?._id}
+          onSelect={(asset) => {
+            setSelectedAsset(asset)
+            if (asset) {
+              const objectType = assetToObjectType(asset) as ObjectType
+              if (objectType) {
+                setSelectedTool(objectType)
+              }
+            } else {
+              setSelectedTool(null)
+            }
+            setShowAssetSelector(false)
+          }}
+          onClose={() => setShowAssetSelector(false)}
+        />
       )}
 
       {/* Grid Canvas */}

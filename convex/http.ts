@@ -53,6 +53,102 @@ http.route({
 })
 
 http.route({
+  path: '/models',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const data = await request.json()
+      const { runId, modelUrl, modelPath, algorithm, hyperparams, evaluationId, fileSize } = data
+      
+      if (!runId || !modelUrl || !modelPath || !algorithm) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: runId, modelUrl, modelPath, algorithm' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Validate runId is a valid Convex ID
+      if (typeof runId !== 'string' || !runId.startsWith('j')) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid runId format. Must be a Convex ID.' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Save model metadata to database
+      await ctx.runMutation(api.models.create, {
+        runId: runId as any,
+        modelUrl: String(modelUrl),
+        modelPath: String(modelPath),
+        algorithm: String(algorithm),
+        hyperparams: hyperparams || {},
+        evaluationId: evaluationId ? (evaluationId as any) : undefined,
+        fileSize: fileSize !== undefined && fileSize !== null ? Number(fileSize) : undefined,
+      })
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error: any) {
+      console.error('Failed to save model metadata:', error)
+      return new Response(
+        JSON.stringify({ error: error.message || 'Failed to save model metadata' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  }),
+})
+
+http.route({
+  path: '/evaluations',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const data = await request.json()
+      const { runId, meanReward, stdReward, meanLength, stdLength, episodeRewards, episodeLengths, successRate, numEpisodes } = data
+      
+      if (!runId || meanReward === undefined || stdReward === undefined || meanLength === undefined || stdLength === undefined) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: runId, meanReward, stdReward, meanLength, stdLength' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Validate runId is a valid Convex ID
+      if (typeof runId !== 'string' || !runId.startsWith('j')) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid runId format. Must be a Convex ID.' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Save evaluation to database
+      await ctx.runMutation(api.evaluations.create, {
+        runId: runId as any,
+        meanReward: Number(meanReward),
+        stdReward: Number(stdReward),
+        meanLength: Number(meanLength),
+        stdLength: Number(stdLength),
+        episodeRewards: Array.isArray(episodeRewards) ? episodeRewards.map(Number) : [],
+        episodeLengths: Array.isArray(episodeLengths) ? episodeLengths.map(Number) : [],
+        successRate: successRate !== undefined && successRate !== null ? Number(successRate) : undefined,
+        numEpisodes: Number(numEpisodes || episodeRewards?.length || 0),
+      })
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error: any) {
+      console.error('Failed to save evaluation:', error)
+      return new Response(
+        JSON.stringify({ error: error.message || 'Failed to save evaluation' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  }),
+})
+
+http.route({
   path: '/trainingLogs',
   method: 'POST',
   handler: httpAction(async (ctx, request) => {

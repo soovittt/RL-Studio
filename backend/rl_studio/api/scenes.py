@@ -2,8 +2,9 @@
 Scene Service - CRUD operations for scenes and scene versions
 """
 import logging
+import requests
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import HTTPException
 from pydantic import ValidationError
 
 from .models import (
@@ -16,10 +17,12 @@ from .models import (
 from .convex_client import get_client
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/scenes", tags=["scenes"])
 
+# NOTE: REST HTTP endpoints have been REMOVED - use GraphQL instead
+# GraphQL endpoint: POST /graphql with query/mutation
+# These functions are kept for internal use by GraphQL resolvers
 
-@router.get("/{scene_id}")
+# Removed: @router.get("/{scene_id}", ...) - use GraphQL query { scene(id: "...") }
 async def get_scene(scene_id: str):
     """
     Get scene metadata and active version
@@ -45,7 +48,7 @@ async def get_scene(scene_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/")
+# Removed: @router.post("/", ...) - use GraphQL mutation { createScene(...) }
 async def create_scene(request: CreateSceneRequest):
     """
     Create a new scene
@@ -72,7 +75,7 @@ async def create_scene(request: CreateSceneRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.patch("/{scene_id}")
+# Removed: @router.patch("/{scene_id}", ...) - use GraphQL mutation { updateScene(...) }
 async def update_scene(scene_id: str, request: UpdateSceneRequest):
     """
     Update scene metadata
@@ -100,7 +103,7 @@ async def update_scene(scene_id: str, request: UpdateSceneRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{scene_id}/versions")
+# Removed: @router.post("/{scene_id}/versions", ...) - use GraphQL mutation { createSceneVersion(...) }
 async def create_scene_version(scene_id: str, request: CreateSceneVersionRequest):
     """
     Create a new scene version
@@ -131,7 +134,7 @@ async def create_scene_version(scene_id: str, request: CreateSceneVersionRequest
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{scene_id}/versions/{version_number}")
+# Removed: @router.get("/{scene_id}/versions/{version_number}", ...) - use GraphQL query { sceneVersion(...) }
 async def get_scene_version(scene_id: str, version_number: int):
     """
     Get a specific scene version
@@ -156,7 +159,7 @@ async def get_scene_version(scene_id: str, version_number: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{scene_id}/versions")
+# Removed: @router.get("/{scene_id}/versions", ...) - use GraphQL query { listSceneVersions(...) }
 async def list_scene_versions(scene_id: str):
     """
     List all versions for a scene

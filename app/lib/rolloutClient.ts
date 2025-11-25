@@ -1,13 +1,17 @@
 /**
- * Rollout Client - Connects to Python backend rollout service
- * Supports both HTTP and WebSocket for real-time streaming
+ * Rollout Client - Connects to Python backend rollout service via GraphQL
+ * Supports both GraphQL (HTTP) and WebSocket for real-time streaming
  */
+
+import { mutate, query } from './graphqlClient'
 
 export interface RolloutRequest {
   envSpec: any
-  policy: 'random' | 'greedy'
+  policy: 'random' | 'greedy' | 'trained_model'
   maxSteps: number
   stream?: boolean
+  runId?: string  // For trained_model policy
+  modelUrl?: string  // Alternative to runId
 }
 
 export interface RolloutResponse {
@@ -38,61 +42,87 @@ export interface RolloutResponse {
   executionTime?: number
 }
 
-// Get backend service URL with proper local vs production handling
-const getBackendUrl = (): string => {
-  const envUrl = import.meta.env.VITE_ROLLOUT_SERVICE_URL
-  
-  // If explicitly set, use it
-  if (envUrl) {
-    return envUrl
-  }
-  
-  // In production, warn if not set (should be set)
-  if (import.meta.env.MODE === 'production') {
-    console.warn(
-      '⚠️ VITE_ROLLOUT_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
-      'Please set your production backend URL in environment variables.'
-    )
-  }
-  
-  // Default to localhost for local development
-  return 'http://localhost:8000'
-}
-
-const ROLLOUT_SERVICE_URL = getBackendUrl()
-
 /**
- * Run rollout via HTTP (returns complete result)
+ * Run rollout via GraphQL (returns complete result)
  */
 export async function runRolloutHTTP(request: RolloutRequest): Promise<RolloutResponse> {
-  try {
-    const response = await fetch(`${ROLLOUT_SERVICE_URL}/api/rollout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        envSpec: request.envSpec,
-        policy: request.policy,
-        maxSteps: request.maxSteps,
-        stream: false,
-      }),
-    })
+  const gqlMutation = `
+    mutation RunRollout($input: RolloutInput!) {
+      runRollout(input: $input) {
+        success
+        totalReward
+        episodeLength
+        terminationReason
+        executionTime
+        error
+        steps {
+          stepNumber
+          state
+          action
+          reward
+          done
+          info
+        }
+      }
+    }
+  `
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(error.error || `HTTP ${response.status}`)
+  try {
+    const variables = {
+      input: {
+        env_spec: JSON.stringify(request.envSpec),
+        policy: request.policy,
+        max_steps: request.maxSteps,
+        run_id: request.runId || null,
+        model_url: request.modelUrl || null,
+        batch_size: 1,
+        use_parallel: false,
+      },
     }
 
-    return await response.json()
+    const data = await mutate<{ runRollout: any }>(gqlMutation, variables)
+
+    if (!data?.runRollout) {
+      throw new Error('Failed to run rollout')
+    }
+
+    const result = data.runRollout
+
+    // Parse JSON string fields from GraphQL response
+    const steps = result.steps?.map((step: any) => {
+      const state = step.state ? JSON.parse(step.state) : {}
+      const info = step.info ? JSON.parse(step.info) : {}
+
+      return {
+        state,
+        action: step.action,
+        reward: step.reward,
+        done: step.done,
+        info,
+      }
+    }) || []
+
+    return {
+      success: result.success,
+      result: {
+        steps,
+        totalReward: result.totalReward,
+        episodeLength: result.episodeLength,
+        success: result.success,
+        terminationReason: result.terminationReason,
+      },
+      error: result.error || undefined,
+      executionTime: result.executionTime || undefined,
+    }
   } catch (error) {
-    console.error('Rollout HTTP request failed:', error)
+    console.error('Rollout GraphQL request failed:', error)
     throw error
   }
 }
 
 /**
  * Run rollout via WebSocket (streams results in real-time)
+ * Note: WebSocket is not available via GraphQL, so this still uses REST API
  */
 export function runRolloutWebSocket(
   request: RolloutRequest,
@@ -102,6 +132,13 @@ export function runRolloutWebSocket(
     onError?: (error: Error) => void
   }
 ): () => void {
+  // Get backend URL for WebSocket (still using REST endpoint)
+  const getBackendUrl = (): string => {
+    const envUrl = import.meta.env.VITE_ROLLOUT_SERVICE_URL
+    return envUrl || 'http://localhost:8000'
+  }
+
+  const ROLLOUT_SERVICE_URL = getBackendUrl()
   const wsUrl = ROLLOUT_SERVICE_URL.replace('http://', 'ws://').replace('https://', 'wss://')
   const ws = new WebSocket(`${wsUrl}/ws/rollout`)
 
@@ -111,6 +148,8 @@ export function runRolloutWebSocket(
       policy: request.policy,
       maxSteps: request.maxSteps,
       stream: true,
+      ...(request.runId && { runId: request.runId }),
+      ...(request.modelUrl && { modelUrl: request.modelUrl }),
     }))
   }
 
@@ -164,15 +203,20 @@ export function runRolloutWebSocket(
 }
 
 /**
- * Check if rollout service is available
+ * Check if rollout service is available via GraphQL health query
  */
 export async function checkRolloutServiceHealth(): Promise<boolean> {
+  const gqlQuery = `
+    query Health {
+      health {
+        status
+      }
+    }
+  `
+
   try {
-    const response = await fetch(`${ROLLOUT_SERVICE_URL}/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000), // 5 second timeout
-    })
-    return response.ok
+    const data = await query<{ health: { status: string } }>(gqlQuery)
+    return data?.health?.status === 'healthy'
   } catch {
     return false
   }

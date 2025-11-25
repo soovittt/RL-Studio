@@ -6,9 +6,13 @@ from pydantic import BaseModel, Field, validator
 
 class RolloutRequest(BaseModel):
     envSpec: Dict[str, Any] = Field(..., description="Environment specification")
-    policy: Literal["random", "greedy"] = Field(default="random", description="Policy to use")
+    policy: Literal["random", "greedy", "trained_model"] = Field(default="random", description="Policy to use")
     maxSteps: int = Field(default=100, ge=1, le=10000, description="Maximum steps")
     stream: bool = Field(default=False, description="Stream results in real-time")
+    runId: Optional[str] = Field(default=None, description="Run ID for trained_model policy")
+    modelUrl: Optional[str] = Field(default=None, description="Model URL (alternative to runId)")
+    batchSize: Optional[int] = Field(default=1, ge=1, le=100, description="Number of parallel rollouts (for performance)")
+    useParallel: Optional[bool] = Field(default=False, description="Use parallel execution for batch")
 
 class RolloutResponse(BaseModel):
     success: bool

@@ -34,7 +34,24 @@ export const list = query({
 
     // Filter by mode and tag in memory (could be optimized with indexes)
     return assets.filter((asset) => {
-      if (args.mode && asset.meta?.mode !== args.mode) return false;
+      // For mode filter: check both meta.mode and tags array
+      if (args.mode) {
+        const assetMode = asset.meta?.mode || '';
+        const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : [];
+        const hasModeMatch = assetMode === args.mode;
+        const hasTagMatch = tags.includes(args.mode);
+        // For grid mode, also accept assets with "grid" tag even if mode doesn't match
+        if (args.mode === 'grid') {
+          if (!hasModeMatch && !hasTagMatch && !tags.includes('grid')) {
+            return false;
+          }
+        } else {
+          if (!hasModeMatch && !hasTagMatch) {
+            return false;
+          }
+        }
+      }
+      // For tag filter: check tags array
       if (args.tag && !asset.meta?.tags?.includes(args.tag)) return false;
       return true;
     });

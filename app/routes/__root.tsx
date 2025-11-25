@@ -1,24 +1,27 @@
-import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { Layout } from '~/components/Layout'
 import { ProtectedRoute } from '~/components/ProtectedRoute'
+import { ErrorBoundary } from '~/components/ErrorBoundary'
 
 export const Route = createRootRoute({
   component: RootComponent,
 })
 
 function RootComponent() {
-  const router = useRouterState()
-  const pathname = router.location.pathname
+  const location = useLocation()
+  const pathname = location.pathname
 
   if (pathname === '/login' || pathname.startsWith('/login') || pathname === '/') {
     return <Outlet />
   }
 
   return (
-    <ProtectedRoute>
-      <Layout>
-        <Outlet />
-      </Layout>
-    </ProtectedRoute>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <Layout>
+          <Outlet />
+        </Layout>
+      </ProtectedRoute>
+    </ErrorBoundary>
   )
 }

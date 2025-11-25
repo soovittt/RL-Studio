@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/templates", tags=["templates"])
 
 
-@router.get("/")
+@router.get("", include_in_schema=True)
 async def list_templates(
     mode: Optional[str] = Query(None, description="Filter by mode"),
     category: Optional[str] = Query(None, description="Filter by category"),
@@ -54,14 +54,15 @@ async def list_templates(
                 "isPublic": is_public,
             }) or []
         except requests.exceptions.HTTPError as e:
-            # Handle 404 (route not found) or other HTTP errors gracefully
+            # Handle 404 (route not found) - HTTP routes may not be deployed
+            # Return empty list silently (graceful degradation)
             if e.response and e.response.status_code == 404:
-                logger.warning(f"Convex route not found (dev server may not be running): {e}")
+                logger.debug(f"Convex HTTP route not available (404): templates/list")
             else:
-                logger.error(f"Convex HTTP error querying templates: {e}")
+                logger.warning(f"Convex HTTP error querying templates: {e}")
             return []  # Return empty list on error (graceful degradation)
         except Exception as e:
-            logger.error(f"Failed to query templates from Convex: {e}")
+            logger.debug(f"Failed to query templates from Convex: {e}")
             return []  # Return empty list on error (graceful degradation)
         
         # Apply pagination

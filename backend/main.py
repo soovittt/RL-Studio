@@ -66,8 +66,27 @@ if __name__ == "__main__":
     env_mode = "development" if debug else "production"
     logger.info(f"Starting RL Studio Backend API in {env_mode} mode on {host}:{port}")
     
+    # Setup local Convex development (auto-seed if empty)
+    if debug or os.getenv("ENVIRONMENT", "").lower() == "development":
+        try:
+            from rl_studio.utils.convex_local_dev import setup_local_convex_dev
+            logger.info("🌱 Setting up local Convex development...")
+            setup_local_convex_dev()
+        except Exception as e:
+            logger.debug(f"Could not setup local Convex dev (this is OK): {e}")
+    
+    # Log infrastructure configuration
+    try:
+        from rl_studio.utils.infrastructure_config import get_infrastructure_config
+        config = get_infrastructure_config()
+        summary = config.get_config_summary()
+        logger.info(f"📦 Storage: {summary['storage']['provider']} ({'✅' if summary['storage']['valid'] else '⚠️'})")
+        logger.info(f"🖥️  Compute: {summary['compute']['provider']} ({'✅' if summary['compute']['valid'] else '⚠️'})")
+    except Exception as e:
+        logger.debug(f"Could not load infrastructure config: {e}")
+    
     # Warn about missing optional but recommended variables
-    if not os.getenv("CONVEX_URL"):
+    if not os.getenv("CONVEX_URL") and not os.getenv("VITE_CONVEX_URL"):
         logger.warning("⚠️ CONVEX_URL not set. Some features may not work.")
     
     try:

@@ -1,5 +1,5 @@
 // GridCanvasThree - Beautiful 3D grid renderer using Three.js + React Three Fiber
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, memo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment, PerspectiveCamera } from '@react-three/drei'
 import { Bloom, Vignette, EffectComposer } from '@react-three/postprocessing'
@@ -7,8 +7,11 @@ import { EnvSpec, ObjectSpec, Vec2, ObjectType } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { useSelection } from '~/lib/selectionManager.js'
 import { AssetPalette, assetToObjectType, getAssetColor } from './AssetPalette'
+import { AssetSelector } from './AssetSelector'
 import type { Asset } from '~/lib/assetClient'
 import * as THREE from 'three'
+import { renderEntity, getDefaultRender2D } from '~/lib/procedural/gridRenderer'
+import { GridTransform, Render2D } from '~/lib/components/gridComponents'
 
 interface GridCanvasThreeProps {
   envSpec: EnvSpec
@@ -17,6 +20,18 @@ interface GridCanvasThreeProps {
   rolloutState?: {
     agents: Array<{ id: string; position: Vec2 }>
   }
+  selectedAssetId?: string
+  onAssetSelect?: (asset: Asset | null) => void
+}
+
+interface SceneContentProps {
+  envSpec: EnvSpec
+  rolloutState?: { agents: Array<{ id: string; position: Vec2 }> }
+  onCellClick: (x: number, y: number) => void
+  onCellRightClick: (e: any, x: number, y: number) => void
+  selectedObjectId?: string
+  selectedAgentId?: string
+  assets: Asset[]
 }
 
 // Hardcoded tool palette (fallback when assets aren't available)
@@ -43,8 +58,8 @@ function hexToRgb(hex: string): [number, number, number] {
     : [0.5, 0.5, 0.5]
 }
 
-// Grid Cell Component
-function GridCell({ 
+// Grid Cell Component - Memoized for performance
+const GridCell = memo(function GridCell({ 
   x, y, 
   object, 
   agent, 
@@ -121,8 +136,166 @@ function GridCell({
     onRightClick(e)
   }
 
+  // Determine 3D shape based on object type
+  const get3DShape = () => {
+    if (agent) {
+      // Agent: Cylinder with sphere on top
+      return (
+        <group>
+          <mesh position={[0, 0.3, 0]} castShadow>
+            <cylinderGeometry args={[0.25, 0.25, 0.4, 16]} />
+            <meshStandardMaterial
+              color={color}
+              emissive={emissive}
+              emissiveIntensity={0.3}
+              metalness={0.8}
+              roughness={0.2}
+            />
+          </mesh>
+          <mesh position={[0, 0.6, 0]} castShadow>
+            <sphereGeometry args={[0.2, 16, 16]} />
+            <meshStandardMaterial
+              color={color}
+              emissive={emissive}
+              emissiveIntensity={0.5}
+              metalness={0.7}
+              roughness={0.3}
+            />
+          </mesh>
+        </group>
+      )
+    }
+    
+    if (object) {
+      const objectType = object.type
+      
+      if (objectType === 'wall') {
+        // Wall: Tall 3D box
+        return (
+          <mesh position={[0, 0.5, 0]} castShadow>
+            <boxGeometry args={[0.9, 1.0, 0.9]} />
+            <meshStandardMaterial
+              color={color}
+              metalness={0.3}
+              roughness={0.7}
+            />
+          </mesh>
+        )
+      }
+      
+      if (objectType === 'goal') {
+        // Goal: Cylinder with glowing top
+        return (
+          <group>
+            <mesh position={[0, 0.2, 0]} castShadow>
+              <cylinderGeometry args={[0.35, 0.35, 0.4, 16]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={emissive}
+                emissiveIntensity={0.8}
+                metalness={0.5}
+                roughness={0.4}
+              />
+            </mesh>
+            <mesh position={[0, 0.5, 0]}>
+              <cylinderGeometry args={[0.3, 0.3, 0.1, 16]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={emissive}
+                emissiveIntensity={1.5}
+              />
+            </mesh>
+          </group>
+        )
+      }
+      
+      if (objectType === 'key' || objectType === 'pickup') {
+        // Key/Pickup: Small 3D shape on pedestal
+        return (
+          <group>
+            <mesh position={[0, 0.05, 0]}>
+              <cylinderGeometry args={[0.15, 0.15, 0.1, 8]} />
+              <meshStandardMaterial color="#666" />
+            </mesh>
+            <mesh position={[0, 0.2, 0]} castShadow>
+              <torusGeometry args={[0.15, 0.05, 8, 16]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={emissive}
+                emissiveIntensity={0.6}
+                metalness={0.9}
+                roughness={0.1}
+              />
+            </mesh>
+          </group>
+        )
+      }
+      
+      if (objectType === 'door') {
+        // Door: Tall box with frame
+        return (
+          <group>
+            <mesh position={[0, 0.5, 0]} castShadow>
+              <boxGeometry args={[0.85, 1.0, 0.1]} />
+              <meshStandardMaterial
+                color={color}
+                metalness={0.4}
+                roughness={0.6}
+              />
+            </mesh>
+            <mesh position={[0, 0.5, 0]}>
+              <boxGeometry args={[0.9, 1.05, 0.05]} />
+              <meshStandardMaterial color="#4a3728" />
+            </mesh>
+          </group>
+        )
+      }
+      
+      if (objectType === 'trap' || objectType === 'hazard') {
+        // Trap/Hazard: Spiky shape
+        return (
+          <group>
+            <mesh position={[0, 0.1, 0]}>
+              <coneGeometry args={[0.3, 0.2, 8]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={emissive}
+                emissiveIntensity={0.4}
+              />
+            </mesh>
+            <mesh position={[0, 0.25, 0]}>
+              <coneGeometry args={[0.2, 0.15, 8]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={emissive}
+                emissiveIntensity={0.6}
+              />
+            </mesh>
+          </group>
+        )
+      }
+      
+      // Default: Low box for other objects
+      return (
+        <mesh position={[0, 0.15, 0]} castShadow>
+          <boxGeometry args={[0.8, 0.3, 0.8]} />
+          <meshStandardMaterial
+            color={color}
+            emissive={emissive}
+            emissiveIntensity={objectType === 'checkpoint' ? 0.5 : 0}
+            metalness={0.3}
+            roughness={0.6}
+          />
+        </mesh>
+      )
+    }
+    
+    // Empty cell: just floor
+    return null
+  }
+
   return (
-    <mesh
+    <group
       position={[x, 0, y]}
       onClick={handleClick}
       onContextMenu={handleRightClick}
@@ -134,41 +307,63 @@ function GridCell({
         document.body.style.cursor = 'default'
       }}
     >
-      <boxGeometry args={[0.9, 0.1, 0.9]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={emissive}
-        emissiveIntensity={object?.type === 'goal' || agent ? 0.5 : 0}
-        metalness={agent ? 0.8 : 0.2}
-        roughness={agent ? 0.2 : 0.6}
-      />
+      {/* Floor tile (always present) - visible grid cell */}
+      <mesh position={[0, 0, 0]} receiveShadow>
+        <boxGeometry args={[1, 0.1, 1]} />
+        <meshStandardMaterial
+          color={object || agent ? [0.85, 0.85, 0.85] : [0.92, 0.92, 0.92]}
+          metalness={0.1}
+          roughness={0.8}
+        />
+      </mesh>
+      
+      {/* Visible grid cell borders - raised edges */}
+      <group position={[0, 0.06, 0]}>
+        {/* Top edge */}
+        <mesh position={[0, 0, 0.5]}>
+          <boxGeometry args={[1, 0.02, 0.02]} />
+          <meshStandardMaterial color="#64748b" />
+        </mesh>
+        {/* Bottom edge */}
+        <mesh position={[0, 0, -0.5]}>
+          <boxGeometry args={[1, 0.02, 0.02]} />
+          <meshStandardMaterial color="#64748b" />
+        </mesh>
+        {/* Left edge */}
+        <mesh position={[-0.5, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <boxGeometry args={[1, 0.02, 0.02]} />
+          <meshStandardMaterial color="#64748b" />
+        </mesh>
+        {/* Right edge */}
+        <mesh position={[0.5, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <boxGeometry args={[1, 0.02, 0.02]} />
+          <meshStandardMaterial color="#64748b" />
+        </mesh>
+      </group>
+      
+      {/* 3D object/agent */}
+      {get3DShape()}
+      
+      {/* Selection indicator */}
       {isSelected && (
-        <mesh position={[0, 0.06, 0]}>
+        <mesh position={[0, 0.02, 0]}>
           <ringGeometry args={[0.5, 0.55, 32]} />
           <meshStandardMaterial
             color="#3b82f6"
             emissive="#3b82f6"
             emissiveIntensity={0.8}
             side={THREE.DoubleSide}
+            transparent
+            opacity={0.8}
           />
         </mesh>
       )}
-      {(object?.type === 'goal' || agent) && (
-        <mesh position={[0, 0.15, 0]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial
-            color={color}
-            emissive={emissive}
-            emissiveIntensity={1}
-          />
-        </mesh>
-      )}
-    </mesh>
+    </group>
   )
-}
+})
 
-// Scene Content
-function SceneContent({ 
+// Scene Content - Memoized for performance
+function SceneContentInner({ 
   envSpec, 
   rolloutState,
   onCellClick,
@@ -260,11 +455,12 @@ function SceneContent({
           (object && selectedObjectId === object.id) ||
           (agent && selectedAgentId === agent.id)
 
+        // Center cells: cell at (0,0) should be at (-width/2 + 0.5, -height/2 + 0.5)
         result.push(
           <GridCell
             key={`${x}-${y}`}
-            x={x - width / 2}
-            y={y - height / 2}
+            x={x - width / 2 + 0.5}
+            y={y - height / 2 + 0.5}
             object={object}
             agent={agent}
             isSelected={isSelected}
@@ -281,40 +477,79 @@ function SceneContent({
   return (
     <>
       {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-      <pointLight position={[-10, 10, -10]} intensity={0.5} color="#ffffff" />
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow />
+      <pointLight position={[-10, 10, -10]} intensity={0.7} color="#ffffff" />
 
-      {/* Grid helper */}
-      <Grid
-        args={[width, height]}
-        cellColor="#e2e8f0"
-        sectionColor="#cbd5e1"
-        cellThickness={0.5}
-        sectionThickness={1}
-        fadeDistance={25}
-        fadeStrength={1}
-        followCamera={false}
-        infiniteGrid={false}
-      />
+      {/* Manual grid lines - VERY VISIBLE using thick boxes - aligned with cell edges */}
+      <group position={[0, 0.06, 0]}>
+        {/* Vertical lines - positioned at cell boundaries */}
+        {Array.from({ length: width + 1 }, (_, i) => {
+          // Lines at: -width/2, -width/2+1, ..., width/2
+          const x = i - width / 2
+          return (
+            <mesh key={`v-${i}`} position={[x, 0, 0]}>
+              <boxGeometry args={[0.02, 0.02, height]} />
+              <meshStandardMaterial color="#475569" />
+            </mesh>
+          )
+        })}
+        {/* Horizontal lines - positioned at cell boundaries */}
+        {Array.from({ length: height + 1 }, (_, i) => {
+          // Lines at: -height/2, -height/2+1, ..., height/2
+          const z = i - height / 2
+          return (
+            <mesh key={`h-${i}`} position={[0, 0, z]}>
+              <boxGeometry args={[width, 0.02, 0.02]} />
+              <meshStandardMaterial color="#475569" />
+            </mesh>
+          )
+        })}
+      </group>
 
       {/* Grid cells */}
       {cells}
 
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-        <planeGeometry args={[width * 2, height * 2]} />
-        <meshStandardMaterial color="#f8fafc" />
+      {/* Ground plane - positioned below grid cells */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, 0]} receiveShadow>
+        <planeGeometry args={[width + 4, height + 4]} />
+        <meshStandardMaterial color="#e2e8f0" />
       </mesh>
     </>
   )
 }
 
-export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutState }: GridCanvasThreeProps) {
+const SceneContent = memo(SceneContentInner)
+
+export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutState, selectedAssetId, onAssetSelect }: GridCanvasThreeProps) {
   const { selection, selectObject, selectAgent } = useSelection()
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null) // Asset from backend
+  // Declare assets state first before using it
   const [assets, setAssets] = useState<Asset[]>([])
+  // Use external selectedAssetId if provided (from LayersPanel), otherwise use local state
+  const [localSelectedAsset, setLocalSelectedAsset] = useState<Asset | null>(null)
+  const selectedAsset = selectedAssetId 
+    ? assets.find(a => a._id === selectedAssetId) || null
+    : localSelectedAsset
   const [selectedTool, setSelectedTool] = useState<ObjectType | 'agent' | null>(null)
+  const [showAssetSelector, setShowAssetSelector] = useState(false)
+  
+  // Use ref to persist asset selection across re-renders
+  const selectedAssetRef = useRef<Asset | null>(null)
+  const selectedToolRef = useRef<ObjectType | 'agent' | null>(null)
+  
+  // Sync refs with state
+  useEffect(() => {
+    selectedAssetRef.current = selectedAsset
+    selectedToolRef.current = selectedTool
+  }, [selectedAsset, selectedTool])
+
+  // Debug: Track component mount/unmount
+  useEffect(() => {
+    console.log('🟢 GridCanvasThree MOUNTED')
+    return () => {
+      console.log('🔴 GridCanvasThree UNMOUNTED - THIS IS THE PROBLEM!')
+    }
+  }, [])
 
   // Load assets when component mounts
   useEffect(() => {
@@ -322,12 +557,45 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
       try {
         const { listAssets } = await import('~/lib/assetClient')
         const loadedAssets = await listAssets({ mode: 'grid' })
-        const primaryAssets = loadedAssets
-          .filter((asset) => asset.meta?.palette === 'primary')
+        
+        console.log('🔍 GridCanvasThree: Loaded assets:', loadedAssets)
+        
+        // Ensure loadedAssets is an array
+        if (!Array.isArray(loadedAssets)) {
+          console.warn('⚠️ GridCanvasThree: Assets not loaded as array:', loadedAssets)
+          setAssets([])
+          return
+        }
+        
+        console.log(`📦 GridCanvasThree: Total assets: ${loadedAssets.length}`)
+        
+        // Show all grid assets - be very lenient
+        const gridAssets = loadedAssets
+          .filter((asset) => {
+            if (!asset) return false
+            // If no meta, still include it (might be valid)
+            if (!asset.meta) {
+              console.log('⚠️ GridCanvasThree: Asset without meta:', asset.name)
+              return true // Include it anyway
+            }
+            const tags = Array.isArray(asset.meta.tags) ? asset.meta.tags : []
+            const assetMode = asset.meta.mode || ''
+            // Very lenient: include if has grid tag, grid mode, OR no mode restriction
+            const result = tags.includes('grid') || assetMode === 'grid' || !assetMode
+            if (!result) {
+              console.log(`⏭️ GridCanvasThree: Skipping ${asset.name} - tags: ${tags.join(', ')}, mode: ${assetMode}`)
+            }
+            return result
+          })
           .sort((a, b) => a.name.localeCompare(b.name))
-        setAssets(primaryAssets)
+        
+        console.log(`✅ GridCanvasThree: Filtered to ${gridAssets.length} grid assets`)
+        console.log('📋 GridCanvasThree: Assets:', gridAssets.map(a => a.name))
+        
+        setAssets(gridAssets)
       } catch (err) {
-        console.warn('Failed to load assets:', err)
+        console.error('❌ GridCanvasThree: Failed to load assets:', err)
+        setAssets([]) // Set empty array on error
       }
     }
     loadAssets()
@@ -335,7 +603,11 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
 
   // When asset is selected
   const handleAssetSelect = (asset: Asset | null) => {
-    setSelectedAsset(asset)
+    if (onAssetSelect) {
+      onAssetSelect(asset)
+    } else {
+      setLocalSelectedAsset(asset)
+    }
     if (asset) {
       const objectType = assetToObjectType(asset) as ObjectType
       if (objectType) {
@@ -412,28 +684,49 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
     const existingObject = getObjectAt(gridX, gridY)
     const existingAgent = getAgentAt(gridX, gridY)
 
+    // If clicking on existing object/agent, select it but KEEP asset selection for potential replacement
     if (existingObject) {
       selectObject(existingObject.id)
+      // Don't clear asset selection - user might want to replace it or place more
+      console.log('📌 Selected existing object, asset selection persists:', selectedAsset?.name, 'selectedTool:', selectedTool)
       return
     }
 
     if (existingAgent) {
       selectAgent(existingAgent.id)
+      // Don't clear asset selection - user might want to replace it or place more
+      console.log('📌 Selected existing agent, asset selection persists:', selectedAsset?.name, 'selectedTool:', selectedTool)
       return
     }
 
     // Place new object or agent using selected asset or hardcoded tool
     const worldPos = gridToWorld(gridX, gridY)
 
+    console.log('🎯 handleCellClick - selectedAsset:', selectedAsset?.name, 'selectedTool:', selectedTool)
+
     // Use selected tool (from hardcoded palette) or asset
+    // Use refs to ensure we have the latest values even if state hasn't updated yet
+    const currentSelectedTool = selectedToolRef.current || selectedTool
+    const currentSelectedAsset = selectedAssetRef.current || selectedAsset
+    
     let objectType: ObjectType | 'agent' | null = null
-    if (selectedTool) {
-      objectType = selectedTool
-    } else if (selectedAsset) {
-      objectType = assetToObjectType(selectedAsset) as ObjectType
+    if (currentSelectedTool) {
+      objectType = currentSelectedTool
+      console.log('✅ Using selectedTool:', currentSelectedTool)
+    } else if (currentSelectedAsset) {
+      objectType = assetToObjectType(currentSelectedAsset) as ObjectType
+      console.log('✅ Using selectedAsset, converted to objectType:', objectType, 'asset:', currentSelectedAsset.name)
     }
 
-    if (!objectType) return
+    if (!objectType) {
+      // No asset/tool selected - open asset selector to help user
+      console.warn('⚠️ No objectType available - selectedAsset:', selectedAsset?.name, 'selectedTool:', selectedTool)
+      if (!selectedAsset && !selectedTool) {
+        console.log('📂 Opening asset selector...')
+        setShowAssetSelector(true)
+      }
+      return
+    }
 
     if (objectType === 'agent') {
       // Remove existing agent if placing new one
@@ -442,16 +735,21 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         sceneGraph.removeAgent(agents[0].id)
       }
       sceneGraph.addAgent('Agent', worldPos, { type: 'grid-step' })
+      // Asset selection persists - user can place multiple agents
+      console.log('✅ Placed agent, selectedAsset still:', selectedAsset?.name)
     } else if (objectType) {
       sceneGraph.addObject(
         objectType,
         worldPos,
         { type: 'rect', width: cellSize, height: cellSize },
-        selectedAsset ? { assetId: selectedAsset._id } : {} // Store asset reference if available
+        currentSelectedAsset ? { assetId: currentSelectedAsset._id } : {} // Store asset reference if available
       )
+      // Asset selection persists - user can place multiple objects
+      console.log('✅ Placed object, selectedAsset still:', currentSelectedAsset?.name, 'state:', selectedAsset?.name)
     }
 
     onSpecChange(sceneGraph.getSpec())
+    // CRITICAL: selectedAsset and selectedTool remain set - user can keep placing multiple instances!
   }
 
   const handleCellRightClick = (e: any, gridX: number, gridY: number) => {
@@ -472,17 +770,77 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
     }
   }
 
-  return (
-    <div className="h-full flex flex-col">
-      {/* Asset Palette from Backend */}
-      <AssetPalette
-        mode="grid"
-        selectedAssetId={selectedAsset?._id}
-        onSelectAsset={handleAssetSelect}
-        className="bg-card"
-      />
+  // Debug: Log state on every render
+  useEffect(() => {
+    console.log('🔄 GridCanvasThree render - selectedAsset:', selectedAsset?.name, 'selectedTool:', selectedTool, 'showAssetSelector:', showAssetSelector, 'assets.length:', assets.length)
+  })
 
-      {/* Fallback Hardcoded Tool Palette (temporary) */}
+  // CRITICAL: Ensure button is always visible - add explicit check
+  const buttonShouldBeVisible = true // Always true - button should never disappear
+
+  // Ensure button is always rendered - never conditionally hide it
+  const renderAssetButton = () => {
+    console.log('🎨 Rendering asset button - selectedAsset:', selectedAsset?.name)
+    return (
+      <button
+        onClick={() => {
+          console.log('🖱️ Asset button clicked, current selectedAsset:', selectedAsset?.name, 'ref:', selectedAssetRef.current?.name)
+          setShowAssetSelector(true)
+        }}
+        className={`px-4 py-2 rounded text-sm border transition-all flex items-center gap-2 ${
+          selectedAsset
+            ? 'border-primary bg-primary text-primary-foreground shadow-md'
+            : 'border-border hover:bg-muted'
+        }`}
+        title={selectedAsset ? `Selected: ${selectedAsset.name} - Click to change or place more` : 'Select an asset to place'}
+        style={{ 
+          minWidth: '120px',
+          visibility: 'visible',
+          opacity: 1,
+          display: 'flex',
+          position: 'relative',
+          zIndex: 1001,
+          pointerEvents: 'auto'
+        }}
+      >
+            {selectedAsset ? (
+              <>
+                <span
+                  className="inline-block w-3 h-3 rounded"
+                  style={{ 
+                    backgroundColor: selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af' 
+                  }}
+                />
+                <span>{selectedAsset.name}</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>Select Asset</span>
+              </>
+            )}
+      </button>
+    )
+  }
+
+  return (
+    <div className="h-full flex flex-col" style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Minimal status bar - asset selection is now in Layers panel */}
+      {selectedAsset && (
+        <div className="p-1.5 border-b border-border bg-card text-xs text-muted-foreground flex items-center gap-2">
+          <span
+            className="inline-block w-2.5 h-2.5 rounded"
+            style={{ 
+              backgroundColor: selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af' 
+            }}
+          />
+          <span>Selected: {selectedAsset.name} - Click empty cells to place</span>
+        </div>
+      )}
+
+      {/* Fallback Hardcoded Tool Palette (temporary - only show if no assets available) */}
       {assets.length === 0 && (
         <div className="p-2 border-b border-border flex gap-2 flex-wrap bg-card">
           {TOOL_PALETTE.map((tool) => (
@@ -509,12 +867,25 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         </div>
       )}
 
+      {/* Asset Selector Modal */}
+      {showAssetSelector && (
+        <AssetSelector
+          mode="grid"
+          selectedAssetId={selectedAsset?._id}
+          onSelect={(asset) => {
+            handleAssetSelect(asset)
+            setShowAssetSelector(false)
+          }}
+          onClose={() => setShowAssetSelector(false)}
+        />
+      )}
+
       {/* 3D Canvas */}
-      <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" style={{ zIndex: 1 }}>
         <Canvas
           shadows
           gl={{ antialias: true, alpha: false }}
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: '100%', height: '100%', position: 'relative', zIndex: 1 }}
         >
           <PerspectiveCamera
             makeDefault

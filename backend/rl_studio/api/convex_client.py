@@ -65,74 +65,108 @@ class ConvexClient:
 
     def query(self, path: str, args: Dict[str, Any] = None) -> Any:
         """
-        Call a Convex query via HTTP action wrapper
+        Call a Convex query via standard HTTP API endpoint
         
         Args:
-            path: Function path (e.g., "assets/list" for HTTP route or "assets:list" for direct)
+            path: Function path in format "module:function" (e.g., "assets:list")
             args: Query arguments
             
         Returns:
-            Query result
+            Query result, or empty list on error
         """
         try:
-            # Try HTTP route first (if path contains /, it's already a route path)
+            # Ensure path is in "module:function" format
             if '/' in path:
-                route_path = path
+                # Convert "assets/list" to "assets:list"
+                api_path = path.replace('/', ':')
             else:
-                # Convert "assets:list" to "assets/list" for HTTP route
-                route_path = path.replace(':', '/')
+                api_path = path
             
+            # Log the request for debugging
+            request_payload = {"path": api_path, "args": args or {}}
+            logger.info(f"📤 Calling Convex query: {api_path} with args: {args or {}}")
+            
+            # Use Convex standard HTTP API endpoint
             response = requests.post(
-                f"{self.convex_url}/api/{route_path}",
-                json=args or {},
+                f"{self.convex_url}/api/query",
+                json=request_payload,
                 headers={"Content-Type": "application/json"},
                 timeout=10,
             )
-            response.raise_for_status()
+            
+            # Check response status before parsing
+            if response.status_code != 200:
+                logger.error(f"❌ Convex query returned status {response.status_code} for {api_path}")
+                logger.error(f"Response text: {response.text[:500]}")
+                return []
+            
             result = response.json()
-            # Handle Convex HTTP action response format
-            if isinstance(result, dict) and "value" in result:
-                return result["value"]
+            logger.info(f"📥 Convex response status: {result.get('status', 'unknown')}, keys: {list(result.keys())}")
+            
+            # Convex HTTP API wraps responses in {"status": "success", "value": <actual_result>}
+            # or {"status": "error", "errorMessage": "..."}
+            if isinstance(result, dict):
+                if result.get("status") == "error":
+                    error_msg = result.get("errorMessage", result.get("error", "Unknown error"))
+                    error_data = result.get("errorData", {})
+                    logger.error(f"❌ Convex query returned error for {api_path}: {error_msg}")
+                    logger.error(f"Full error response: {result}")
+                    if error_data:
+                        logger.error(f"Error data: {error_data}")
+                    return []
+                elif result.get("status") == "success":
+                    # Extract the actual value from the success response
+                    actual_result = result.get("value")
+                    logger.info(f"✅ Convex query success for {api_path}, extracted {len(actual_result) if isinstance(actual_result, list) else 'non-list'} items")
+                    return actual_result if actual_result is not None else []
+                # If it's a dict but not a known status, might be the actual data (backward compatibility)
+                # But for list queries, we expect arrays, so return empty list
+                if api_path.endswith(":list") or api_path.endswith("/list"):
+                    logger.warning(f"Convex list query returned unexpected dict for {api_path}: {result}")
+                    return []
+            
             return result
         except requests.exceptions.HTTPError as e:
-            if e.response and e.response.status_code == 404:
-                # HTTP route not found - this means HTTP routes aren't working
-                # This is expected if HTTP routes aren't deployed properly
-                logger.error(f"Convex HTTP route not found: /api/{route_path}. HTTP routes may not be deployed.")
-                raise
-            logger.error(f"Convex query failed: {path} - {e}")
-            raise
+            status_code = e.response.status_code if e.response else None
+            if status_code == 404:
+                logger.debug(f"Convex query not found: {api_path}")
+                return []
+            logger.debug(f"Convex query HTTP error ({status_code}): {api_path}")
+            return []
         except requests.exceptions.RequestException as e:
-            logger.error(f"Convex query failed: {path} - {e}")
-            raise
+            logger.debug(f"Convex query network error: {api_path} - {e}")
+            return []
 
     def mutation(self, path: str, args: Dict[str, Any] = None) -> Any:
         """
-        Call a Convex mutation via HTTP action wrapper
+        Call a Convex mutation via standard HTTP API endpoint
         
         Args:
-            path: Function path (e.g., "scenes:create")
+            path: Function path in format "module:function" (e.g., "scenes:create")
             args: Mutation arguments
             
         Returns:
             Mutation result
         """
         try:
-            # Use HTTP route endpoint
+            # Ensure path is in "module:function" format
+            if '/' in path:
+                api_path = path.replace('/', ':')
+            else:
+                api_path = path
+            
+            # Use Convex standard HTTP API endpoint
             response = requests.post(
-                f"{self.convex_url}/api/{path}",
-                json=args or {},
+                f"{self.convex_url}/api/mutation",
+                json={"path": api_path, "args": args or {}},
                 headers={"Content-Type": "application/json"},
                 timeout=10,
             )
             response.raise_for_status()
             result = response.json()
-            # Handle Convex HTTP action response format
-            if isinstance(result, dict) and "value" in result:
-                return result["value"]
             return result
         except requests.exceptions.RequestException as e:
-            logger.error(f"Convex mutation failed: {path} - {e}")
+            logger.error(f"Convex mutation failed: {api_path} - {e}")
             raise
 
     def action(self, path: str, args: Dict[str, Any] = None) -> Any:

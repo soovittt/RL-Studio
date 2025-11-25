@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { EnvSpec } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 
@@ -9,7 +9,7 @@ interface TrainingVisualizationProps {
   readonly?: boolean
 }
 
-export function TrainingVisualization({ 
+export const TrainingVisualization = memo(function TrainingVisualization({ 
   envSpec, 
   agentPosition, 
   agentId,
@@ -205,5 +205,5 @@ export function TrainingVisualization({
       Visualization for {envSpec.envType} environment coming soon
     </div>
   )
-}
+})
 

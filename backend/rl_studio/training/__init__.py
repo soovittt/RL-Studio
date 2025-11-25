@@ -29,6 +29,9 @@ def _lazy_import_algorithms():
 # Always import orchestrator (lightweight, no heavy deps)
 from .orchestrator import launch_training_job, get_job_status, get_job_logs, stop_job
 
+# Import experiment tracking (lightweight)
+from .experiment_tracking import ExperimentTracker, create_tracker
+
 # Lazy getters for heavy imports
 def get_RLTrainer():
     RLTrainer, _ = _lazy_import_trainer()
@@ -56,4 +59,6 @@ __all__ = [
     'launch_training_job',
     'get_job_status',
     'stop_job',
+    'ExperimentTracker',
+    'create_tracker',
 ]

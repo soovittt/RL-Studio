@@ -135,37 +135,44 @@ function StructureMode({ envSpec, onSpecChange, selectedObjectId }: StudioProper
           <div className="flex gap-2">
             <input
               type="number"
-              value={envSpec?.stateSpace?.shape?.[0] || 10}
+              min="1"
+              max="100"
+              value={envSpec?.world?.width || 10}
               onChange={(e) => {
                 const width = parseInt(e.target.value) || 10
                 onSpecChange({
                   ...envSpec,
-                  stateSpace: {
-                    ...envSpec?.stateSpace,
-                    shape: [width, envSpec?.stateSpace?.shape?.[1] || 10],
+                  world: {
+                    ...envSpec?.world,
+                    width: Math.max(1, Math.min(100, width)),
                   },
                 })
               }}
-              className="w-full px-2 py-1 border border-border rounded text-sm"
+              className="w-full px-2 py-1 border border-input rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Width"
             />
             <input
               type="number"
-              value={envSpec?.stateSpace?.shape?.[1] || 10}
+              min="1"
+              max="100"
+              value={envSpec?.world?.height || 10}
               onChange={(e) => {
                 const height = parseInt(e.target.value) || 10
                 onSpecChange({
                   ...envSpec,
-                  stateSpace: {
-                    ...envSpec?.stateSpace,
-                    shape: [envSpec?.stateSpace?.shape?.[0] || 10, height],
+                  world: {
+                    ...envSpec?.world,
+                    height: Math.max(1, Math.min(100, height)),
                   },
                 })
               }}
-              className="w-full px-2 py-1 border border-border rounded text-sm"
+              className="w-full px-2 py-1 border border-input rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Height"
             />
           </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Grid dimensions (1-100 cells)
+          </p>
         </div>
 
         <div>

@@ -1,64 +1,110 @@
 """
-Infrastructure setup and health check endpoints
+Infrastructure Configuration API
+Provides endpoints for checking and managing infrastructure configuration.
 """
-from fastapi import APIRouter
-from typing import Dict, Any
-import logging
 
-logger = logging.getLogger(__name__)
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Dict, Any, Optional
+from ..utils.infrastructure_config import get_infrastructure_config
 
-router = APIRouter()
+router = APIRouter(prefix="/api/infrastructure", tags=["infrastructure"])
 
 
-@router.get("/api/infrastructure/setup")
-async def setup_infrastructure_endpoint():
+class InfrastructureStatusResponse(BaseModel):
+    storage: Dict[str, Any]
+    compute: Dict[str, Any]
+    summary: str
+
+
+@router.get("/status")
+async def get_infrastructure_status():
     """
-    Endpoint to set up infrastructure (SkyPilot + AWS).
-    Can be called from frontend to ensure infrastructure is ready.
-    """
-    try:
-        from ..training.aws_setup import setup_infrastructure
-        
-        result = setup_infrastructure()
-        
-        return {
-            "success": result.get("skypilot_installed", False) and result.get("aws_configured", False),
-            "skypilot_installed": result.get("skypilot_installed", False),
-            "aws_configured": result.get("aws_configured", False),
-            "aws_accessible": result.get("aws_accessible", False),
-            "errors": result.get("errors", []),
-            "warnings": result.get("warnings", []),
-        }
-    except Exception as e:
-        logger.error(f"Infrastructure setup failed: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-        }
-
-
-@router.get("/api/infrastructure/status")
-async def infrastructure_status():
-    """
-    Check infrastructure status without making changes.
+    Get current infrastructure configuration status.
+    Shows which providers are configured and what's missing.
     """
     try:
-        from ..training.aws_setup import verify_aws_setup
+        config = get_infrastructure_config()
+        summary = config.get_config_summary()
         
-        result = verify_aws_setup()
+        # Build human-readable summary
+        storage_valid = summary["storage"]["valid"]
+        compute_valid = summary["compute"]["valid"]
+        
+        if storage_valid and compute_valid:
+            summary_text = "✅ All infrastructure configured"
+        elif storage_valid:
+            summary_text = "⚠️ Storage configured, compute not configured"
+        elif compute_valid:
+            summary_text = "⚠️ Compute configured, storage not configured"
+        else:
+            summary_text = "⚠️ Using local storage and compute (no cloud configured)"
+        
+        return InfrastructureStatusResponse(
+            storage=summary["storage"],
+            compute=summary["compute"],
+            summary=summary_text
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/validate")
+async def validate_infrastructure():
+    """
+    Validate infrastructure configuration.
+    Returns detailed validation results.
+    """
+    try:
+        config = get_infrastructure_config()
+        
+        storage_valid, storage_error = config.validate_storage_config()
+        compute_valid, compute_error = config.validate_compute_config()
         
         return {
-            "skypilot_installed": result.get("skypilot_installed", False),
-            "aws_configured": result.get("aws_configured", False),
-            "aws_accessible": result.get("aws_accessible", False),
-            "errors": result.get("errors", []),
+            "storage": {
+                "valid": storage_valid,
+                "error": storage_error,
+                "provider": config.storage_provider,
+            },
+            "compute": {
+                "valid": compute_valid,
+                "error": compute_error,
+                "provider": config.compute_provider,
+            },
+            "all_valid": storage_valid and compute_valid,
         }
     except Exception as e:
-        logger.error(f"Infrastructure status check failed: {e}", exc_info=True)
-        return {
-            "skypilot_installed": False,
-            "aws_configured": False,
-            "aws_accessible": False,
-            "error": str(e),
-        }
+        raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/config")
+async def get_infrastructure_config_endpoint():
+    """
+    Get current infrastructure configuration (without sensitive data).
+    """
+    try:
+        config = get_infrastructure_config()
+        summary = config.get_config_summary()
+        
+        # Remove sensitive data
+        safe_summary = {
+            "storage": {
+                "provider": summary["storage"]["provider"],
+                "valid": summary["storage"]["valid"],
+                "config": {k: v for k, v in summary["storage"]["config"].items() 
+                          if "key" not in k.lower() and "secret" not in k.lower() 
+                          and "password" not in k.lower()}
+            },
+            "compute": {
+                "provider": summary["compute"]["provider"],
+                "valid": summary["compute"]["valid"],
+                "config": {k: v for k, v in summary["compute"]["config"].items() 
+                          if "key" not in k.lower() and "secret" not in k.lower() 
+                          and "password" not in k.lower()}
+            }
+        }
+        
+        return safe_summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

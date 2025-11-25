@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rl-studio-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - CONVEX_URL=${CONVEX_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - S3_BUCKET=${S3_BUCKET}
+      - GCS_BUCKET=${GCS_BUCKET}
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - rl-studio-network
+
+  # Frontend Service (Development)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: rl-studio-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_CONVEX_URL=${VITE_CONVEX_URL}
+      - VITE_ROLLOUT_SERVICE_URL=http://backend:8000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - rl-studio-network
+
+  # Redis (for caching and rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: rl-studio-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - rl-studio-network
+    command: redis-server --appendonly yes
+
+volumes:
+  backend_data:
+  redis_data:
+
+networks:
+  rl-studio-network:
+    driver: bridge
+
