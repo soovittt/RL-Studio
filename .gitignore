@@ -162,6 +162,8 @@ wheels/
 push-personal.sh
 push.sh
 *personal*.sh
+.github_token
+*.token
 
 # Local environment files (keep .env.example)
 .env
