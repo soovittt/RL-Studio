@@ -5,7 +5,7 @@ Scene/Environment GraphQL resolvers
 import strawberry
 import json
 from typing import List, Optional
-from ..types.scene import Scene, CreateSceneInput, UpdateSceneInput, CreateSceneVersionInput, SceneFilter
+from ..types.scene import Scene, SceneVersion, CreateSceneInput, UpdateSceneInput, CreateSceneVersionInput, SceneFilter
 from ....api.convex_client import get_client
 
 
@@ -37,10 +37,11 @@ class SceneResolver:
                 scenes.append(Scene(
                     id=item.get("_id", ""),
                     name=item.get("name", ""),
-                    env_spec=json.dumps(item.get("envSpec", {})),
+                    env_spec=item.get("envSpec", {}),  # JSON scalar, no need to dumps
                     created_at=item.get("_creationTime"),
                     updated_at=item.get("_creationTime"),
                     created_by=item.get("createdBy"),
+                    project_id=item.get("projectId"),
                 ))
             
             # Apply filters
@@ -75,10 +76,11 @@ class SceneResolver:
             return Scene(
                 id=result.get("_id", ""),
                 name=result.get("name", ""),
-                env_spec=json.dumps(result.get("envSpec", {})),
+                env_spec=result.get("envSpec", {}),  # JSON scalar, no need to dumps
                 created_at=result.get("_creationTime"),
                 updated_at=result.get("_creationTime"),
                 created_by=result.get("createdBy"),
+                project_id=result.get("projectId"),
             )
         except Exception as e:
             import logging
@@ -93,8 +95,8 @@ class SceneResolver:
             from ....api.scenes import create_scene as rest_create_scene
             from ....api.models import CreateSceneRequest
             
-            # Parse environment_settings if provided
-            environment_settings = json.loads(input.environment_settings) if input.environment_settings else {}
+            # environment_settings is already a dict (JSON scalar)
+            environment_settings = input.environment_settings if input.environment_settings else {}
             
             # Create request object
             request = CreateSceneRequest(
@@ -128,8 +130,8 @@ class SceneResolver:
             from ....api.scenes import update_scene as rest_update_scene
             from ....api.models import UpdateSceneRequest
             
-            # Parse environment_settings if provided
-            environment_settings = json.loads(input.environment_settings) if input.environment_settings else None
+            # environment_settings is already a dict (JSON scalar)
+            environment_settings = input.environment_settings if input.environment_settings else None
             
             # Create request object
             request = UpdateSceneRequest(
@@ -155,16 +157,16 @@ class SceneResolver:
             raise
     
     @strawberry.mutation
-    async def create_scene_version(self, scene_id: str, input: CreateSceneVersionInput) -> dict:
+    async def create_scene_version(self, scene_id: str, input: CreateSceneVersionInput) -> SceneVersion:
         """Create a new scene version"""
         try:
             # Import REST API function
-            from ....api.scenes import create_scene_version as rest_create_scene_version
+            from ....api.scenes import create_scene_version as rest_create_scene_version, get_scene_version as rest_get_scene_version
             from ....api.models import CreateSceneVersionRequest, SceneGraph, RLConfig
             
-            # Parse JSON strings
-            scene_graph_dict = json.loads(input.scene_graph)
-            rl_config_dict = json.loads(input.rl_config)
+            # scene_graph and rl_config are already dicts (JSON scalars)
+            scene_graph_dict = input.scene_graph if isinstance(input.scene_graph, dict) else json.loads(input.scene_graph)
+            rl_config_dict = input.rl_config if isinstance(input.rl_config, dict) else json.loads(input.rl_config)
             
             # Create Pydantic models
             scene_graph = SceneGraph(**scene_graph_dict)
@@ -179,14 +181,46 @@ class SceneResolver:
             
             # Call REST API function
             result = await rest_create_scene_version(scene_id, request)
-            return result
+            
+            # Fetch the created version to get full details
+            # The result should have version info, but we need to query Convex for full version
+            client = get_client()
+            if client:
+                # Get the latest version number for this scene
+                versions = client.query("scenes/listVersions", {"sceneId": scene_id})
+                if versions:
+                    latest_version = max(versions, key=lambda v: v.get("versionNumber", 0))
+                    version_number = latest_version.get("versionNumber", 1)
+                    
+                    # Get full version details
+                    version_data = await rest_get_scene_version(scene_id, version_number)
+                    if version_data:
+                        return SceneVersion(
+                            id=latest_version.get("_id", result.get("id", "")),
+                            scene_id=scene_id,
+                            version_number=version_number,
+                            scene_graph=version_data.get("sceneGraph", {}),
+                            rl_config=version_data.get("rlConfig", {}),
+                            created_by=input.created_by,
+                            created_at=latest_version.get("_creationTime"),
+                        )
+            
+            # Fallback if we can't fetch full details
+            return SceneVersion(
+                id=result.get("id", ""),
+                scene_id=scene_id,
+                version_number=1,  # Default, should be fetched from Convex
+                scene_graph=scene_graph_dict,
+                rl_config=rl_config_dict,
+                created_by=input.created_by,
+            )
         except Exception as e:
             import logging
             logging.error(f"Error creating scene version: {e}", exc_info=True)
             raise
     
     @strawberry.field
-    async def scene_version(self, scene_id: str, version_number: int) -> Optional[dict]:
+    async def scene_version(self, scene_id: str, version_number: int) -> Optional[SceneVersion]:
         """Get a specific scene version"""
         try:
             # Import REST API function
@@ -194,22 +228,68 @@ class SceneResolver:
             
             # Call REST API function
             result = await rest_get_scene_version(scene_id, version_number)
-            return result
+            if not result:
+                return None
+            
+            # Get version metadata from Convex
+            client = get_client()
+            if client:
+                version_meta = client.query("scenes/getVersion", {
+                    "sceneId": scene_id,
+                    "versionNumber": version_number,
+                })
+                if version_meta:
+                    return SceneVersion(
+                        id=version_meta.get("_id", ""),
+                        scene_id=scene_id,
+                        version_number=version_number,
+                        scene_graph=result.get("sceneGraph", {}),
+                        rl_config=result.get("rlConfig", {}),
+                        created_by=version_meta.get("createdBy"),
+                        created_at=version_meta.get("_creationTime"),
+                    )
+            
+            # Fallback if metadata not available
+            return SceneVersion(
+                id="",
+                scene_id=scene_id,
+                version_number=version_number,
+                scene_graph=result.get("sceneGraph", {}),
+                rl_config=result.get("rlConfig", {}),
+            )
         except Exception as e:
             import logging
             logging.error(f"Error getting scene version: {e}", exc_info=True)
             return None
     
     @strawberry.field
-    async def scene_versions(self, scene_id: str) -> List[dict]:
+    async def scene_versions(self, scene_id: str) -> List[SceneVersion]:
         """List all versions for a scene"""
         try:
             # Import REST API function
-            from ....api.scenes import list_scene_versions as rest_list_scene_versions
+            from ....api.scenes import list_scene_versions as rest_list_scene_versions, get_scene_version as rest_get_scene_version
             
             # Call REST API function
             result = await rest_list_scene_versions(scene_id)
-            return result.get("versions", [])
+            versions_data = result.get("versions", [])
+            
+            # Convert to GraphQL types
+            scene_versions = []
+            for version_meta in versions_data:
+                # Get full version details
+                version_details = await rest_get_scene_version(scene_id, version_meta.get("versionNumber", 0))
+                if version_details:
+                    scene_versions.append(SceneVersion(
+                        id=version_meta.get("_id", ""),
+                        scene_id=scene_id,
+                        version_number=version_meta.get("versionNumber", 0),
+                        scene_graph=version_details.get("sceneGraph", {}),
+                        rl_config=version_details.get("rlConfig", {}),
+                        created_by=version_meta.get("createdBy"),
+                        created_at=version_meta.get("_creationTime"),
+                    ))
+            
+            return scene_versions
         except Exception as e:
             import logging
             logging.error(f"Error listing scene versions: {e}", exc_info=True)
