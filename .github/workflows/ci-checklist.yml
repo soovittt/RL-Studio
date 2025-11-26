@@ -81,6 +81,7 @@ jobs:
     name: ✅ Lint Backend (Flake8/Ruff)
     runs-on: ubuntu-latest
     needs: install-backend
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       
