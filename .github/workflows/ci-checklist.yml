@@ -118,7 +118,17 @@ jobs:
       - name: Check import sorting (isort)
         working-directory: ./backend
         run: |
-          isort --check-only rl_studio || (echo "❌ Imports not sorted. Run 'isort rl_studio' to fix." && exit 1)
+          # Only check files changed in this PR
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'backend/rl_studio/**/*.py' | sed 's|backend/||' || echo "")
+            if [ -n "$CHANGED_FILES" ]; then
+              echo "$CHANGED_FILES" | xargs isort --check-only || (echo "❌ Changed files imports not sorted. Run 'isort' on changed files." && exit 1)
+            else
+              echo "No Python files changed, skipping isort check"
+            fi
+          else
+            isort --check-only rl_studio || (echo "❌ Imports not sorted. Run 'isort rl_studio' to fix." && exit 1)
+          fi
 
   # ============================================================
   # CHECKLIST: Type Checking

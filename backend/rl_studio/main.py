@@ -2,13 +2,14 @@
 RL Studio Backend API - Main Application
 """
 import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api.routes import router as api_router
-from .api.health import router as health_router
 from .api.graphql import graphql_router
+from .api.health import router as health_router
+from .api.routes import router as api_router
 from .utils.cors_config import get_cors_config
 
 # Configure logging
