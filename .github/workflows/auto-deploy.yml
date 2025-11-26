@@ -1,0 +1,219 @@
+name: Auto Deploy on Merge to Master
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  # Detect what changed
+  detect-changes:
+    name: 🔍 Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      backend: ${{ steps.changes.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit to compare
+      
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^(app/|public/|package\.json|package-lock\.json|vite\.config\.ts|tsconfig\.json|Dockerfile\.frontend|nginx\.conf|cloudbuild-frontend\.yaml|\.github/workflows/auto-deploy\.yml)'; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend changes detected"
+          else
+            echo "frontend=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No frontend changes"
+          fi
+          
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^(backend/|training/)'; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend changes detected"
+          else
+            echo "backend=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No backend changes"
+          fi
+
+  # Deploy Frontend
+  deploy-frontend:
+    name: 🚀 Deploy Frontend to GCP
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    environment:
+      name: production
+      url: https://rl-studio-frontend-290319355713.us-central1.run.app
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure gcloud
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud config set run/region us-central1
+      
+      - name: Build and deploy frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+          VITE_ROLLOUT_SERVICE_URL: ${{ secrets.VITE_ROLLOUT_SERVICE_URL }}
+          VITE_TRAINING_SERVICE_URL: ${{ secrets.VITE_TRAINING_SERVICE_URL }}
+        run: |
+          echo "🚀 Building and deploying frontend..."
+          
+          # Build Docker image with Cloud Build
+          BUILD_ID=$(gcloud builds submit . \
+              --config=cloudbuild-frontend.yaml \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --substitutions=_VITE_API_URL=$VITE_API_URL,_VITE_CONVEX_URL=$VITE_CONVEX_URL,_VITE_ROLLOUT_SERVICE_URL=$VITE_ROLLOUT_SERVICE_URL,_VITE_TRAINING_SERVICE_URL=$VITE_TRAINING_SERVICE_URL \
+              --format="value(id)")
+          
+          echo "Build ID: $BUILD_ID"
+          
+          # Wait for build to complete
+          echo "⏳ Waiting for build to complete..."
+          gcloud builds wait $BUILD_ID --project=${{ secrets.GCP_PROJECT_ID }}
+          
+          # Deploy to Cloud Run
+          echo "🚀 Deploying to Cloud Run..."
+          gcloud run deploy rl-studio-frontend \
+              --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/rl-studio-frontend:latest \
+              --region us-central1 \
+              --allow-unauthenticated \
+              --platform managed \
+              --memory 1Gi \
+              --cpu 1 \
+              --timeout 300 \
+              --max-instances 10 \
+              --min-instances 0 \
+              --concurrency 80 \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --set-env-vars "VITE_API_URL=$VITE_API_URL,VITE_CONVEX_URL=$VITE_CONVEX_URL,VITE_ROLLOUT_SERVICE_URL=$VITE_ROLLOUT_SERVICE_URL,VITE_TRAINING_SERVICE_URL=$VITE_TRAINING_SERVICE_URL"
+          
+          echo "✅ Frontend deployed successfully!"
+
+  # Deploy Backend
+  deploy-backend:
+    name: 🚀 Deploy Backend to GCP
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    environment:
+      name: production
+      url: https://rl-studio-backend-290319355713.us-central1.run.app
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure gcloud
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud config set run/region us-central1
+      
+      - name: Build and deploy backend
+        working-directory: ./backend
+        env:
+          CONVEX_URL: ${{ secrets.CONVEX_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+        run: |
+          echo "🚀 Building and deploying backend..."
+          
+          # Build Docker image
+          IMAGE_NAME="gcr.io/${{ secrets.GCP_PROJECT_ID }}/rl-studio-backend:latest"
+          
+          docker build -t $IMAGE_NAME .
+          
+          # Push to GCR
+          docker push $IMAGE_NAME
+          
+          # Deploy to Cloud Run
+          echo "🚀 Deploying to Cloud Run..."
+          gcloud run deploy rl-studio-backend \
+              --image $IMAGE_NAME \
+              --region us-central1 \
+              --allow-unauthenticated \
+              --platform managed \
+              --memory 2Gi \
+              --cpu 2 \
+              --timeout 300 \
+              --max-instances 10 \
+              --min-instances 0 \
+              --concurrency 80 \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --set-env-vars "CONVEX_URL=$CONVEX_URL,OPENAI_API_KEY=$OPENAI_API_KEY,AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION,CORS_ORIGINS=$CORS_ORIGINS"
+          
+          echo "✅ Backend deployed successfully!"
+
+  # Deployment summary
+  deployment-summary:
+    name: 📋 Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-frontend, deploy-backend]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.detect-changes.outputs.frontend }}" == "true" ]; then
+            if [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
+              echo "| Frontend | ✅ Deployed |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Frontend | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Frontend | ⏭️  Skipped (no changes) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.detect-changes.outputs.backend }}" == "true" ]; then
+            if [ "${{ needs.deploy-backend.result }}" == "success" ]; then
+              echo "| Backend | ✅ Deployed |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Backend | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Backend | ⏭️  Skipped (no changes) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** https://rl-studio-frontend-290319355713.us-central1.run.app" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend URL:** https://rl-studio-backend-290319355713.us-central1.run.app" >> $GITHUB_STEP_SUMMARY
+
