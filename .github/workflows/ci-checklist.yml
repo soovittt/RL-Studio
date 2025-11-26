@@ -105,8 +105,12 @@ jobs:
         run: |
           # Only check files changed in this PR
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'backend/rl_studio/**/*.py' | sed 's|backend/||' || echo "")
+            # Fetch base branch to compare against
+            git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} 2>/dev/null || true
+            CHANGED_FILES=$(git diff --name-only ${{ github.base_ref }}...HEAD -- 'rl_studio/**/*.py' 2>/dev/null || echo "")
             if [ -n "$CHANGED_FILES" ]; then
+              echo "Checking changed files:"
+              echo "$CHANGED_FILES"
               echo "$CHANGED_FILES" | xargs black --check || (echo "❌ Changed files not formatted. Run 'black' on changed files." && exit 1)
             else
               echo "No Python files changed, skipping black check"
@@ -120,8 +124,12 @@ jobs:
         run: |
           # Only check files changed in this PR
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'backend/rl_studio/**/*.py' | sed 's|backend/||' || echo "")
+            # Fetch base branch to compare against
+            git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} 2>/dev/null || true
+            CHANGED_FILES=$(git diff --name-only ${{ github.base_ref }}...HEAD -- 'rl_studio/**/*.py' 2>/dev/null || echo "")
             if [ -n "$CHANGED_FILES" ]; then
+              echo "Checking changed files:"
+              echo "$CHANGED_FILES"
               echo "$CHANGED_FILES" | xargs isort --check-only || (echo "❌ Changed files imports not sorted. Run 'isort' on changed files." && exit 1)
             else
               echo "No Python files changed, skipping isort check"
