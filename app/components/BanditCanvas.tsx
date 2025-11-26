@@ -1,4 +1,4 @@
-import { useState } from 'react'
+// useState removed - not used
 
 interface BanditCanvasProps {
   envSpec: any
