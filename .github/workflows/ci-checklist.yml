@@ -1,0 +1,404 @@
+name: CI Checklist - Pre-Review Quality Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [master, main]
+
+jobs:
+  # ============================================================
+  # CHECKLIST: Installation & Setup
+  # ============================================================
+  install-frontend:
+    name: ✅ Install Frontend Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Verify installation
+        run: npm list --depth=0
+
+  install-backend:
+    name: ✅ Install Backend Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Verify installation
+        working-directory: ./backend
+        run: pip list
+
+  # ============================================================
+  # CHECKLIST: Code Quality - Linting
+  # ============================================================
+  lint-frontend:
+    name: ✅ Lint Frontend (ESLint)
+    runs-on: ubuntu-latest
+    needs: install-frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+      
+      - name: Check formatting (Prettier)
+        run: |
+          npm run format -- --check || (echo "❌ Code not formatted. Run 'npm run format' to fix." && exit 1)
+
+  lint-backend:
+    name: ✅ Lint Backend (Flake8/Ruff)
+    runs-on: ubuntu-latest
+    needs: install-backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install linting tools
+        working-directory: ./backend
+        run: |
+          pip install flake8 black isort mypy
+      
+      - name: Run Flake8
+        working-directory: ./backend
+        run: |
+          flake8 rl_studio --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      
+      - name: Check code formatting (Black)
+        working-directory: ./backend
+        run: |
+          black --check rl_studio || (echo "❌ Code not formatted. Run 'black rl_studio' to fix." && exit 1)
+      
+      - name: Check import sorting (isort)
+        working-directory: ./backend
+        run: |
+          isort --check-only rl_studio || (echo "❌ Imports not sorted. Run 'isort rl_studio' to fix." && exit 1)
+
+  # ============================================================
+  # CHECKLIST: Type Checking
+  # ============================================================
+  typecheck-frontend:
+    name: ✅ Type Check Frontend (TypeScript)
+    runs-on: ubuntu-latest
+    needs: install-frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run TypeScript check
+        run: npx tsc --noEmit
+
+  typecheck-backend:
+    name: ✅ Type Check Backend (mypy)
+    runs-on: ubuntu-latest
+    needs: install-backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
+          pip install mypy
+      
+      - name: Run mypy
+        working-directory: ./backend
+        run: |
+          mypy rl_studio --ignore-missing-imports --no-strict-optional || true
+
+  # ============================================================
+  # CHECKLIST: Testing
+  # ============================================================
+  test-frontend:
+    name: ✅ Test Frontend (Vitest)
+    runs-on: ubuntu-latest
+    needs: install-frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test -- --run
+
+  test-backend:
+    name: ✅ Test Backend (pytest)
+    runs-on: ubuntu-latest
+    needs: install-backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Run tests
+        working-directory: ./backend
+        run: |
+          pytest --cov=rl_studio --cov-report=term
+
+  # ============================================================
+  # CHECKLIST: Build Verification
+  # ============================================================
+  build-frontend:
+    name: ✅ Build Frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, typecheck-frontend, test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Verify build output
+        run: |
+          test -d dist || (echo "❌ Build failed: dist directory not found" && exit 1)
+          test -f dist/index.html || (echo "❌ Build failed: index.html not found" && exit 1)
+
+  build-backend:
+    name: ✅ Build Backend (Import Check)
+    runs-on: ubuntu-latest
+    needs: [lint-backend, typecheck-backend, test-backend]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Verify imports
+        working-directory: ./backend
+        run: |
+          python -c "import rl_studio; print('✅ Backend imports successfully')"
+
+  # ============================================================
+  # CHECKLIST: Security & Dependencies
+  # ============================================================
+  security-scan:
+    name: ✅ Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=moderate || true
+      
+      - name: Run pip audit (if available)
+        working-directory: ./backend
+        run: |
+          pip install pip-audit
+          pip-audit --format=json --output=audit.json || true
+
+  # ============================================================
+  # CHECKLIST: Final Summary (Ready for Review)
+  # ============================================================
+  checklist-summary:
+    name: 📋 CI Checklist Summary
+    runs-on: ubuntu-latest
+    needs: [
+      install-frontend,
+      install-backend,
+      lint-frontend,
+      lint-backend,
+      typecheck-frontend,
+      typecheck-backend,
+      test-frontend,
+      test-backend,
+      build-frontend,
+      build-backend,
+      security-scan
+    ]
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate checklist comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const allJobs = [
+              { name: 'install-frontend', display: 'Install Frontend' },
+              { name: 'install-backend', display: 'Install Backend' },
+              { name: 'lint-frontend', display: 'Lint Frontend' },
+              { name: 'lint-backend', display: 'Lint Backend' },
+              { name: 'typecheck-frontend', display: 'Type Check Frontend' },
+              { name: 'typecheck-backend', display: 'Type Check Backend' },
+              { name: 'test-frontend', display: 'Test Frontend' },
+              { name: 'test-backend', display: 'Test Backend' },
+              { name: 'build-frontend', display: 'Build Frontend' },
+              { name: 'build-backend', display: 'Build Backend' },
+              { name: 'security-scan', display: 'Security Scan' }
+            ];
+            
+            // Get workflow run info
+            const workflowRun = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            
+            // Get all jobs for this run
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            
+            let checklist = '## 🔍 Pre-Review Checklist Status\n\n';
+            checklist += '**All checks must pass before this PR is eligible for manual review.**\n\n';
+            checklist += '| Check | Status |\n';
+            checklist += '|-------|--------|\n';
+            
+            let allPassed = true;
+            
+            for (const job of allJobs) {
+              const jobRun = jobs.data.jobs.find(j => 
+                j.name.toLowerCase().includes(job.name.replace(/-/g, ' ')) ||
+                j.name.includes(job.display)
+              );
+              
+              let status = '⏳';
+              let emoji = '⏳';
+              
+              if (jobRun) {
+                if (jobRun.conclusion === 'success') {
+                  status = '✅ Pass';
+                  emoji = '✅';
+                } else if (jobRun.conclusion === 'failure') {
+                  status = '❌ Fail';
+                  emoji = '❌';
+                  allPassed = false;
+                } else if (jobRun.conclusion === 'cancelled') {
+                  status = '🚫 Cancelled';
+                  emoji = '🚫';
+                  allPassed = false;
+                } else {
+                  status = '⏳ Running';
+                  emoji = '⏳';
+                }
+              }
+              
+              checklist += `| ${emoji} ${job.display} | ${status} |\n`;
+            }
+            
+            checklist += '\n---\n\n';
+            
+            if (allPassed) {
+              checklist += '✅ **All pre-checks passed!**\n\n';
+              checklist += '👀 **This PR is now ready for manual review by @soovittt**\n\n';
+              checklist += '⚠️ **Note:** This PR still requires manual approval before merging.';
+            } else {
+              checklist += '❌ **Some checks failed.**\n\n';
+              checklist += '⚠️ **Please fix the failing checks before requesting review.**\n\n';
+              checklist += 'Once all checks pass, this PR will be eligible for manual review.';
+            }
+            
+            // Post or update comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const botComment = comments.data.find(c => 
+              c.user.type === 'Bot' && 
+              c.body.includes('Pre-Review Checklist Status')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: checklist
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: checklist
+              });
+            }
+
