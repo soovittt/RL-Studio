@@ -20,6 +20,7 @@
     }
   },
   "include": ["app", "vite.config.ts", "vite-env.d.ts", "convex/_generated"],
+  "exclude": ["node_modules", "dist", "**/*.d.ts", "vite.config.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
 
