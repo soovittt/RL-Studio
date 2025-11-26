@@ -20,6 +20,7 @@ services:
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-s3}
       - S3_BUCKET=${S3_BUCKET}
       - GCS_BUCKET=${GCS_BUCKET}
+      - CORS_ORIGINS=${CORS_ORIGINS}
     volumes:
       - backend_data:/app/data
     restart: always

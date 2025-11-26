@@ -167,6 +167,20 @@ push.sh
 .github_token
 *.token
 
+# GCP Service Account Keys (NEVER commit these!)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.node.json
+!vitest.config.ts
+!vite.config.ts
+lens-ai-*.json
+*-bb5022190f65.json
+*service*account*.json
+*gcp*.json
+*google*.json
+
 # Local environment files (keep .env.example)
 .env
 .env.local
