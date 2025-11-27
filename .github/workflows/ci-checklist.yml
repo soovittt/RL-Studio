@@ -3,7 +3,8 @@ name: CI Checklist - Pre-Review Quality Gate
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  push:
+
+jobs:
     branches: [master, main]
 
 jobs:
