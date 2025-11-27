@@ -5,9 +5,6 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-    branches: [master, main]
-
-jobs:
   # ============================================================
   # CHECKLIST: Installation & Setup
   # ============================================================
@@ -82,7 +79,6 @@ jobs:
     name: ✅ Lint Backend (Flake8/Ruff)
     runs-on: ubuntu-latest
     needs: install-backend
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       
@@ -105,70 +101,12 @@ jobs:
       - name: Check code formatting (Black)
         working-directory: ./backend
         run: |
-          # Only check files changed in this PR
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            # Use GitHub's PR file detection (more reliable)
-            # First, ensure we have the base branch
-            git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
-            
-            # Get changed Python files - use full path from repo root
-            CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD | grep '^backend/rl_studio/.*\.py$' | sed 's|^backend/||' || echo "")
-            
-            if [ -z "$CHANGED_FILES" ]; then
-              echo "No Python files changed in backend, skipping black check"
-              exit 0
-            fi
-            
-            echo "Changed Python files to check:"
-            echo "$CHANGED_FILES"
-            echo ""
-            
-            # Check only changed files
-            echo "$CHANGED_FILES" | xargs -r black --check || {
-              echo "❌ Changed files not formatted. Run 'black' on changed files."
-              echo "Files that need formatting:"
-              echo "$CHANGED_FILES" | xargs black --check --diff 2>&1 || true
-              exit 1
-            }
-            echo "✅ All changed files are properly formatted"
-          else
-            # For push events (master/main), check everything
-            black --check rl_studio || (echo "❌ Code not formatted. Run 'black rl_studio' to fix." && exit 1)
-          fi
+          black --check rl_studio || (echo "❌ Code not formatted. Run 'black rl_studio' to fix." && exit 1)
       
       - name: Check import sorting (isort)
         working-directory: ./backend
         run: |
-          # Only check files changed in this PR
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            # Use GitHub's PR file detection (more reliable)
-            # First, ensure we have the base branch
-            git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
-            
-            # Get changed Python files - use full path from repo root
-            CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD | grep '^backend/rl_studio/.*\.py$' | sed 's|^backend/||' || echo "")
-            
-            if [ -z "$CHANGED_FILES" ]; then
-              echo "No Python files changed in backend, skipping isort check"
-              exit 0
-            fi
-            
-            echo "Changed Python files to check:"
-            echo "$CHANGED_FILES"
-            echo ""
-            
-            # Check only changed files
-            echo "$CHANGED_FILES" | xargs -r isort --check-only || {
-              echo "❌ Changed files imports not sorted. Run 'isort' on changed files."
-              echo "Files that need sorting:"
-              echo "$CHANGED_FILES" | xargs isort --check-only --diff 2>&1 || true
-              exit 1
-            }
-            echo "✅ All changed files have properly sorted imports"
-          else
-            # For push events (master/main), check everything
-            isort --check-only rl_studio || (echo "❌ Imports not sorted. Run 'isort rl_studio' to fix." && exit 1)
-          fi
+          isort --check-only rl_studio || (echo "❌ Imports not sorted. Run 'isort rl_studio' to fix." && exit 1)
 
   # ============================================================
   # CHECKLIST: Type Checking
@@ -260,9 +198,8 @@ jobs:
       
       - name: Run tests
         working-directory: ./backend
-        continue-on-error: true
         run: |
-          pytest --cov=rl_studio --cov-report=term || echo "⚠️  Some tests failed (may be pre-existing issues)"
+          pytest --cov=rl_studio --cov-report=term
 
   # ============================================================
   # CHECKLIST: Build Verification
@@ -358,9 +295,7 @@ jobs:
       
       - name: Generate checklist comment
         uses: actions/github-script@v7
-        continue-on-error: true
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const allJobs = [
               { name: 'install-frontend', display: 'Install Frontend' },
@@ -439,38 +374,31 @@ jobs:
               checklist += 'Once all checks pass, this PR will be eligible for manual review.';
             }
             
-            // Post or update comment (gracefully handle permission errors)
-            try {
-              const comments = await github.rest.issues.listComments({
+            // Post or update comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const botComment = comments.data.find(c => 
+              c.user.type === 'Bot' && 
+              c.body.includes('Pre-Review Checklist Status')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number
+                comment_id: botComment.id,
+                body: checklist
               });
-              
-              const botComment = comments.data.find(c => 
-                c.user.type === 'Bot' && 
-                c.body.includes('Pre-Review Checklist Status')
-              );
-              
-              if (botComment) {
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: checklist
-                });
-              } else {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: checklist
-                });
-              }
-            } catch (error) {
-              // Permission error - workflow doesn't have write access to comments
-              // This is OK, the checks still ran successfully
-              console.log('⚠️ Could not post comment (permission issue, but checks passed)');
-              console.log('Check status:', allPassed ? '✅ All passed' : '❌ Some failed');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: checklist
+              });
             }
 
