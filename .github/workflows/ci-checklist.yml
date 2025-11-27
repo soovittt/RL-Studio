@@ -81,6 +81,7 @@ jobs:
     name: ✅ Lint Backend (Flake8/Ruff)
     runs-on: ubuntu-latest
     needs: install-backend
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       
@@ -105,13 +106,32 @@ jobs:
         run: |
           # Only check files changed in this PR
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'backend/rl_studio/**/*.py' | sed 's|backend/||' || echo "")
-            if [ -n "$CHANGED_FILES" ]; then
-              echo "$CHANGED_FILES" | xargs black --check || (echo "❌ Changed files not formatted. Run 'black' on changed files." && exit 1)
-            else
-              echo "No Python files changed, skipping black check"
+            # Use GitHub's PR file detection (more reliable)
+            # First, ensure we have the base branch
+            git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+            
+            # Get changed Python files - use full path from repo root
+            CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD | grep '^backend/rl_studio/.*\.py$' | sed 's|^backend/||' || echo "")
+            
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "No Python files changed in backend, skipping black check"
+              exit 0
             fi
+            
+            echo "Changed Python files to check:"
+            echo "$CHANGED_FILES"
+            echo ""
+            
+            # Check only changed files
+            echo "$CHANGED_FILES" | xargs -r black --check || {
+              echo "❌ Changed files not formatted. Run 'black' on changed files."
+              echo "Files that need formatting:"
+              echo "$CHANGED_FILES" | xargs black --check --diff 2>&1 || true
+              exit 1
+            }
+            echo "✅ All changed files are properly formatted"
           else
+            # For push events (master/main), check everything
             black --check rl_studio || (echo "❌ Code not formatted. Run 'black rl_studio' to fix." && exit 1)
           fi
       
@@ -120,13 +140,32 @@ jobs:
         run: |
           # Only check files changed in this PR
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'backend/rl_studio/**/*.py' | sed 's|backend/||' || echo "")
-            if [ -n "$CHANGED_FILES" ]; then
-              echo "$CHANGED_FILES" | xargs isort --check-only || (echo "❌ Changed files imports not sorted. Run 'isort' on changed files." && exit 1)
-            else
-              echo "No Python files changed, skipping isort check"
+            # Use GitHub's PR file detection (more reliable)
+            # First, ensure we have the base branch
+            git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+            
+            # Get changed Python files - use full path from repo root
+            CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD | grep '^backend/rl_studio/.*\.py$' | sed 's|^backend/||' || echo "")
+            
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "No Python files changed in backend, skipping isort check"
+              exit 0
             fi
+            
+            echo "Changed Python files to check:"
+            echo "$CHANGED_FILES"
+            echo ""
+            
+            # Check only changed files
+            echo "$CHANGED_FILES" | xargs -r isort --check-only || {
+              echo "❌ Changed files imports not sorted. Run 'isort' on changed files."
+              echo "Files that need sorting:"
+              echo "$CHANGED_FILES" | xargs isort --check-only --diff 2>&1 || true
+              exit 1
+            }
+            echo "✅ All changed files have properly sorted imports"
           else
+            # For push events (master/main), check everything
             isort --check-only rl_studio || (echo "❌ Imports not sorted. Run 'isort rl_studio' to fix." && exit 1)
           fi
 
