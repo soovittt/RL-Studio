@@ -6,6 +6,42 @@ on:
 
 jobs:
   # ============================================================
+  # Detect what changed
+  # ============================================================
+  detect-changes:
+    name: 🔍 Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      workflow-only: ${{ steps.changes.outputs.workflow-only }}
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Detect changes
+        id: changes
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+          CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD || echo "")
+          
+          if echo "$CHANGED_FILES" | grep -qE '^(backend/|training/)'; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend changes detected"
+          else
+            echo "backend=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No backend changes"
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -qE '^\.github/workflows/' && ! echo "$CHANGED_FILES" | grep -qvE '^\.github/workflows/'; then
+            echo "workflow-only=true" >> $GITHUB_OUTPUT
+            echo "✅ Only workflow files changed"
+          else
+            echo "workflow-only=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================
   # CHECKLIST: Installation & Setup
   # ============================================================
   install-frontend:
@@ -78,7 +114,8 @@ jobs:
   lint-backend:
     name: ✅ Lint Backend (Flake8/Ruff)
     runs-on: ubuntu-latest
-    needs: install-backend
+    needs: [install-backend, detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.workflow-only != 'true'
     steps:
       - uses: actions/checkout@v4
       
