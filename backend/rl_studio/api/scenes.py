@@ -10,8 +10,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
 
 from .convex_client import get_client
-from .models import (CreateSceneRequest, CreateSceneVersionRequest, RLConfig,
-                     SceneGraph, UpdateSceneRequest)
+from .models import (
+    CreateSceneRequest,
+    CreateSceneVersionRequest,
+    RLConfig,
+    SceneGraph,
+    UpdateSceneRequest,
+)
 
 logger = logging.getLogger(__name__)
 
