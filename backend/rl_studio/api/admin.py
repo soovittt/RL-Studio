@@ -1,6 +1,7 @@
 """
 Admin endpoints for maintenance
 """
+
 import logging
 
 from fastapi import APIRouter

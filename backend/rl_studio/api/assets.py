@@ -1,6 +1,7 @@
 """
 Asset/Library Service - CRUD operations for assets
 """
+
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -20,6 +21,7 @@ router = APIRouter()
 # NOTE: REST HTTP endpoints have been REMOVED - use GraphQL instead
 # GraphQL endpoint: POST /graphql with query/mutation
 # These functions are kept for internal use by GraphQL resolvers
+
 
 # Removed: @router.get("", ...) - use GraphQL query { assets(...) }
 async def list_assets(

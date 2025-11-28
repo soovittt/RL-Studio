@@ -49,9 +49,11 @@ class TrainingMetricsCallback(BaseCallback):
                             "step": self.num_timesteps,
                             "reward": self.current_episode_reward,
                             "episode_length": self.current_episode_length,
-                            "mean_reward": np.mean(self.episode_rewards[-100:])
-                            if self.episode_rewards
-                            else 0,
+                            "mean_reward": (
+                                np.mean(self.episode_rewards[-100:])
+                                if self.episode_rewards
+                                else 0
+                            ),
                         }
                     )
 
@@ -224,12 +226,14 @@ class RLStudioEnv(gym.Env):
 
         obs = self._get_observation()
         info = {
-            "episode": {
-                "r": self.state.get("totalReward", 0.0),
-                "l": self.state.get("step", 0),
-            }
-            if done
-            else None,
+            "episode": (
+                {
+                    "r": self.state.get("totalReward", 0.0),
+                    "l": self.state.get("step", 0),
+                }
+                if done
+                else None
+            ),
             "state": self.state,
         }
 
@@ -470,9 +474,9 @@ class RLTrainer:
             "median_reward": float(np.median(rewards_array)),
             "mean_length": float(np.mean(lengths_array)),
             "std_length": float(np.std(lengths_array)),
-            "success_rate": float(np.mean(episode_successes))
-            if episode_successes
-            else 0.0,
+            "success_rate": (
+                float(np.mean(episode_successes)) if episode_successes else 0.0
+            ),
             "episode_rewards": [float(r) for r in episode_rewards],
             "episode_lengths": [int(l) for l in episode_lengths],
             "episode_successes": episode_successes,

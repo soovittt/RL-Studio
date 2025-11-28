@@ -2,6 +2,7 @@
 Verification script to test the Figma-style world builder setup
 Checks that all services, endpoints, and data are properly configured
 """
+
 import logging
 import os
 import sys

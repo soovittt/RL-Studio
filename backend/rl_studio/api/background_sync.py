@@ -2,6 +2,7 @@
 Background task to periodically sync SkyPilot logs and status to Convex.
 This ensures researchers have access to real-time training logs and metadata.
 """
+
 import logging
 import os
 import time
@@ -49,9 +50,9 @@ def sync_run_metadata_to_convex(run_id: str, job_id: str, convex_url: str) -> bo
             max_log_size = 50000
             if len(logs) > max_log_size:
                 logs = logs[-max_log_size:]
-                updates[
-                    "skyPilotLogs"
-                ] = f"... (truncated, showing last {max_log_size} chars)\n{logs}"
+                updates["skyPilotLogs"] = (
+                    f"... (truncated, showing last {max_log_size} chars)\n{logs}"
+                )
             else:
                 updates["skyPilotLogs"] = logs
 

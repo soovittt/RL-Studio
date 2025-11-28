@@ -2,6 +2,7 @@
 AWS Infrastructure Setup for SkyPilot
 Automatically configures AWS credentials from .env file
 """
+
 import json
 import logging
 import os
@@ -283,8 +284,6 @@ def setup_infrastructure() -> Dict[str, Any]:
             logger.info("✅ AWS access verified - ready for GPU training!")
         else:
             result["warnings"].extend(verify_result.get("errors", []))
-            logger.warning(
-                "⚠️  AWS access verification failed. Check your credentials."
-            )
+            logger.warning("⚠️  AWS access verification failed. Check your credentials.")
 
     return result

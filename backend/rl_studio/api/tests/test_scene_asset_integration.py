@@ -2,6 +2,7 @@
 Integration tests for Scene + Asset integration
 Tests entity-based placement with asset references
 """
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

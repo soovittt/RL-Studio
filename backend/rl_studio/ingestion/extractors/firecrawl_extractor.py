@@ -460,9 +460,11 @@ class FirecrawlExtractor(BaseExtractor):
         return {
             "envType": env_type,
             "name": "Imported Environment",
-            "description": scrape_data.get("markdown", "")[:500]
-            if isinstance(scrape_data.get("markdown"), str)
-            else "",
+            "description": (
+                scrape_data.get("markdown", "")[:500]
+                if isinstance(scrape_data.get("markdown"), str)
+                else ""
+            ),
             "world": {
                 "coordinateSystem": "grid" if env_type == "grid" else "cartesian",
                 "width": dims["width"],

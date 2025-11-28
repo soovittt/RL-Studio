@@ -49,9 +49,11 @@ class RewardCrediting:
                     "min": np.min(contributions),
                     "max": np.max(contributions),
                     "fire_count": self.rule_fire_counts[rule_id],
-                    "fire_rate": self.rule_fire_counts[rule_id] / len(self.step_rewards)
-                    if self.step_rewards
-                    else 0,
+                    "fire_rate": (
+                        self.rule_fire_counts[rule_id] / len(self.step_rewards)
+                        if self.step_rewards
+                        else 0
+                    ),
                 }
 
         # Most active rules (by fire count)
@@ -138,12 +140,12 @@ class RewardAnalyzer:
         # Aggregate statistics
         aggregate = {
             "num_episodes": len(rollouts),
-            "mean_episode_reward": np.mean(self.episode_rewards)
-            if self.episode_rewards
-            else 0,
-            "std_episode_reward": np.std(self.episode_rewards)
-            if self.episode_rewards
-            else 0,
+            "mean_episode_reward": (
+                np.mean(self.episode_rewards) if self.episode_rewards else 0
+            ),
+            "std_episode_reward": (
+                np.std(self.episode_rewards) if self.episode_rewards else 0
+            ),
             "rule_consistency": self._analyze_rule_consistency(all_analyses),
             "top_termination_causes": self._get_top_termination_causes(rollouts),
         }
@@ -194,11 +196,11 @@ class RewardAnalyzer:
             consistency[rule_id] = {
                 "mean_fire_rate": np.mean(rates),
                 "std_fire_rate": np.std(rates),
-                "consistency": "high"
-                if np.std(rates) < 0.1
-                else "medium"
-                if np.std(rates) < 0.3
-                else "low",
+                "consistency": (
+                    "high"
+                    if np.std(rates) < 0.1
+                    else "medium" if np.std(rates) < 0.3 else "low"
+                ),
             }
 
         return consistency

@@ -1,6 +1,7 @@
 """
 Scene Service - CRUD operations for scenes and scene versions
 """
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 # NOTE: REST HTTP endpoints have been REMOVED - use GraphQL instead
 # GraphQL endpoint: POST /graphql with query/mutation
 # These functions are kept for internal use by GraphQL resolvers
+
 
 # Removed: @router.get("/{scene_id}", ...) - use GraphQL query { scene(id: "...") }
 async def get_scene(scene_id: str):

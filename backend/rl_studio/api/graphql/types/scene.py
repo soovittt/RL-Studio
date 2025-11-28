@@ -42,9 +42,9 @@ class CreateSceneInput:
     name: str
     description: Optional[str] = None
     mode: str
-    environment_settings: Optional[
-        strawberry.scalars.JSON
-    ] = None  # Changed to JSON scalar
+    environment_settings: Optional[strawberry.scalars.JSON] = (
+        None  # Changed to JSON scalar
+    )
     created_by: Optional[str] = None
 
 
@@ -55,9 +55,9 @@ class UpdateSceneInput:
     name: Optional[str] = None
     description: Optional[str] = None
     mode: Optional[str] = None
-    environment_settings: Optional[
-        strawberry.scalars.JSON
-    ] = None  # Changed to JSON scalar
+    environment_settings: Optional[strawberry.scalars.JSON] = (
+        None  # Changed to JSON scalar
+    )
     project_id: Optional[str] = None
 
 

@@ -2,6 +2,7 @@
 API endpoints for code generation using GPT
 Generates production-ready code based on actual environment configuration
 """
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -19,7 +20,9 @@ router = APIRouter(prefix="/api/codegen", tags=["codegen"])
 
 class GenerateCodeRequest(BaseModel):
     env_spec: Dict[str, Any]
-    file_type: str  # "environment", "training", "config", "skypilot", "readme", "env_spec"
+    file_type: (
+        str  # "environment", "training", "config", "skypilot", "readme", "env_spec"
+    )
     training_config: Optional[Dict[str, Any]] = None
     algorithm: Optional[str] = "ppo"
 
@@ -290,9 +293,9 @@ async def generate_all_files(request: GenerateCodeRequest):
         files = {}
 
         # Generate environment code
-        files[
-            f"{env_spec.get('name', 'env').replace(' ', '_').lower()}_env.py"
-        ] = generator.generate_environment_code(env_spec, training_config)
+        files[f"{env_spec.get('name', 'env').replace(' ', '_').lower()}_env.py"] = (
+            generator.generate_environment_code(env_spec, training_config)
+        )
 
         # Generate training code
         files["train.py"] = generator.generate_training_code(

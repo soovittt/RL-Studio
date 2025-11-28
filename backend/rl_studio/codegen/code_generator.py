@@ -2,6 +2,7 @@
 GPT-based code generator for RL Studio
 Generates production-ready code that matches actual simulator logic
 """
+
 import json
 import logging
 import os
@@ -310,13 +311,17 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
         }
 
         return {
-            "reward_logic": "\n".join(reward_logic)
-            if reward_logic
-            else "reward = 0.0 (no reward rules)",
+            "reward_logic": (
+                "\n".join(reward_logic)
+                if reward_logic
+                else "reward = 0.0 (no reward rules)"
+            ),
             "reward_calculation": "Iterate through env_spec['rules']['rewards'], evaluate each condition, sum reward values",
-            "termination_logic": "\n".join(termination_logic)
-            if terminations
-            else "terminated = False (no termination rules)",
+            "termination_logic": (
+                "\n".join(termination_logic)
+                if terminations
+                else "terminated = False (no termination rules)"
+            ),
             "termination_check": "Check all termination rules + auto goal detection + max_steps timeout",
             "action_dynamics": action_dynamics,
             "action_space": action_space,

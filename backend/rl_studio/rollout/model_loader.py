@@ -250,11 +250,11 @@ def run_rollout_with_model(
             "steps": steps,
             "totalReward": state.get("totalReward", 0),
             "episodeLength": state.get("step", 0),
-            "terminationReason": "goal_reached"
-            if success
-            else "max_steps"
-            if state["step"] >= max_steps
-            else "unknown",
+            "terminationReason": (
+                "goal_reached"
+                if success
+                else "max_steps" if state["step"] >= max_steps else "unknown"
+            ),
         }
 
     except Exception as e:

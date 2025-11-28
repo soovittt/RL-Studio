@@ -1,6 +1,7 @@
 """
 Pytest configuration and fixtures for API tests
 """
+
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional

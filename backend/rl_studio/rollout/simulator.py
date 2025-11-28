@@ -3,6 +3,7 @@ RL Rollout Simulator
 Python implementation matching the TypeScript universalSimulator
 Supports grid and continuous 2D environments
 """
+
 import math
 import random
 from typing import Any, Callable, Dict, List, Literal, Optional
@@ -741,9 +742,7 @@ def select_greedy_action_for_agent(
         preferred_action = (
             "right"
             if dx > 0
-            else "left"
-            if abs(dx) >= 0.1
-            else ("up" if dy > 0 else "down")
+            else "left" if abs(dx) >= 0.1 else ("up" if dy > 0 else "down")
         )
     else:
         if world["coordinateSystem"] == "grid":
@@ -1145,7 +1144,7 @@ def run_rollout(
         "totalReward": state["totalReward"],
         "episodeLength": state["step"],
         "success": success,
-        "terminationReason": state["info"]["events"][-1]
-        if state["info"]["events"]
-        else None,
+        "terminationReason": (
+            state["info"]["events"][-1] if state["info"]["events"] else None
+        ),
     }

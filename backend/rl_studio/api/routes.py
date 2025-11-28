@@ -1,6 +1,7 @@
 """
 API route handlers
 """
+
 import asyncio
 import logging
 import os
@@ -60,6 +61,7 @@ router.include_router(ingestion_router)
 # NOTE: HTTP rollout endpoint has been REMOVED - use GraphQL instead
 # GraphQL endpoint: POST /graphql with mutation { runRollout(...) }
 # WebSocket endpoint (/ws/rollout) is kept as GraphQL doesn't support WebSocket subscriptions
+
 
 # Removed: @router.post("/api/rollout", ...) - use GraphQL mutation { runRollout(...) }
 # Function kept for potential internal use
@@ -316,6 +318,7 @@ async def run_rollout_websocket(websocket: WebSocket):
 # NOTE: Training REST endpoints have been REMOVED - use GraphQL instead
 # GraphQL endpoint: POST /graphql with mutation { launchTraining(...) }
 
+
 # Removed: @router.post("/api/training/launch", ...) - use GraphQL mutation { launchTraining(...) }
 # Function kept for potential internal use
 async def launch_training(request: LaunchJobRequest):
@@ -429,7 +432,9 @@ async def launch_training(request: LaunchJobRequest):
             return LaunchJobResponse(success=True, jobId=job_id)
         except Exception as job_error:
             error_msg = str(job_error)
-            logger.error(f"❌ Failed to launch training job: {error_msg}", exc_info=True)
+            logger.error(
+                f"❌ Failed to launch training job: {error_msg}", exc_info=True
+            )
             return LaunchJobResponse(
                 success=False, error=f"Failed to launch training job: {error_msg}"
             )

@@ -152,12 +152,12 @@ class EnvSpecBuilder:
                 "dynamics": agent.get(
                     "dynamics",
                     {
-                        "type": "grid-step"
-                        if env_type == "grid"
-                        else "continuous-velocity",
-                        "maxSpeed": agent.get("maxSpeed", 1.0)
-                        if env_type != "grid"
-                        else None,
+                        "type": (
+                            "grid-step" if env_type == "grid" else "continuous-velocity"
+                        ),
+                        "maxSpeed": (
+                            agent.get("maxSpeed", 1.0) if env_type != "grid" else None
+                        ),
                     },
                 ),
                 "sensors": agent.get("sensors", []),

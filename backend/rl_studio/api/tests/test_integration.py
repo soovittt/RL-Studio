@@ -2,6 +2,7 @@
 Integration tests for full workflow: create scene → save → load → compile
 Tests the complete flow of creating a scene, saving it, loading it, and compiling it.
 """
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

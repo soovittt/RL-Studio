@@ -95,9 +95,11 @@ class RewardRuleVerifier:
                 issues.append(
                     {
                         "type": "unreachable_reward",
-                        "rule_id": goal_rules[0].get("id", "unknown")
-                        if goal_rules
-                        else "unknown",
+                        "rule_id": (
+                            goal_rules[0].get("id", "unknown")
+                            if goal_rules
+                            else "unknown"
+                        ),
                         "message": "Goals may be unreachable (greedy policy couldn't reach them in 100 steps)",
                     }
                 )

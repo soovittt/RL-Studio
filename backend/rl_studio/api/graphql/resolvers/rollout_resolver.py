@@ -100,9 +100,11 @@ class RolloutResolver:
                         action=step.get("action"),
                         reward=step.get("reward", 0.0),
                         done=step.get("done", False),
-                        info=json.dumps(step.get("info", {}))
-                        if step.get("info")
-                        else None,
+                        info=(
+                            json.dumps(step.get("info", {}))
+                            if step.get("info")
+                            else None
+                        ),
                     )
                 )
 

@@ -1,6 +1,7 @@
 """
 Template Service - List templates and instantiate them into scenes
 """
+
 import copy
 import logging
 from typing import List, Optional

@@ -56,21 +56,31 @@ class AssetResolver:
                         id=item.get("_id", ""),
                         name=item.get("name", ""),
                         asset_type=item.get("assetTypeKey", ""),
-                        geometry=json.dumps(item.get("geometry", {}))
-                        if item.get("geometry")
-                        else None,
-                        visual_profile=json.dumps(item.get("visualProfile", {}))
-                        if item.get("visualProfile")
-                        else None,
-                        physics_profile=json.dumps(item.get("physicsProfile", {}))
-                        if item.get("physicsProfile")
-                        else None,
-                        behavior_profile=json.dumps(item.get("behaviorProfile", {}))
-                        if item.get("behaviorProfile")
-                        else None,
-                        meta=json.dumps(item.get("meta", {}))
-                        if item.get("meta")
-                        else None,
+                        geometry=(
+                            json.dumps(item.get("geometry", {}))
+                            if item.get("geometry")
+                            else None
+                        ),
+                        visual_profile=(
+                            json.dumps(item.get("visualProfile", {}))
+                            if item.get("visualProfile")
+                            else None
+                        ),
+                        physics_profile=(
+                            json.dumps(item.get("physicsProfile", {}))
+                            if item.get("physicsProfile")
+                            else None
+                        ),
+                        behavior_profile=(
+                            json.dumps(item.get("behaviorProfile", {}))
+                            if item.get("behaviorProfile")
+                            else None
+                        ),
+                        meta=(
+                            json.dumps(item.get("meta", {}))
+                            if item.get("meta")
+                            else None
+                        ),
                         created_at=item.get("_creationTime"),
                         updated_at=item.get("_creationTime"),
                     )
@@ -111,18 +121,26 @@ class AssetResolver:
                 id=result.get("_id", ""),
                 name=result.get("name", ""),
                 asset_type=result.get("assetTypeKey", ""),
-                geometry=json.dumps(result.get("geometry", {}))
-                if result.get("geometry")
-                else None,
-                visual_profile=json.dumps(result.get("visualProfile", {}))
-                if result.get("visualProfile")
-                else None,
-                physics_profile=json.dumps(result.get("physicsProfile", {}))
-                if result.get("physicsProfile")
-                else None,
-                behavior_profile=json.dumps(result.get("behaviorProfile", {}))
-                if result.get("behaviorProfile")
-                else None,
+                geometry=(
+                    json.dumps(result.get("geometry", {}))
+                    if result.get("geometry")
+                    else None
+                ),
+                visual_profile=(
+                    json.dumps(result.get("visualProfile", {}))
+                    if result.get("visualProfile")
+                    else None
+                ),
+                physics_profile=(
+                    json.dumps(result.get("physicsProfile", {}))
+                    if result.get("physicsProfile")
+                    else None
+                ),
+                behavior_profile=(
+                    json.dumps(result.get("behaviorProfile", {}))
+                    if result.get("behaviorProfile")
+                    else None
+                ),
                 meta=json.dumps(result.get("meta", {})) if result.get("meta") else None,
                 created_at=result.get("_creationTime"),
                 updated_at=result.get("_creationTime"),

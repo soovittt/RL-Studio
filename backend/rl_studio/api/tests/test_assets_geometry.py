@@ -2,6 +2,7 @@
 Comprehensive tests for Asset geometry field
 Tests edge cases, validation, and all geometry-related operations
 """
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

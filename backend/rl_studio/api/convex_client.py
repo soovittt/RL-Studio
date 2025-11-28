@@ -2,6 +2,7 @@
 Convex HTTP client for backend services
 Allows Python backend to call Convex queries and mutations
 """
+
 import logging
 import os
 from typing import Any, Dict, Optional

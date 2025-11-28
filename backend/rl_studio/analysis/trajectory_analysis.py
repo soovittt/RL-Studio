@@ -184,9 +184,9 @@ class TrajectoryAnalyzer:
         return {
             "detected": detected,
             "oscillation_count": oscillation_count,
-            "oscillation_rate": oscillation_count / len(trajectory)
-            if trajectory
-            else 0.0,
+            "oscillation_rate": (
+                oscillation_count / len(trajectory) if trajectory else 0.0
+            ),
             "oscillation_score": float(oscillation_score),
         }
 

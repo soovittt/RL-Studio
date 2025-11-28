@@ -2,6 +2,7 @@
 CORS Configuration Module
 Centralized CORS configuration with validation and environment-based settings
 """
+
 import logging
 import os
 from typing import List, Optional

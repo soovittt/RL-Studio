@@ -2,6 +2,7 @@
 Edge case tests for Asset Service
 Tests error handling, validation, and edge cases
 """
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

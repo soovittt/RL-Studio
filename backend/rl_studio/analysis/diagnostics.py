@@ -67,12 +67,12 @@ class RLDiagnostics:
 
         return {
             "heatmap": heatmap.tolist(),
-            "min_value": float(np.min(heatmap[counts > 0]))
-            if np.any(counts > 0)
-            else 0,
-            "max_value": float(np.max(heatmap[counts > 0]))
-            if np.any(counts > 0)
-            else 0,
+            "min_value": (
+                float(np.min(heatmap[counts > 0])) if np.any(counts > 0) else 0
+            ),
+            "max_value": (
+                float(np.max(heatmap[counts > 0])) if np.any(counts > 0) else 0
+            ),
             "grid_size": grid_size,
         }
 
@@ -120,16 +120,22 @@ class RLDiagnostics:
                 "max": np.max(self.td_errors) if self.td_errors else 0,
             },
             "policy_entropy": {
-                "mean": np.mean(self.policy_entropy_history)
-                if self.policy_entropy_history
-                else 0,
-                "std": np.std(self.policy_entropy_history)
-                if self.policy_entropy_history
-                else 0,
-                "trend": "increasing"
-                if len(self.policy_entropy_history) > 1
-                and self.policy_entropy_history[-1] > self.policy_entropy_history[0]
-                else "decreasing",
+                "mean": (
+                    np.mean(self.policy_entropy_history)
+                    if self.policy_entropy_history
+                    else 0
+                ),
+                "std": (
+                    np.std(self.policy_entropy_history)
+                    if self.policy_entropy_history
+                    else 0
+                ),
+                "trend": (
+                    "increasing"
+                    if len(self.policy_entropy_history) > 1
+                    and self.policy_entropy_history[-1] > self.policy_entropy_history[0]
+                    else "decreasing"
+                ),
             },
             "kl_divergence": {
                 "mean": np.mean(self.kl_divergences) if self.kl_divergences else 0,

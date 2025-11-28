@@ -202,9 +202,11 @@ class ResearchResolver:
                         run_id=cp.get("run_id", run_id),
                         created_at=cp.get("created_at", ""),
                         model_path=cp.get("model_path"),
-                        metadata=json.dumps(cp.get("metadata", {}))
-                        if cp.get("metadata")
-                        else None,
+                        metadata=(
+                            json.dumps(cp.get("metadata", {}))
+                            if cp.get("metadata")
+                            else None
+                        ),
                     )
                 )
 

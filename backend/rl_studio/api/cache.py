@@ -2,6 +2,7 @@
 Simple in-memory cache for assets and templates
 Uses TTL-based expiration
 """
+
 import logging
 import time
 from threading import Lock
