@@ -7,7 +7,6 @@ from .domain_randomization import DomainRandomizer
 from .procedural_generation import ProceduralGenerator
 
 __all__ = [
-    'DomainRandomizer',
-    'ProceduralGenerator',
+    "DomainRandomizer",
+    "ProceduralGenerator",
 ]
-

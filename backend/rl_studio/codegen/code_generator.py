@@ -2,11 +2,13 @@
 GPT-based code generator for RL Studio
 Generates production-ready code that matches actual simulator logic
 """
-import os
+
 import json
 import logging
-from typing import Dict, Any, Optional
+import os
 from pathlib import Path
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -15,10 +17,10 @@ logger = logging.getLogger(__name__)
 # Load .env file from backend directory
 # Try multiple paths to ensure we find it
 env_paths = [
-    Path(__file__).parent.parent.parent / '.env',  # backend/.env
-    Path(__file__).parent.parent.parent.parent / 'backend' / '.env',  # Alternative path
-    Path.cwd() / '.env',  # Current working directory
-    Path.cwd() / 'backend' / '.env',  # backend/.env from project root
+    Path(__file__).parent.parent.parent / ".env",  # backend/.env
+    Path(__file__).parent.parent.parent.parent / "backend" / ".env",  # Alternative path
+    Path.cwd() / ".env",  # Current working directory
+    Path.cwd() / "backend" / ".env",  # backend/.env from project root
 ]
 
 env_loaded = False
@@ -37,7 +39,12 @@ if not env_loaded:
 # Initialize OpenAI client
 client = None
 api_key = os.getenv("OPENAI_API_KEY")
-if api_key and api_key.strip() and api_key != "sk-your-api-key-here" and not api_key.startswith("sk-placeholder"):
+if (
+    api_key
+    and api_key.strip()
+    and api_key != "sk-your-api-key-here"
+    and not api_key.startswith("sk-placeholder")
+):
     try:
         client = OpenAI(api_key=api_key)
         logger.info("✅ OpenAI API key loaded successfully")
@@ -48,25 +55,27 @@ else:
     if api_key:
         logger.warning(f"OpenAI API key is placeholder or invalid: {api_key[:20]}...")
     else:
-        logger.warning("OpenAI API key not found in environment. Code generation will use fallback templates.")
+        logger.warning(
+            "OpenAI API key not found in environment. Code generation will use fallback templates."
+        )
 
 
 class CodeGenerator:
     """Generate RL code using GPT API based on actual environment configuration"""
-    
+
     def __init__(self):
         if not client:
-            logger.warning("OpenAI API key not found. Code generation will use fallback templates.")
+            logger.warning(
+                "OpenAI API key not found. Code generation will use fallback templates."
+            )
         self.client = client
-    
+
     def generate_environment_code(
-        self,
-        env_spec: Dict[str, Any],
-        training_config: Optional[Dict[str, Any]] = None
+        self, env_spec: Dict[str, Any], training_config: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Generate Gymnasium environment code that matches the actual simulator logic
-        
+
         Uses GPT to generate code based on:
         - Actual reward rules and calculations
         - Actual action space and dynamics
@@ -75,13 +84,13 @@ class CodeGenerator:
         """
         if not self.client:
             return self._fallback_environment_code(env_spec)
-        
+
         # Extract actual simulator logic details
         simulator_context = self._extract_simulator_context(env_spec)
-        
+
         # Build detailed simulator implementation reference
         simulator_implementation = self._build_simulator_reference(env_spec)
-        
+
         prompt = f"""You are an expert RL engineer. Generate a production-ready, WORKING Gymnasium environment class that EXACTLY matches the RL Studio simulator implementation.
 
 ENVIRONMENT SPECIFICATION:
@@ -136,15 +145,18 @@ Return ONLY the Python code, no explanations, no markdown, just the class defini
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are an expert RL engineer specializing in Gymnasium environments. Generate production-ready, accurate code. Do NOT include any comments mentioning AI, GPT, or code generation. The code should look like it was written by a professional RL engineer."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "You are an expert RL engineer specializing in Gymnasium environments. Generate production-ready, accurate code. Do NOT include any comments mentioning AI, GPT, or code generation. The code should look like it was written by a professional RL engineer.",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.1,  # Low temperature for deterministic code
-                max_tokens=4000
+                max_tokens=4000,
             )
-            
+
             code = response.choices[0].message.content.strip()
-            
+
             # Remove markdown code blocks if present
             if code.startswith("```python"):
                 code = code[9:]
@@ -152,22 +164,22 @@ Return ONLY the Python code, no explanations, no markdown, just the class defini
                 code = code[3:]
             if code.endswith("```"):
                 code = code[:-3]
-            
+
             return code.strip()
-            
+
         except Exception as e:
             logger.error(f"GPT code generation failed: {e}", exc_info=True)
             return self._fallback_environment_code(env_spec)
-    
+
     def generate_training_code(
         self,
         env_spec: Dict[str, Any],
         training_config: Dict[str, Any],
-        algorithm: str = "ppo"
+        algorithm: str = "ppo",
     ) -> str:
         """
         Generate training script using actual algorithm and hyperparameters
-        
+
         Uses GPT to generate code based on:
         - Actual algorithm (PPO, DQN, etc.)
         - Actual hyperparameters from config
@@ -176,10 +188,10 @@ Return ONLY the Python code, no explanations, no markdown, just the class defini
         """
         if not self.client:
             return self._fallback_training_code(env_spec, training_config, algorithm)
-        
-        env_name = env_spec.get('name', 'Env').replace(' ', '')
-        env_module = env_name.lower().replace(' ', '_')
-        
+
+        env_name = env_spec.get("name", "Env").replace(" ", "")
+        env_module = env_name.lower().replace(" ", "_")
+
         prompt = f"""You are an expert RL engineer. Generate a production-ready, WORKING training script using Stable-Baselines3.
 
 ENVIRONMENT SPECIFICATION:
@@ -218,15 +230,18 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are an expert RL engineer specializing in Stable-Baselines3 training. Generate production-ready, accurate training scripts. Do NOT include any comments mentioning AI, GPT, or code generation. The code should look like it was written by a professional RL engineer."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "You are an expert RL engineer specializing in Stable-Baselines3 training. Generate production-ready, accurate training scripts. Do NOT include any comments mentioning AI, GPT, or code generation. The code should look like it was written by a professional RL engineer.",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.1,
-                max_tokens=3000
+                max_tokens=3000,
             )
-            
+
             code = response.choices[0].message.content.strip()
-            
+
             # Remove markdown code blocks if present
             if code.startswith("```python"):
                 code = code[9:]
@@ -234,27 +249,29 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
                 code = code[3:]
             if code.endswith("```"):
                 code = code[:-3]
-            
+
             return code.strip()
-            
+
         except Exception as e:
             logger.error(f"GPT training code generation failed: {e}", exc_info=True)
             return self._fallback_training_code(env_spec, training_config, algorithm)
-    
+
     def _extract_simulator_context(self, env_spec: Dict[str, Any]) -> Dict[str, Any]:
         """Extract actual simulator logic from env_spec for GPT context"""
         rules = env_spec.get("rules", {})
         rewards = rules.get("rewards", [])
         terminations = rules.get("terminations", [])
-        
+
         # Build reward calculation logic description
         reward_logic = []
         for rule in rewards:
             cond_type = rule.get("condition", {}).get("type", "unknown")
             reward_value = rule.get("reward", 0)
             rule_id = rule.get("id", "unknown")
-            reward_logic.append(f"Rule '{rule_id}': if {cond_type} then reward += {reward_value}")
-        
+            reward_logic.append(
+                f"Rule '{rule_id}': if {cond_type} then reward += {reward_value}"
+            )
+
         # Build termination logic description
         termination_logic = []
         for rule in terminations:
@@ -262,12 +279,18 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
             rule_id = rule.get("id", "unknown")
             if cond_type == "timeout":
                 steps = rule.get("condition", {}).get("steps", 100)
-                termination_logic.append(f"Rule '{rule_id}': if step >= {steps} then terminated = True")
+                termination_logic.append(
+                    f"Rule '{rule_id}': if step >= {steps} then terminated = True"
+                )
             else:
-                termination_logic.append(f"Rule '{rule_id}': if {cond_type} then terminated = True")
+                termination_logic.append(
+                    f"Rule '{rule_id}': if {cond_type} then terminated = True"
+                )
         # Add auto goal detection
-        termination_logic.append("Auto: if agent within 0.5 units of goal object then terminated = True")
-        
+        termination_logic.append(
+            "Auto: if agent within 0.5 units of goal object then terminated = True"
+        )
+
         # Extract action dynamics
         action_space = env_spec.get("actionSpace", {})
         if action_space.get("type") == "discrete":
@@ -277,20 +300,28 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
             range_val = action_space.get("range", [-1, 1])
             dimensions = action_space.get("dimensions", 2)
             action_dynamics = f"Continuous actions: Box({range_val[0]}, {range_val[1]}, shape=({dimensions},)) - list [dx, dy]"
-        
+
         # Extract world bounds
         world = env_spec.get("world", {})
         world_bounds = {
             "width": world.get("width", 10),
             "height": world.get("height", 10),
             "coordinateSystem": world.get("coordinateSystem", "grid"),
-            "cellSize": world.get("cellSize", 1.0)
+            "cellSize": world.get("cellSize", 1.0),
         }
-        
+
         return {
-            "reward_logic": "\n".join(reward_logic) if reward_logic else "reward = 0.0 (no reward rules)",
+            "reward_logic": (
+                "\n".join(reward_logic)
+                if reward_logic
+                else "reward = 0.0 (no reward rules)"
+            ),
             "reward_calculation": "Iterate through env_spec['rules']['rewards'], evaluate each condition, sum reward values",
-            "termination_logic": "\n".join(termination_logic) if terminations else "terminated = False (no termination rules)",
+            "termination_logic": (
+                "\n".join(termination_logic)
+                if terminations
+                else "terminated = False (no termination rules)"
+            ),
             "termination_check": "Check all termination rules + auto goal detection + max_steps timeout",
             "action_dynamics": action_dynamics,
             "action_space": action_space,
@@ -298,15 +329,15 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
             "world_bounds": world_bounds,
             "objects": env_spec.get("objects", []),
             "agents": env_spec.get("agents", []),
-            "env_type": env_spec.get("envType", "grid")
+            "env_type": env_spec.get("envType", "grid"),
         }
-    
+
     def _build_simulator_reference(self, env_spec: Dict[str, Any]) -> str:
         """Build detailed reference of actual simulator implementation"""
         world = env_spec.get("world", {})
         is_grid = env_spec.get("envType") == "grid"
         coord_system = world.get("coordinateSystem", "grid")
-        
+
         reference = f"""SIMULATOR IMPLEMENTATION DETAILS:
 
 1. REWARD CALCULATION (from calculate_reward function):
@@ -350,7 +381,7 @@ Return ONLY the Python code, no explanations, no markdown, just the script."""
    - Total reward starts at 0.0
 """
         return reference
-    
+
     def _fallback_environment_code(self, env_spec: Dict[str, Any]) -> str:
         """Fallback template if GPT is unavailable"""
         env_name = env_spec.get("name", "Env").replace(" ", "")
@@ -374,10 +405,12 @@ class {env_name}Env(gym.Env):
         terminated = False
         return np.array([0.0, 0.0]), reward, terminated, False, {{}}
 '''
-    
-    def _fallback_training_code(self, env_spec: Dict[str, Any], training_config: Dict[str, Any], algorithm: str) -> str:
+
+    def _fallback_training_code(
+        self, env_spec: Dict[str, Any], training_config: Dict[str, Any], algorithm: str
+    ) -> str:
         """Fallback template if GPT is unavailable"""
-        return f'''import gymnasium as gym
+        return f"""import gymnasium as gym
 from stable_baselines3 import {algorithm.upper()}
 
 # TODO: Import your environment
@@ -387,17 +420,20 @@ env = None  # TODO: Create environment
 model = {algorithm.upper()}("MlpPolicy", env)
 model.learn(total_timesteps={training_config.get('hyperparams', {}).get('steps', 1000000)})
 model.save("model")
-'''
+"""
 
 
-def generate_environment_code(env_spec: Dict[str, Any], training_config: Optional[Dict[str, Any]] = None) -> str:
+def generate_environment_code(
+    env_spec: Dict[str, Any], training_config: Optional[Dict[str, Any]] = None
+) -> str:
     """Convenience function to generate environment code"""
     generator = CodeGenerator()
     return generator.generate_environment_code(env_spec, training_config)
 
 
-def generate_training_code(env_spec: Dict[str, Any], training_config: Dict[str, Any], algorithm: str = "ppo") -> str:
+def generate_training_code(
+    env_spec: Dict[str, Any], training_config: Dict[str, Any], algorithm: str = "ppo"
+) -> str:
     """Convenience function to generate training code"""
     generator = CodeGenerator()
     return generator.generate_training_code(env_spec, training_config, algorithm)
-

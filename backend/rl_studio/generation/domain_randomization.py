@@ -3,19 +3,21 @@ Domain Randomization
 Randomizes environment parameters for robust training
 """
 
-from typing import Dict, Any, List, Optional
 import random
+from typing import Any, Dict, List, Optional
+
 import numpy as np
+
 from ..rollout.simulator import Vec2
 
 
 class DomainRandomizer:
     """Applies domain randomization to environment specifications"""
-    
+
     def __init__(self, base_env_spec: Dict[str, Any]):
         self.base_env_spec = base_env_spec
         self.randomization_config: Dict[str, Any] = {}
-    
+
     def configure(
         self,
         randomize_wall_positions: bool = False,
@@ -36,20 +38,24 @@ class DomainRandomizer:
             "randomize_world_size": randomize_world_size,
             "world_size_variance": world_size_variance,
         }
-    
+
     def randomize(self) -> Dict[str, Any]:
         """Generate a randomized version of the environment"""
         env_spec = self._deep_copy(self.base_env_spec)
         world = env_spec.get("world", {})
-        
+
         # Randomize world size
         if self.randomization_config.get("randomize_world_size"):
             variance = self.randomization_config.get("world_size_variance", 0.1)
             width = world.get("width", 10)
             height = world.get("height", 10)
-            world["width"] = max(5, int(width * (1 + random.uniform(-variance, variance))))
-            world["height"] = max(5, int(height * (1 + random.uniform(-variance, variance))))
-        
+            world["width"] = max(
+                5, int(width * (1 + random.uniform(-variance, variance)))
+            )
+            world["height"] = max(
+                5, int(height * (1 + random.uniform(-variance, variance)))
+            )
+
         # Randomize agent starting position
         if self.randomization_config.get("randomize_agent_start"):
             agents = env_spec.get("agents", [])
@@ -61,22 +67,28 @@ class DomainRandomizer:
                     ]
                 else:
                     agent["position"] = [
-                        random.uniform(-world.get("width", 10) / 2, world.get("width", 10) / 2),
-                        random.uniform(-world.get("height", 10) / 2, world.get("height", 10) / 2),
+                        random.uniform(
+                            -world.get("width", 10) / 2, world.get("width", 10) / 2
+                        ),
+                        random.uniform(
+                            -world.get("height", 10) / 2, world.get("height", 10) / 2
+                        ),
                     ]
-        
+
         # Randomize object positions
         objects = env_spec.get("objects", [])
         for obj in objects:
             obj_type = obj.get("type")
-            
+
             # Randomize wall positions
-            if obj_type in ["wall", "obstacle"] and self.randomization_config.get("randomize_wall_positions"):
+            if obj_type in ["wall", "obstacle"] and self.randomization_config.get(
+                "randomize_wall_positions"
+            ):
                 delta = self.randomization_config.get("wall_position_delta", 1.0)
                 pos = Vec2.from_list(obj.get("position", [0, 0]))
                 pos.x += random.uniform(-delta, delta)
                 pos.y += random.uniform(-delta, delta)
-                
+
                 # Clamp to bounds
                 if world.get("coordinateSystem") == "grid":
                     pos.x = max(0, min(world.get("width", 10) - 1, pos.x))
@@ -84,13 +96,21 @@ class DomainRandomizer:
                     pos.x = round(pos.x)
                     pos.y = round(pos.y)
                 else:
-                    pos.x = max(-world.get("width", 10) / 2, min(world.get("width", 10) / 2, pos.x))
-                    pos.y = max(-world.get("height", 10) / 2, min(world.get("height", 10) / 2, pos.y))
-                
+                    pos.x = max(
+                        -world.get("width", 10) / 2,
+                        min(world.get("width", 10) / 2, pos.x),
+                    )
+                    pos.y = max(
+                        -world.get("height", 10) / 2,
+                        min(world.get("height", 10) / 2, pos.y),
+                    )
+
                 obj["position"] = pos.to_list()
-            
+
             # Randomize goal positions
-            elif obj_type == "goal" and self.randomization_config.get("randomize_goal_positions"):
+            elif obj_type == "goal" and self.randomization_config.get(
+                "randomize_goal_positions"
+            ):
                 if world.get("coordinateSystem") == "grid":
                     obj["position"] = [
                         random.randint(0, world.get("width", 10) - 1),
@@ -98,10 +118,14 @@ class DomainRandomizer:
                     ]
                 else:
                     obj["position"] = [
-                        random.uniform(-world.get("width", 10) / 2, world.get("width", 10) / 2),
-                        random.uniform(-world.get("height", 10) / 2, world.get("height", 10) / 2),
+                        random.uniform(
+                            -world.get("width", 10) / 2, world.get("width", 10) / 2
+                        ),
+                        random.uniform(
+                            -world.get("height", 10) / 2, world.get("height", 10) / 2
+                        ),
                     ]
-            
+
             # Randomize other object positions
             elif self.randomization_config.get("randomize_object_positions"):
                 if world.get("coordinateSystem") == "grid":
@@ -111,12 +135,16 @@ class DomainRandomizer:
                     ]
                 else:
                     obj["position"] = [
-                        random.uniform(-world.get("width", 10) / 2, world.get("width", 10) / 2),
-                        random.uniform(-world.get("height", 10) / 2, world.get("height", 10) / 2),
+                        random.uniform(
+                            -world.get("width", 10) / 2, world.get("width", 10) / 2
+                        ),
+                        random.uniform(
+                            -world.get("height", 10) / 2, world.get("height", 10) / 2
+                        ),
                     ]
-        
+
         return env_spec
-    
+
     def _deep_copy(self, obj: Any) -> Any:
         """Deep copy a dictionary"""
         if isinstance(obj, dict):
@@ -125,4 +153,3 @@ class DomainRandomizer:
             return [self._deep_copy(item) for item in obj]
         else:
             return obj
-

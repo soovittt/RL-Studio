@@ -1,16 +1,18 @@
 """
 Template Service - List templates and instantiate them into scenes
 """
-import logging
+
 import copy
+import logging
 from typing import List, Optional
+
 import requests
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import ValidationError
 
-from .models import CreateTemplateRequest, InstantiateTemplateRequest
+from .cache import get_cache_key, template_cache
 from .convex_client import get_client
-from .cache import template_cache, get_cache_key
+from .models import CreateTemplateRequest, InstantiateTemplateRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/templates", tags=["templates"])
@@ -40,19 +42,25 @@ async def list_templates(
         cached = template_cache.get(cache_key)
         if cached is not None:
             return cached
-        
+
         client = get_client()
         if not client:
             # Convex not configured - return empty list (graceful degradation)
             logger.warning("Convex client not available, returning empty template list")
             return []
-        
+
         try:
-            templates = client.query("templates/list", {
-                "mode": mode,
-                "category": category,
-                "isPublic": is_public,
-            }) or []
+            templates = (
+                client.query(
+                    "templates/list",
+                    {
+                        "mode": mode,
+                        "category": category,
+                        "isPublic": is_public,
+                    },
+                )
+                or []
+            )
         except requests.exceptions.HTTPError as e:
             # Handle 404 (route not found) - HTTP routes may not be deployed
             # Return empty list silently (graceful degradation)
@@ -64,11 +72,11 @@ async def list_templates(
         except Exception as e:
             logger.debug(f"Failed to query templates from Convex: {e}")
             return []  # Return empty list on error (graceful degradation)
-        
+
         # Apply pagination
         if limit is not None:
-            templates = templates[offset:offset + limit]
-        
+            templates = templates[offset : offset + limit]
+
         # Cache result
         template_cache.set(cache_key, templates)
         return templates
@@ -91,12 +99,12 @@ async def get_template(template_id: str):
         cached = template_cache.get(cache_key)
         if cached is not None:
             return cached
-        
+
         client = get_client()
         result = client.query("templates/get", {"id": template_id})
         if not result:
             raise HTTPException(status_code=404, detail="Template not found")
-        
+
         # Cache result
         template_cache.set(cache_key, result)
         return result
@@ -114,27 +122,33 @@ async def create_template(request: CreateTemplateRequest):
     """
     try:
         client = get_client()
-        
+
         # Verify scene version exists
-        scene_version = client.query("sceneVersions/getById", {"id": request.sceneVersionId})
+        scene_version = client.query(
+            "sceneVersions/getById", {"id": request.sceneVersionId}
+        )
         if not scene_version:
             raise HTTPException(status_code=404, detail="Scene version not found")
-        
+
         # Create template
-        template_id = client.mutation("templates/create", {
-            "name": request.name,
-            "description": request.description,
-            "sceneVersionId": request.sceneVersionId,
-            "category": request.category,
-            "tags": request.tags or [],
-            "meta": request.meta or {},
-            "isPublic": request.isPublic if request.isPublic is not None else True,
-            "createdBy": request.createdBy or request.sceneVersionId,  # TODO: Get from auth
-        })
-        
+        template_id = client.mutation(
+            "templates/create",
+            {
+                "name": request.name,
+                "description": request.description,
+                "sceneVersionId": request.sceneVersionId,
+                "category": request.category,
+                "tags": request.tags or [],
+                "meta": request.meta or {},
+                "isPublic": request.isPublic if request.isPublic is not None else True,
+                "createdBy": request.createdBy
+                or request.sceneVersionId,  # TODO: Get from auth
+            },
+        )
+
         # Invalidate cache - new template affects all list queries
         template_cache.invalidate_pattern("templates:list")
-        
+
         return {"id": template_id, "name": request.name}
     except HTTPException:
         raise
@@ -153,17 +167,20 @@ async def instantiate_template(template_id: str, request: InstantiateTemplateReq
     """
     try:
         client = get_client()
-        result = client.mutation("templates/instantiate", {
-            "templateId": template_id,
-            "projectId": request.projectId,
-            "name": request.name or None,  # Use template name if not provided
-            "createdBy": request.projectId,  # TODO: Get from auth
-        })
-        
+        result = client.mutation(
+            "templates/instantiate",
+            {
+                "templateId": template_id,
+                "projectId": request.projectId,
+                "name": request.name or None,  # Use template name if not provided
+                "createdBy": request.projectId,  # TODO: Get from auth
+            },
+        )
+
         # Note: We don't invalidate template cache here because instantiating
         # a template doesn't change the template itself, only creates a new scene
         # Scene cache invalidation would be handled in scenes.py if needed
-        
+
         return result
     except ValueError as e:
         # Template not found
@@ -171,4 +188,3 @@ async def instantiate_template(template_id: str, request: InstantiateTemplateReq
     except Exception as e:
         logger.error(f"Error instantiating template: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-

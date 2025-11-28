@@ -189,7 +189,7 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
                     setSettings((prev) => ({ ...prev, wandbApiKey: e.target.value, wandbAuthenticated: false }))
                   }
                   placeholder="wandb-..."
-                  className="w-full px-3 py-2 border border-border rounded bg-background"
+                  className="w-full px-3 py-2 border border-border rounded bg-background text-foreground placeholder:text-muted-foreground"
                 />
                 <div className="text-xs text-muted-foreground mt-1">
                   Get your API key from{' '}

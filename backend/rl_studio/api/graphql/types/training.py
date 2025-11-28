@@ -2,13 +2,15 @@
 Training GraphQL types
 """
 
+from typing import List, Optional
+
 import strawberry
-from typing import Optional, List
 
 
 @strawberry.type
 class TrainingConfig:
     """Training configuration"""
+
     algorithm: str
     learning_rate: Optional[float] = None
     gamma: Optional[float] = None
@@ -21,6 +23,7 @@ class TrainingConfig:
 @strawberry.type
 class JobStatus:
     """Training job status"""
+
     status: str  # PENDING, RUNNING, SUCCEEDED, FAILED
     job_id: str
     progress: Optional[float] = None
@@ -32,6 +35,7 @@ class JobStatus:
 @strawberry.type
 class TrainingRun:
     """Training run information"""
+
     id: str
     run_id: str
     env_spec: str  # JSON string
@@ -45,8 +49,8 @@ class TrainingRun:
 @strawberry.input
 class TrainingRunInput:
     """Input for creating a training run"""
+
     run_id: str
     env_spec: str  # JSON string
     config: str  # JSON string
     use_managed_jobs: Optional[bool] = True
-

@@ -3,13 +3,14 @@ Algorithm Registry
 Central registry for available RL algorithms
 """
 
-from typing import Dict, Any, List
-from stable_baselines3 import PPO, DQN, A2C, TD3, SAC
+from typing import Any, Dict, List
+
+from stable_baselines3 import A2C, DQN, PPO, SAC, TD3
 
 
 class AlgorithmRegistry:
     """Registry of available RL algorithms"""
-    
+
     ALGORITHMS = {
         "PPO": {
             "name": "Proximal Policy Optimization",
@@ -52,24 +53,30 @@ class AlgorithmRegistry:
             "class": SAC,
         },
     }
-    
+
     @classmethod
-    def get_available_algorithms(cls, action_space_type: str = "discrete") -> List[Dict[str, Any]]:
+    def get_available_algorithms(
+        cls, action_space_type: str = "discrete"
+    ) -> List[Dict[str, Any]]:
         """Get algorithms compatible with action space type"""
         compatible = []
         for algo_id, algo_info in cls.ALGORITHMS.items():
             if action_space_type == "discrete" and algo_info["supports_discrete"]:
-                compatible.append({
-                    "id": algo_id,
-                    **algo_info,
-                })
+                compatible.append(
+                    {
+                        "id": algo_id,
+                        **algo_info,
+                    }
+                )
             elif action_space_type == "continuous" and algo_info["supports_continuous"]:
-                compatible.append({
-                    "id": algo_id,
-                    **algo_info,
-                })
+                compatible.append(
+                    {
+                        "id": algo_id,
+                        **algo_info,
+                    }
+                )
         return compatible
-    
+
     @classmethod
     def get_algorithm_info(cls, algorithm_id: str) -> Dict[str, Any]:
         """Get information about a specific algorithm"""
@@ -79,4 +86,3 @@ class AlgorithmRegistry:
             "id": algorithm_id,
             **cls.ALGORITHMS[algorithm_id],
         }
-

@@ -1,6 +1,7 @@
 """
 RL Studio Backend API - Main Application
 """
+
 import logging
 
 from fastapi import FastAPI
@@ -36,6 +37,7 @@ app.include_router(api_router)
 # Include GraphQL router (alongside REST APIs)
 # GraphQLRouter from Strawberry is a FastAPI router, add it directly
 app.include_router(graphql_router)
+
 
 # Global exception handler
 @app.exception_handler(Exception)

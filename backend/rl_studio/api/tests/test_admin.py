@@ -1,9 +1,11 @@
 """
 Tests for Admin Service
 """
+
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from rl_studio.api.admin import router as admin_router
 
 
@@ -28,4 +30,3 @@ def test_admin_health(client):
     data = response.json()
     assert "status" in data
     assert "convex_connected" in data
-

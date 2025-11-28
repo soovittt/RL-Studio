@@ -45,9 +45,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true'
-    environment:
-      name: production
-      url: https://rl-studio-frontend-290319355713.us-central1.run.app
     steps:
       - uses: actions/checkout@v4
       
@@ -116,9 +113,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true'
-    environment:
-      name: production
-      url: https://rl-studio-backend-290319355713.us-central1.run.app
     steps:
       - uses: actions/checkout@v4
       
@@ -214,6 +208,5 @@ jobs:
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend URL:** https://rl-studio-frontend-290319355713.us-central1.run.app" >> $GITHUB_STEP_SUMMARY
-          echo "**Backend URL:** https://rl-studio-backend-290319355713.us-central1.run.app" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment completed successfully"
 

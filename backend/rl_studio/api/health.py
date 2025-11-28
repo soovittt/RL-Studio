@@ -1,11 +1,15 @@
 """
 Health check endpoint
 """
+
 from datetime import datetime
+
 from fastapi import APIRouter
+
 from .models import HealthResponse
 
 router = APIRouter()
+
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -14,9 +18,5 @@ async def health_check():
         status="healthy",
         timestamp=datetime.utcnow().isoformat(),
         version="1.0.0",
-        services={
-            "rollout": "available",
-            "job_orchestrator": "available"
-        }
+        services={"rollout": "available", "job_orchestrator": "available"},
     )
-
