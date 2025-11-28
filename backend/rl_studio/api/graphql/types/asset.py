@@ -2,13 +2,15 @@
 Asset GraphQL types
 """
 
+from typing import Any, Dict, List, Optional
+
 import strawberry
-from typing import Optional, List, Dict, Any
 
 
 @strawberry.type
 class Asset:
     """Asset type"""
+
     id: str
     name: str
     asset_type: str
@@ -24,6 +26,7 @@ class Asset:
 @strawberry.input
 class AssetInput:
     """Input for creating assets"""
+
     project_id: Optional[str] = None
     asset_type_key: str
     name: str
@@ -40,6 +43,7 @@ class AssetInput:
 @strawberry.input
 class UpdateAssetInput:
     """Input for updating assets"""
+
     name: Optional[str] = None
     slug: Optional[str] = None
     thumbnail_url: Optional[str] = None
@@ -54,9 +58,9 @@ class UpdateAssetInput:
 @strawberry.input
 class AssetFilter:
     """Filter for querying assets"""
+
     project_id: Optional[str] = None
     asset_type: Optional[str] = None
     mode: Optional[str] = None
     tag: Optional[str] = None
     search: Optional[str] = None
-

@@ -7,7 +7,6 @@ from .reward_verification import RewardRuleVerifier
 from .safety_checker import SafetyChecker
 
 __all__ = [
-    'RewardRuleVerifier',
-    'SafetyChecker',
+    "RewardRuleVerifier",
+    "SafetyChecker",
 ]
-

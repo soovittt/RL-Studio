@@ -3,12 +3,12 @@ Built-in Benchmark Tasks
 MiniGrid, Simple Control, Multi-agent Tag, etc.
 """
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 
 class BenchmarkRegistry:
     """Registry of built-in benchmark tasks"""
-    
+
     BENCHMARKS = {
         "minigrid_empty": {
             "name": "MiniGrid Empty",
@@ -264,14 +264,14 @@ class BenchmarkRegistry:
             },
         },
     }
-    
+
     @classmethod
     def get_benchmark(cls, benchmark_id: str) -> Dict[str, Any]:
         """Get a benchmark environment specification"""
         if benchmark_id not in cls.BENCHMARKS:
             raise ValueError(f"Unknown benchmark: {benchmark_id}")
         return cls.BENCHMARKS[benchmark_id]["env_spec"]
-    
+
     @classmethod
     def list_benchmarks(cls) -> List[Dict[str, Any]]:
         """List all available benchmarks"""
@@ -288,4 +288,3 @@ class BenchmarkRegistry:
 def get_benchmark(benchmark_id: str) -> Dict[str, Any]:
     """Convenience function to get a benchmark"""
     return BenchmarkRegistry.get_benchmark(benchmark_id)
-

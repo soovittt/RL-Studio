@@ -2,9 +2,10 @@
 API endpoints for verification features
 """
 
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
 
 from ..verification.reward_verification import RewardRuleVerifier
 from ..verification.safety_checker import SafetyChecker
@@ -41,4 +42,3 @@ async def check_safety(request: CheckSafetyRequest):
         return {"success": True, "safety": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

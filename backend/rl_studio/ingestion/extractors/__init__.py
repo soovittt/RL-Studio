@@ -3,16 +3,15 @@ Extractors package
 """
 
 from .firecrawl_extractor import FirecrawlExtractor
-from .json_extractor import JSONExtractor
 from .github_extractor import GitHubExtractor
-from .text_extractor import TextExtractor
+from .json_extractor import JSONExtractor
 from .template_extractor import TemplateExtractor
+from .text_extractor import TextExtractor
 
 __all__ = [
-    'FirecrawlExtractor',
-    'JSONExtractor',
-    'GitHubExtractor',
-    'TextExtractor',
-    'TemplateExtractor',
+    "FirecrawlExtractor",
+    "JSONExtractor",
+    "GitHubExtractor",
+    "TextExtractor",
+    "TemplateExtractor",
 ]
-

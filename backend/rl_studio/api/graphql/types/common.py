@@ -2,14 +2,16 @@
 Common GraphQL types
 """
 
-import strawberry
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+import strawberry
 
 
 @strawberry.type
 class Health:
     """Health check response"""
+
     status: str
     timestamp: str
     version: str
@@ -19,6 +21,7 @@ class Health:
 @strawberry.type
 class Pagination:
     """Pagination information"""
+
     limit: int
     offset: int
     total: int
@@ -28,6 +31,7 @@ class Pagination:
 @strawberry.type
 class Error:
     """Error information"""
+
     message: str
     code: Optional[str] = None
     field: Optional[str] = None
@@ -36,6 +40,6 @@ class Error:
 @strawberry.input
 class PaginationInput:
     """Pagination input"""
+
     limit: int = 20
     offset: int = 0
-

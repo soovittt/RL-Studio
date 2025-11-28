@@ -3,13 +3,14 @@ API endpoints for RL analysis features
 Real-time streaming with heavy Python calculations (NumPy, SciPy)
 """
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
 import asyncio
 import json
 import logging
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 # Lazy imports - don't load heavy NumPy/SciPy libraries until actually needed
 # This allows the server to start quickly, then load dependencies when endpoints are called
@@ -37,12 +38,11 @@ async def analyze_reward(request: AnalyzeRolloutRequest):
         loop = asyncio.get_event_loop()
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.reward_analysis import RewardAnalyzer
+
         analyzer = RewardAnalyzer()
         # Heavy computation with NumPy/SciPy
         analysis = await loop.run_in_executor(
-            None, 
-            analyzer.analyze_rollout, 
-            request.rollout_steps
+            None, analyzer.analyze_rollout, request.rollout_steps
         )
         # Convert NumPy types for JSON serialization
         analysis_serialized = serialize_for_json(analysis)
@@ -59,46 +59,42 @@ async def analyze_reward_streaming(websocket: WebSocket):
     try:
         data = await websocket.receive_json()
         request = AnalyzeRolloutRequest(**data)
-        
-        await websocket.send_json({"type": "started", "message": "Starting reward analysis..."})
-        
+
+        await websocket.send_json(
+            {"type": "started", "message": "Starting reward analysis..."}
+        )
+
         # Run heavy computation with progress updates
         loop = asyncio.get_event_loop()
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.reward_analysis import RewardAnalyzer
+
         analyzer = RewardAnalyzer()
-        
+
         # Stream progress
         def progress_callback(progress: float, message: str):
-            asyncio.create_task(websocket.send_json({
-                "type": "progress",
-                "progress": progress,
-                "message": message
-            }))
-        
+            asyncio.create_task(
+                websocket.send_json(
+                    {"type": "progress", "progress": progress, "message": message}
+                )
+            )
+
         # Run analysis with progress
         analysis = await loop.run_in_executor(
-            None,
-            lambda: analyzer.analyze_rollout(request.rollout_steps)
+            None, lambda: analyzer.analyze_rollout(request.rollout_steps)
         )
-        
+
         # Convert NumPy types to native Python types for JSON serialization
         analysis_serialized = serialize_for_json(analysis)
-        
-        await websocket.send_json({
-            "type": "complete",
-            "analysis": analysis_serialized
-        })
-        
+
+        await websocket.send_json({"type": "complete", "analysis": analysis_serialized})
+
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error(f"Reward analysis streaming failed: {e}", exc_info=True)
         try:
-            await websocket.send_json({
-                "type": "error",
-                "error": str(e)
-            })
+            await websocket.send_json({"type": "error", "error": str(e)})
         except:
             pass
 
@@ -109,6 +105,7 @@ async def analyze_multiple_rewards(request: AnalyzeMultipleRolloutsRequest):
     try:
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.reward_analysis import RewardAnalyzer
+
         analyzer = RewardAnalyzer()
         analysis = analyzer.analyze_multiple_rollouts(request.rollouts)
         return {"success": True, "analysis": analysis}
@@ -123,13 +120,11 @@ async def analyze_trajectory(request: AnalyzeRolloutRequest):
         loop = asyncio.get_event_loop()
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.trajectory_analysis import TrajectoryAnalyzer
+
         analyzer = TrajectoryAnalyzer()
         # Heavy computation with NumPy for trajectory analysis
         analysis = await loop.run_in_executor(
-            None,
-            analyzer.analyze_rollout,
-            request.rollout_steps,
-            request.env_spec
+            None, analyzer.analyze_rollout, request.rollout_steps, request.env_spec
         )
         # Convert NumPy types for JSON serialization
         analysis_serialized = serialize_for_json(analysis)
@@ -146,39 +141,33 @@ async def analyze_trajectory_streaming(websocket: WebSocket):
     try:
         data = await websocket.receive_json()
         request = AnalyzeRolloutRequest(**data)
-        
-        await websocket.send_json({"type": "started", "message": "Starting trajectory analysis..."})
-        
+
+        await websocket.send_json(
+            {"type": "started", "message": "Starting trajectory analysis..."}
+        )
+
         loop = asyncio.get_event_loop()
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.trajectory_analysis import TrajectoryAnalyzer
+
         analyzer = TrajectoryAnalyzer()
-        
+
         # Heavy NumPy calculations
         analysis = await loop.run_in_executor(
-            None,
-            analyzer.analyze_rollout,
-            request.rollout_steps,
-            request.env_spec
+            None, analyzer.analyze_rollout, request.rollout_steps, request.env_spec
         )
-        
+
         # Convert NumPy types to native Python types for JSON serialization
         analysis_serialized = serialize_for_json(analysis)
-        
-        await websocket.send_json({
-            "type": "complete",
-            "analysis": analysis_serialized
-        })
-        
+
+        await websocket.send_json({"type": "complete", "analysis": analysis_serialized})
+
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error(f"Trajectory analysis streaming failed: {e}", exc_info=True)
         try:
-            await websocket.send_json({
-                "type": "error",
-                "error": str(e)
-            })
+            await websocket.send_json({"type": "error", "error": str(e)})
         except:
             pass
 
@@ -189,8 +178,11 @@ async def analyze_multiple_trajectories(request: AnalyzeMultipleRolloutsRequest)
     try:
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.trajectory_analysis import TrajectoryAnalyzer
+
         analyzer = TrajectoryAnalyzer()
-        analysis = analyzer.analyze_multiple_rollouts(request.rollouts, request.env_spec)
+        analysis = analyzer.analyze_multiple_rollouts(
+            request.rollouts, request.env_spec
+        )
         return {"success": True, "analysis": analysis}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -202,6 +194,7 @@ async def analyze_termination(request: AnalyzeRolloutRequest):
     try:
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.termination_analysis import TerminationAnalyzer
+
         analyzer = TerminationAnalyzer()
         analysis = analyzer.analyze_rollout(request.rollout_steps)
         return {"success": True, "analysis": analysis}
@@ -216,12 +209,11 @@ async def analyze_multiple_terminations(request: AnalyzeMultipleRolloutsRequest)
         loop = asyncio.get_event_loop()
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.termination_analysis import TerminationAnalyzer
+
         analyzer = TerminationAnalyzer()
         # Heavy computation with NumPy for statistical analysis
         analysis = await loop.run_in_executor(
-            None,
-            analyzer.analyze_multiple_rollouts,
-            request.rollouts
+            None, analyzer.analyze_multiple_rollouts, request.rollouts
         )
         # Convert NumPy types for JSON serialization
         analysis_serialized = serialize_for_json(analysis)
@@ -238,41 +230,36 @@ async def analyze_multiple_terminations_streaming(websocket: WebSocket):
     try:
         data = await websocket.receive_json()
         request = AnalyzeMultipleRolloutsRequest(**data)
-        
-        await websocket.send_json({
-            "type": "started", 
-            "message": f"Analyzing {len(request.rollouts)} rollouts..."
-        })
-        
+
+        await websocket.send_json(
+            {
+                "type": "started",
+                "message": f"Analyzing {len(request.rollouts)} rollouts...",
+            }
+        )
+
         loop = asyncio.get_event_loop()
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.termination_analysis import TerminationAnalyzer
+
         analyzer = TerminationAnalyzer()
-        
+
         # Heavy NumPy statistical calculations
         analysis = await loop.run_in_executor(
-            None,
-            analyzer.analyze_multiple_rollouts,
-            request.rollouts
+            None, analyzer.analyze_multiple_rollouts, request.rollouts
         )
-        
+
         # Convert NumPy types to native Python types for JSON serialization
         analysis_serialized = serialize_for_json(analysis)
-        
-        await websocket.send_json({
-            "type": "complete",
-            "analysis": analysis_serialized
-        })
-        
+
+        await websocket.send_json({"type": "complete", "analysis": analysis_serialized})
+
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error(f"Termination analysis streaming failed: {e}", exc_info=True)
         try:
-            await websocket.send_json({
-                "type": "error",
-                "error": str(e)
-            })
+            await websocket.send_json({"type": "error", "error": str(e)})
         except:
             pass
 
@@ -283,6 +270,7 @@ async def get_diagnostics(request: AnalyzeRolloutRequest):
     try:
         # Lazy import to avoid loading heavy deps at startup
         from ..analysis.diagnostics import RLDiagnostics
+
         diagnostics = RLDiagnostics()
         # Process rollout to compute diagnostics
         # (In real implementation, this would come from training metrics)
@@ -290,4 +278,3 @@ async def get_diagnostics(request: AnalyzeRolloutRequest):
         return {"success": True, "diagnostics": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

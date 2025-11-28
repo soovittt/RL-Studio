@@ -3,6 +3,7 @@ API endpoints for benchmark tasks
 """
 
 from fastapi import APIRouter, HTTPException
+
 from ..benchmarks.benchmark_tasks import BenchmarkRegistry
 
 router = APIRouter(prefix="/api/benchmarks", tags=["benchmarks"])
@@ -28,4 +29,3 @@ async def get_benchmark(benchmark_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

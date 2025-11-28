@@ -2,15 +2,16 @@
 GraphQL Type Definitions
 """
 
-from .asset import Asset, AssetInput, AssetFilter
-from .scene import Scene, SceneVersion, CreateSceneInput, UpdateSceneInput, CreateSceneVersionInput, SceneFilter
-from .training import TrainingRun, TrainingRunInput, TrainingConfig, JobStatus
-from .rollout import RolloutResult, RolloutInput, Step
-from .common import Health, Pagination, Error
+from .asset import Asset, AssetFilter, AssetInput
+from .common import Error, Health, Pagination
+from .rollout import RolloutInput, RolloutResult, Step
+from .scene import (CreateSceneInput, CreateSceneVersionInput, Scene,
+                    SceneFilter, SceneVersion, UpdateSceneInput)
+from .training import JobStatus, TrainingConfig, TrainingRun, TrainingRunInput
 
 __all__ = [
     "Asset",
-    "AssetInput", 
+    "AssetInput",
     "AssetFilter",
     "Scene",
     "SceneVersion",
@@ -29,4 +30,3 @@ __all__ = [
     "Pagination",
     "Error",
 ]
-

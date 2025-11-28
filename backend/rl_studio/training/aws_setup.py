@@ -2,12 +2,12 @@
 AWS Infrastructure Setup for SkyPilot
 Automatically configures AWS credentials from .env file
 """
+import json
+import logging
 import os
 import subprocess
-import json
 from pathlib import Path
-from typing import Dict, Any, Optional
-import logging
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,24 +15,24 @@ logger = logging.getLogger(__name__)
 def setup_aws_credentials_from_env() -> bool:
     """
     Set up AWS credentials for SkyPilot from .env file.
-    
+
     Reads AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from .env
     and configures them for SkyPilot.
-    
+
     Returns:
         True if setup successful, False otherwise
     """
     try:
         # Load .env file
         from dotenv import load_dotenv
-        
+
         # Try multiple .env locations
         env_paths = [
             Path(__file__).parent.parent.parent / ".env",
             Path(__file__).parent.parent.parent.parent / ".env",
             Path.home() / ".env",
         ]
-        
+
         env_loaded = False
         for env_path in env_paths:
             if env_path.exists():
@@ -40,29 +40,31 @@ def setup_aws_credentials_from_env() -> bool:
                 env_loaded = True
                 logger.info(f"Loaded .env from {env_path}")
                 break
-        
+
         if not env_loaded:
             logger.warning("No .env file found, using environment variables")
-        
+
         # Get AWS credentials from environment
         aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
         aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
         aws_region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-        
+
         if not aws_access_key_id or not aws_secret_access_key:
             logger.warning("AWS credentials not found in .env or environment")
-            logger.info("Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env file")
+            logger.info(
+                "Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env file"
+            )
             return False
-        
+
         # Configure AWS credentials for SkyPilot
         # SkyPilot uses standard AWS CLI credentials location
         aws_creds_dir = Path.home() / ".aws"
         aws_creds_dir.mkdir(exist_ok=True)
-        
+
         # Write credentials file
         creds_file = aws_creds_dir / "credentials"
         config_file = aws_creds_dir / "config"
-        
+
         # Read existing credentials if they exist
         existing_creds = {}
         if creds_file.exists():
@@ -75,29 +77,31 @@ def setup_aws_credentials_from_env() -> bool:
                         if "=" in line:
                             key, value = line.split("=", 1)
                             existing_creds[key.strip()] = value.strip()
-        
+
         # Only update if credentials are different or missing
-        if (existing_creds.get("aws_access_key_id") != aws_access_key_id or
-            existing_creds.get("aws_secret_access_key") != aws_secret_access_key):
-            
+        if (
+            existing_creds.get("aws_access_key_id") != aws_access_key_id
+            or existing_creds.get("aws_secret_access_key") != aws_secret_access_key
+        ):
+
             # Write credentials
             with open(creds_file, "w") as f:
                 f.write("[default]\n")
                 f.write(f"aws_access_key_id = {aws_access_key_id}\n")
                 f.write(f"aws_secret_access_key = {aws_secret_access_key}\n")
-            
+
             logger.info("✅ AWS credentials configured for SkyPilot")
-        
+
         # Write config file
         with open(config_file, "w") as f:
             f.write("[default]\n")
             f.write(f"region = {aws_region}\n")
             f.write("output = json\n")
-        
+
         logger.info(f"✅ AWS region configured: {aws_region}")
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to setup AWS credentials: {e}")
         return False
@@ -106,7 +110,7 @@ def setup_aws_credentials_from_env() -> bool:
 def verify_aws_setup() -> Dict[str, Any]:
     """
     Verify AWS and SkyPilot setup.
-    
+
     Returns:
         Dict with setup status
     """
@@ -116,7 +120,7 @@ def verify_aws_setup() -> Dict[str, Any]:
         "aws_accessible": False,
         "errors": [],
     }
-    
+
     # Check SkyPilot installation
     try:
         subprocess.run(
@@ -127,16 +131,22 @@ def verify_aws_setup() -> Dict[str, Any]:
             check=True,
         )
         result["skypilot_installed"] = True
-    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
-        result["errors"].append("SkyPilot not installed. Run: pip install 'skypilot[aws]'")
-    
+    except (
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
+    ):
+        result["errors"].append(
+            "SkyPilot not installed. Run: pip install 'skypilot[aws]'"
+        )
+
     # Check AWS credentials file
     aws_creds = Path.home() / ".aws" / "credentials"
     if aws_creds.exists():
         result["aws_configured"] = True
     else:
         result["errors"].append("AWS credentials file not found")
-    
+
     # Check AWS access with sky check
     if result["skypilot_installed"]:
         try:
@@ -153,7 +163,7 @@ def verify_aws_setup() -> Dict[str, Any]:
                 result["errors"].append(f"AWS not accessible: {check_result.stdout}")
         except Exception as e:
             result["errors"].append(f"Failed to check AWS: {e}")
-    
+
     return result
 
 
@@ -161,7 +171,7 @@ def install_skypilot() -> bool:
     """
     Automatically install SkyPilot if not already installed.
     This is called automatically when needed - users don't need to do anything.
-    
+
     Returns:
         True if installation successful
     """
@@ -177,18 +187,19 @@ def install_skypilot() -> bool:
         return True
     except:
         pass
-    
+
     try:
         logger.info("Installing SkyPilot with AWS support...")
         # Use python -m pip for better compatibility
         import sys
+
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "-q", "skypilot[aws]>=0.5.0"],
             capture_output=True,
             text=True,
             timeout=600,  # 10 minutes (installation can be slow)
         )
-        
+
         if result.returncode == 0:
             logger.info("✅ SkyPilot installed successfully")
             return True
@@ -219,10 +230,10 @@ def setup_infrastructure() -> Dict[str, Any]:
     1. Install SkyPilot if needed (automatic)
     2. Configure AWS credentials from .env (automatic)
     3. Verify setup (automatic)
-    
+
     This function is called automatically when needed.
     Users only need to set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in backend/.env
-    
+
     Returns:
         Dict with setup status
     """
@@ -233,7 +244,7 @@ def setup_infrastructure() -> Dict[str, Any]:
         "errors": [],
         "warnings": [],
     }
-    
+
     # Step 1: Install SkyPilot automatically if not installed
     try:
         subprocess.run(["sky", "--version"], capture_output=True, check=True, timeout=5)
@@ -246,18 +257,24 @@ def setup_infrastructure() -> Dict[str, Any]:
             result["skypilot_installed"] = True
             logger.info("✅ SkyPilot installed successfully")
         else:
-            result["warnings"].append("SkyPilot installation failed. It will be installed when you first launch a training job.")
+            result["warnings"].append(
+                "SkyPilot installation failed. It will be installed when you first launch a training job."
+            )
             # Don't fail - SkyPilot can be installed later
             logger.warning("⚠️  SkyPilot installation failed. Will retry when needed.")
-    
+
     # Step 2: Setup AWS credentials automatically from .env
     if setup_aws_credentials_from_env():
         result["aws_configured"] = True
         logger.info("✅ AWS credentials configured from .env")
     else:
-        result["warnings"].append("AWS credentials not found in .env. GPU training will not work until you add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to backend/.env")
-        logger.info("ℹ️  AWS credentials not set (optional - only needed for GPU training)")
-    
+        result["warnings"].append(
+            "AWS credentials not found in .env. GPU training will not work until you add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to backend/.env"
+        )
+        logger.info(
+            "ℹ️  AWS credentials not set (optional - only needed for GPU training)"
+        )
+
     # Step 3: Verify AWS access (only if credentials are set)
     if result["skypilot_installed"] and result["aws_configured"]:
         verify_result = verify_aws_setup()
@@ -266,7 +283,8 @@ def setup_infrastructure() -> Dict[str, Any]:
             logger.info("✅ AWS access verified - ready for GPU training!")
         else:
             result["warnings"].extend(verify_result.get("errors", []))
-            logger.warning("⚠️  AWS access verification failed. Check your credentials.")
-    
-    return result
+            logger.warning(
+                "⚠️  AWS access verification failed. Check your credentials."
+            )
 
+    return result

@@ -3,10 +3,10 @@ GraphQL Resolvers
 """
 
 from .asset_resolver import AssetResolver
+from .common_resolver import CommonResolver
+from .rollout_resolver import RolloutResolver
 from .scene_resolver import SceneResolver
 from .training_resolver import TrainingResolver
-from .rollout_resolver import RolloutResolver
-from .common_resolver import CommonResolver
 
 __all__ = [
     "AssetResolver",
@@ -15,4 +15,3 @@ __all__ = [
     "RolloutResolver",
     "CommonResolver",
 ]
-

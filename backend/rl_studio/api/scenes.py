@@ -2,19 +2,15 @@
 Scene Service - CRUD operations for scenes and scene versions
 """
 import logging
+from typing import Any, Dict, Optional
+
 import requests
-from typing import Dict, Any, Optional
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from .models import (
-    CreateSceneRequest,
-    CreateSceneVersionRequest,
-    UpdateSceneRequest,
-    SceneGraph,
-    RLConfig
-)
 from .convex_client import get_client
+from .models import (CreateSceneRequest, CreateSceneVersionRequest, RLConfig,
+                     SceneGraph, UpdateSceneRequest)
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +27,9 @@ async def get_scene(scene_id: str):
     try:
         client = get_client()
         if not client:
-            raise HTTPException(status_code=404, detail="Scene not found (Convex not configured)")
+            raise HTTPException(
+                status_code=404, detail="Scene not found (Convex not configured)"
+            )
         result = client.query("scenes/get", {"id": scene_id})
         if not result:
             raise HTTPException(status_code=404, detail="Scene not found")
@@ -58,15 +56,20 @@ async def create_scene(request: CreateSceneRequest):
         # For now, require it in request or use a default
         client = get_client()
         # Use createdBy from request if provided, otherwise use projectId as fallback
-        created_by = getattr(request, 'createdBy', None) or request.projectId or "system"
-        scene_id = client.mutation("scenes/create", {
-            "projectId": request.projectId,
-            "name": request.name,
-            "description": request.description,
-            "mode": request.mode,
-            "environmentSettings": request.environmentSettings or {},
-            "createdBy": created_by,
-        })
+        created_by = (
+            getattr(request, "createdBy", None) or request.projectId or "system"
+        )
+        scene_id = client.mutation(
+            "scenes/create",
+            {
+                "projectId": request.projectId,
+                "name": request.name,
+                "description": request.description,
+                "mode": request.mode,
+                "environmentSettings": request.environmentSettings or {},
+                "createdBy": created_by,
+            },
+        )
         return {"id": scene_id, "name": request.name}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -93,7 +96,7 @@ async def update_scene(scene_id: str, request: UpdateSceneRequest):
             update_data["environmentSettings"] = request.environmentSettings
         if request.projectId is not None:
             update_data["projectId"] = request.projectId
-        
+
         scene = client.mutation("scenes/update", {"id": scene_id, **update_data})
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
@@ -113,19 +116,22 @@ async def create_scene_version(scene_id: str, request: CreateSceneVersionRequest
         # Validate sceneGraph and rlConfig using Pydantic
         scene_graph = request.sceneGraph
         rl_config = request.rlConfig
-        
+
         # Additional validation for grid mode
         # TODO: Check if scene.mode == 'grid' and validate gridConfig
-        
+
         client = get_client()
         # Use createdBy from request if provided, otherwise use sceneId as fallback
-        created_by = getattr(request, 'createdBy', None) or scene_id
-        version_id = client.mutation("scenes/createVersion", {
-            "sceneId": scene_id,
-            "sceneGraph": scene_graph.dict(),
-            "rlConfig": rl_config.dict(),
-            "createdBy": created_by,
-        })
+        created_by = getattr(request, "createdBy", None) or scene_id
+        version_id = client.mutation(
+            "scenes/createVersion",
+            {
+                "sceneId": scene_id,
+                "sceneGraph": scene_graph.dict(),
+                "rlConfig": rl_config.dict(),
+                "createdBy": created_by,
+            },
+        )
         return {"id": version_id, "sceneId": scene_id}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
@@ -142,10 +148,13 @@ async def get_scene_version(scene_id: str, version_number: int):
     """
     try:
         client = get_client()
-        version = client.query("scenes/getVersion", {
-            "sceneId": scene_id,
-            "versionNumber": version_number,
-        })
+        version = client.query(
+            "scenes/getVersion",
+            {
+                "sceneId": scene_id,
+                "versionNumber": version_number,
+            },
+        )
         if not version:
             raise HTTPException(status_code=404, detail="Scene version not found")
         return {
@@ -171,4 +180,3 @@ async def list_scene_versions(scene_id: str):
     except Exception as e:
         logger.error(f"Error listing scene versions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-

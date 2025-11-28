@@ -3,9 +3,10 @@ JSON serializer for NumPy types
 Converts NumPy int64, float64, etc. to native Python types
 """
 
-import numpy as np
 import json
 from typing import Any
+
+import numpy as np
 
 
 def convert_numpy_types(obj: Any) -> Any:
@@ -29,4 +30,3 @@ def convert_numpy_types(obj: Any) -> Any:
 def serialize_for_json(obj: Any) -> Any:
     """Serialize object for JSON, converting all NumPy types"""
     return convert_numpy_types(obj)
-

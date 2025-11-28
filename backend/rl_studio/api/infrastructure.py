@@ -3,9 +3,11 @@ Infrastructure Configuration API
 Provides endpoints for checking and managing infrastructure configuration.
 """
 
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+
 from ..utils.infrastructure_config import get_infrastructure_config
 
 router = APIRouter(prefix="/api/infrastructure", tags=["infrastructure"])
@@ -26,11 +28,11 @@ async def get_infrastructure_status():
     try:
         config = get_infrastructure_config()
         summary = config.get_config_summary()
-        
+
         # Build human-readable summary
         storage_valid = summary["storage"]["valid"]
         compute_valid = summary["compute"]["valid"]
-        
+
         if storage_valid and compute_valid:
             summary_text = "✅ All infrastructure configured"
         elif storage_valid:
@@ -39,11 +41,9 @@ async def get_infrastructure_status():
             summary_text = "⚠️ Compute configured, storage not configured"
         else:
             summary_text = "⚠️ Using local storage and compute (no cloud configured)"
-        
+
         return InfrastructureStatusResponse(
-            storage=summary["storage"],
-            compute=summary["compute"],
-            summary=summary_text
+            storage=summary["storage"], compute=summary["compute"], summary=summary_text
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -57,10 +57,10 @@ async def validate_infrastructure():
     """
     try:
         config = get_infrastructure_config()
-        
+
         storage_valid, storage_error = config.validate_storage_config()
         compute_valid, compute_error = config.validate_compute_config()
-        
+
         return {
             "storage": {
                 "valid": storage_valid,
@@ -86,25 +86,33 @@ async def get_infrastructure_config_endpoint():
     try:
         config = get_infrastructure_config()
         summary = config.get_config_summary()
-        
+
         # Remove sensitive data
         safe_summary = {
             "storage": {
                 "provider": summary["storage"]["provider"],
                 "valid": summary["storage"]["valid"],
-                "config": {k: v for k, v in summary["storage"]["config"].items() 
-                          if "key" not in k.lower() and "secret" not in k.lower() 
-                          and "password" not in k.lower()}
+                "config": {
+                    k: v
+                    for k, v in summary["storage"]["config"].items()
+                    if "key" not in k.lower()
+                    and "secret" not in k.lower()
+                    and "password" not in k.lower()
+                },
             },
             "compute": {
                 "provider": summary["compute"]["provider"],
                 "valid": summary["compute"]["valid"],
-                "config": {k: v for k, v in summary["compute"]["config"].items() 
-                          if "key" not in k.lower() and "secret" not in k.lower() 
-                          and "password" not in k.lower()}
-            }
+                "config": {
+                    k: v
+                    for k, v in summary["compute"]["config"].items()
+                    if "key" not in k.lower()
+                    and "secret" not in k.lower()
+                    and "password" not in k.lower()
+                },
+            },
         }
-        
+
         return safe_summary
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
