@@ -8,8 +8,14 @@ from typing import List, Optional
 import strawberry
 
 from ....api.convex_client import get_client
-from ..types.scene import (CreateSceneInput, CreateSceneVersionInput, Scene,
-                           SceneFilter, SceneVersion, UpdateSceneInput)
+from ..types.scene import (
+    CreateSceneInput,
+    CreateSceneVersionInput,
+    Scene,
+    SceneFilter,
+    SceneVersion,
+    UpdateSceneInput,
+)
 
 
 @strawberry.type
@@ -175,12 +181,9 @@ class SceneResolver:
         """Create a new scene version"""
         try:
             # Import REST API function
-            from ....api.models import (CreateSceneVersionRequest, RLConfig,
-                                        SceneGraph)
-            from ....api.scenes import \
-                create_scene_version as rest_create_scene_version
-            from ....api.scenes import \
-                get_scene_version as rest_get_scene_version
+            from ....api.models import CreateSceneVersionRequest, RLConfig, SceneGraph
+            from ....api.scenes import create_scene_version as rest_create_scene_version
+            from ....api.scenes import get_scene_version as rest_get_scene_version
 
             # scene_graph and rl_config are already dicts (JSON scalars)
             scene_graph_dict = (
@@ -257,8 +260,7 @@ class SceneResolver:
         """Get a specific scene version"""
         try:
             # Import REST API function
-            from ....api.scenes import \
-                get_scene_version as rest_get_scene_version
+            from ....api.scenes import get_scene_version as rest_get_scene_version
 
             # Call REST API function
             result = await rest_get_scene_version(scene_id, version_number)
@@ -305,10 +307,8 @@ class SceneResolver:
         """List all versions for a scene"""
         try:
             # Import REST API function
-            from ....api.scenes import \
-                get_scene_version as rest_get_scene_version
-            from ....api.scenes import \
-                list_scene_versions as rest_list_scene_versions
+            from ....api.scenes import get_scene_version as rest_get_scene_version
+            from ....api.scenes import list_scene_versions as rest_list_scene_versions
 
             # Call REST API function
             result = await rest_list_scene_versions(scene_id)

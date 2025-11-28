@@ -7,15 +7,19 @@ Target: 1M+ steps/second for simple environments
 
 import logging
 import multiprocessing as mp
-from concurrent.futures import (ProcessPoolExecutor, ThreadPoolExecutor,
-                                as_completed)
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from functools import partial
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 import numpy as np
 
-from .simulator import (create_initial_state, run_rollout, select_action,
-                        step_simulator, validate_env_spec)
+from .simulator import (
+    create_initial_state,
+    run_rollout,
+    select_action,
+    step_simulator,
+    validate_env_spec,
+)
 
 logger = logging.getLogger(__name__)
 

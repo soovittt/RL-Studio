@@ -7,8 +7,7 @@ from typing import Optional
 
 import strawberry
 
-from ....rollout.model_loader import (load_model_for_inference,
-                                      run_rollout_with_model)
+from ....rollout.model_loader import load_model_for_inference, run_rollout_with_model
 from ....rollout.simulator import run_rollout, validate_env_spec
 from ....utils.security import sanitize_env_spec, validate_env_spec_structure
 from ..types.rollout import RolloutInput, RolloutResult, Step

@@ -8,8 +8,7 @@ import os
 import re
 from typing import Any, Dict
 
-from ..base import (BaseExtractor, ExtractionMetadata, ExtractionResult,
-                    SourceType)
+from ..base import BaseExtractor, ExtractionMetadata, ExtractionResult, SourceType
 
 logger = logging.getLogger(__name__)
 

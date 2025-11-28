@@ -6,7 +6,7 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
 
 from .convex_client import get_client
@@ -14,6 +14,9 @@ from .models import (CreateSceneRequest, CreateSceneVersionRequest, RLConfig,
                      SceneGraph, UpdateSceneRequest)
 
 logger = logging.getLogger(__name__)
+
+# Create router for tests (no endpoints - use GraphQL instead)
+router = APIRouter()
 
 # NOTE: REST HTTP endpoints have been REMOVED - use GraphQL instead
 # GraphQL endpoint: POST /graphql with query/mutation

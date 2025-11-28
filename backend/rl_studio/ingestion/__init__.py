@@ -12,8 +12,7 @@ Supports multiple input sources:
 All sources feed into a unified EnvSpec pipeline.
 """
 
-from .base import (BaseExtractor, ExtractionMetadata, ExtractionResult,
-                   SourceType)
+from .base import BaseExtractor, ExtractionMetadata, ExtractionResult, SourceType
 from .builder import BuildResult, EnvSpecBuilder
 from .registry import ExtractorRegistry
 from .unifier import UnificationProcessor, UnificationResult

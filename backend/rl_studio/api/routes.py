@@ -10,8 +10,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from ..rollout.model_loader import (load_model_for_inference,
-                                    run_rollout_with_model)
+from ..rollout.model_loader import load_model_for_inference, run_rollout_with_model
 from ..rollout.simulator import run_rollout, validate_env_spec
 from ..training import get_job_status, launch_training_job, stop_job
 from ..utils.security import sanitize_env_spec, validate_env_spec_structure
@@ -23,8 +22,15 @@ from .compile import router as compile_router
 from .generation import router as generation_router
 from .infrastructure import router as infrastructure_router
 from .ingestion import router as ingestion_router
-from .models import (HealthResponse, JobStatusResponse, LaunchJobRequest,
-                     LaunchJobResponse, RolloutRequest, RolloutResponse)
+from .models import (
+    HealthResponse,
+    JobStatusResponse,
+    LaunchJobRequest,
+    LaunchJobResponse,
+    RolloutRequest,
+    RolloutResponse,
+)
+
 # Removed: scenes_router and assets_router - use GraphQL instead
 # from .scenes import router as scenes_router
 # from .assets import router as assets_router
@@ -419,8 +425,7 @@ async def launch_training(request: LaunchJobRequest):
 
                     # Sync initial metadata
                     try:
-                        from ..api.background_sync import \
-                            sync_run_metadata_to_convex
+                        from ..api.background_sync import sync_run_metadata_to_convex
 
                         sync_run_metadata_to_convex(request.runId, job_id, convex_url)
                     except Exception as sync_error:
@@ -485,8 +490,9 @@ async def get_training_status(job_id: str, sync: bool = True):
                     if response.ok:
                         run = response.json()
                         if run:
-                            from ..api.background_sync import \
-                                sync_run_metadata_to_convex
+                            from ..api.background_sync import (
+                                sync_run_metadata_to_convex,
+                            )
 
                             sync_run_metadata_to_convex(run["_id"], job_id, convex_url)
             except Exception as sync_error:

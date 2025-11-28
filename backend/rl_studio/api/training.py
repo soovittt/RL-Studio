@@ -61,8 +61,7 @@ async def suggest_hyperparameters(request: SuggestHyperparametersRequest):
     """Get hyperparameter suggestions"""
     try:
         # Lazy import to avoid loading heavy deps at startup
-        from ..training.hyperparameter_suggestions import \
-            HyperparameterSuggester
+        from ..training.hyperparameter_suggestions import HyperparameterSuggester
 
         suggester = HyperparameterSuggester()
         suggestions = suggester.suggest(request.env_spec, request.algorithm)
@@ -82,9 +81,11 @@ async def create_curriculum(request: CreateCurriculumRequest):
 
         # Add default stages if none provided
         if not request.stages:
-            from ..training.curriculum import (make_easier_goals,
-                                               mean_reward_threshold,
-                                               reduce_obstacles)
+            from ..training.curriculum import (
+                make_easier_goals,
+                mean_reward_threshold,
+                reduce_obstacles,
+            )
 
             curriculum.add_stage(
                 "Easy",

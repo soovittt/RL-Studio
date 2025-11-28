@@ -7,8 +7,7 @@ from typing import Optional
 
 import strawberry
 
-from ....training.orchestrator import (get_job_status, launch_training_job,
-                                       stop_job)
+from ....training.orchestrator import get_job_status, launch_training_job, stop_job
 from ..types.training import JobStatus, TrainingRun, TrainingRunInput
 
 

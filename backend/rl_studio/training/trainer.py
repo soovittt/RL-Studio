@@ -14,8 +14,12 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ..rollout.simulator import (Vec2, create_initial_state, step_simulator,
-                                 validate_env_spec)
+from ..rollout.simulator import (
+    Vec2,
+    create_initial_state,
+    step_simulator,
+    validate_env_spec,
+)
 
 
 class TrainingMetricsCallback(BaseCallback):

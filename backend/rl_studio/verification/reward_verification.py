@@ -5,8 +5,12 @@ Detects issues with reward rules: unreachable, contradictory, etc.
 
 from typing import Any, Dict, List
 
-from ..rollout.simulator import (create_initial_state, select_action,
-                                 step_simulator, validate_env_spec)
+from ..rollout.simulator import (
+    create_initial_state,
+    select_action,
+    step_simulator,
+    validate_env_spec,
+)
 
 
 class RewardRuleVerifier:

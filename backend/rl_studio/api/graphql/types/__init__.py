@@ -5,8 +5,14 @@ GraphQL Type Definitions
 from .asset import Asset, AssetFilter, AssetInput
 from .common import Error, Health, Pagination
 from .rollout import RolloutInput, RolloutResult, Step
-from .scene import (CreateSceneInput, CreateSceneVersionInput, Scene,
-                    SceneFilter, SceneVersion, UpdateSceneInput)
+from .scene import (
+    CreateSceneInput,
+    CreateSceneVersionInput,
+    Scene,
+    SceneFilter,
+    SceneVersion,
+    UpdateSceneInput,
+)
 from .training import JobStatus, TrainingConfig, TrainingRun, TrainingRunInput
 
 __all__ = [

@@ -11,8 +11,12 @@ from pydantic import BaseModel
 
 # Lazy imports - CodeGenerator loads OpenAI client which can be slow
 # Cache functions are lightweight, so import them directly
-from ..codegen.cache import (clear_cache, get_cache_stats, get_cached_code,
-                             set_cached_code)
+from ..codegen.cache import (
+    clear_cache,
+    get_cache_stats,
+    get_cached_code,
+    set_cached_code,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/codegen", tags=["codegen"])

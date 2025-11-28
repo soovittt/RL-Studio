@@ -8,8 +8,12 @@ from typing import Any, Dict, Optional, Union
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..ingestion import (EnvSpecBuilder, ExtractorRegistry, SourceType,
-                         UnificationProcessor)
+from ..ingestion import (
+    EnvSpecBuilder,
+    ExtractorRegistry,
+    SourceType,
+    UnificationProcessor,
+)
 from ..ingestion.extractors.firecrawl_extractor import FirecrawlExtractor
 from ..ingestion.extractors.github_extractor import GitHubExtractor
 from ..ingestion.extractors.json_extractor import JSONExtractor

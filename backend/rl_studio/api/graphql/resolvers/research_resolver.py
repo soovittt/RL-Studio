@@ -7,18 +7,30 @@ from typing import List, Optional
 
 import strawberry
 
-from ..types.research import (Checkpoint, CompareRunsInput, CompareRunsResult,
-                              ConfidenceInterval, ConfidenceIntervalInput,
-                              ConfidenceIntervalResult, CreateVersionInput,
-                              CreateVersionResult, EffectSize, EffectSizeInput,
-                              EffectSizeResult, HyperparameterSweepInput,
-                              HyperparameterSweepResult, HyperparameterTrial,
-                              ModelVersion, StatisticalComparison,
-                              TestMlflowConnectionInput,
-                              TestMlflowConnectionResult,
-                              TestWandbConnectionInput,
-                              TestWandbConnectionResult, WandbRun,
-                              WandbRunDetails)
+from ..types.research import (
+    Checkpoint,
+    CompareRunsInput,
+    CompareRunsResult,
+    ConfidenceInterval,
+    ConfidenceIntervalInput,
+    ConfidenceIntervalResult,
+    CreateVersionInput,
+    CreateVersionResult,
+    EffectSize,
+    EffectSizeInput,
+    EffectSizeResult,
+    HyperparameterSweepInput,
+    HyperparameterSweepResult,
+    HyperparameterTrial,
+    ModelVersion,
+    StatisticalComparison,
+    TestMlflowConnectionInput,
+    TestMlflowConnectionResult,
+    TestWandbConnectionInput,
+    TestWandbConnectionResult,
+    WandbRun,
+    WandbRunDetails,
+)
 
 
 @strawberry.type
@@ -221,8 +233,7 @@ class ResearchResolver:
     async def list_model_versions(self, run_id: str) -> List[ModelVersion]:
         """List all versions for a run"""
         try:
-            from ....api.training import \
-                list_model_versions as rest_list_model_versions
+            from ....api.training import list_model_versions as rest_list_model_versions
 
             # Call REST API function
             result = await rest_list_model_versions(run_id)
@@ -254,8 +265,9 @@ class ResearchResolver:
     ) -> CreateVersionResult:
         """Create a versioned model from a checkpoint"""
         try:
-            from ....api.training import \
-                create_model_version as rest_create_model_version
+            from ....api.training import (
+                create_model_version as rest_create_model_version,
+            )
 
             # Call REST API function
             result = await rest_create_model_version(
@@ -355,8 +367,7 @@ class ResearchResolver:
     ) -> List[WandbRun]:
         """List W&B runs for a project"""
         try:
-            from ....api.training import \
-                list_wandb_runs as rest_list_wandb_runs
+            from ....api.training import list_wandb_runs as rest_list_wandb_runs
 
             # Call REST API function
             result = await rest_list_wandb_runs(project=project, api_key=api_key)
