@@ -2,7 +2,9 @@
 Admin endpoints for maintenance
 """
 import logging
+
 from fastapi import APIRouter
+
 from .convex_client import get_client
 
 logger = logging.getLogger(__name__)
@@ -25,4 +27,3 @@ async def admin_health():
             "convex_connected": False,
             "error": str(e),
         }
-
