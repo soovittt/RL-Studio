@@ -603,9 +603,12 @@ RL Studio Team
     `.trim()
 
     // Send email via backend email service (Resend)
-    // Use NGROK_URL for local dev, otherwise use production backend URL
-    // Backend URL is same as VITE_API_URL in production
-    const BACKEND_URL = process.env.NGROK_URL || process.env.BACKEND_URL || 'https://rl-studio-backend-290319355713.us-central1.run.app'
+    // Use NGROK_URL for local dev, or BACKEND_URL for production
+    // Backend URL must be set in environment variables
+    const BACKEND_URL = process.env.NGROK_URL || process.env.BACKEND_URL
+    if (!BACKEND_URL) {
+      throw new Error('BACKEND_URL or NGROK_URL must be configured in Convex environment variables')
+    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/email/send`, {
