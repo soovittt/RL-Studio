@@ -106,6 +106,32 @@ jobs:
               --set-env-vars "VITE_API_URL=$VITE_API_URL,VITE_CONVEX_URL=$VITE_CONVEX_URL,VITE_ROLLOUT_SERVICE_URL=$VITE_ROLLOUT_SERVICE_URL,VITE_TRAINING_SERVICE_URL=$VITE_TRAINING_SERVICE_URL"
           
           echo "✅ Frontend deployed successfully!"
+          
+          # Capture deployed frontend URL and set in Convex
+          echo "🔧 Capturing frontend URL..."
+          # Use secret if available, otherwise capture from deployment
+          FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+          if [ -z "$FRONTEND_URL" ]; then
+            FRONTEND_URL=$(gcloud run services describe rl-studio-frontend \
+                --region us-central1 \
+                --project ${{ secrets.GCP_PROJECT_ID }} \
+                --format="value(status.url)" 2>/dev/null || echo "")
+          fi
+          
+          if [ -n "$FRONTEND_URL" ]; then
+            echo "✅ Frontend URL: $FRONTEND_URL"
+            echo "🔧 Setting FRONTEND_URL in Convex environment variables..."
+            # Set FRONTEND_URL in Convex (requires Convex CLI to be available)
+            # Note: This requires CONVEX_DEPLOY_KEY to be set as a secret
+            if [ -n "${{ secrets.CONVEX_DEPLOY_KEY }}" ]; then
+              npx convex env set FRONTEND_URL "$FRONTEND_URL" || echo "⚠️ Could not set Convex env automatically"
+            else
+              echo "ℹ️  CONVEX_DEPLOY_KEY not set - FRONTEND_URL is already set in Convex"
+              echo "   Current value can be verified with: npx convex env list"
+            fi
+          else
+            echo "⚠️ Could not determine frontend URL"
+          fi
 
   # Deploy Backend
   deploy-backend:

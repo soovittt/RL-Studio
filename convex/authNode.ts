@@ -191,8 +191,21 @@ export const requestPasswordReset = action({
     })
 
     // Send reset email via backend
-    const backendUrl = process.env.BACKEND_URL || process.env.NGROK_URL || 'http://localhost:8000'
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+    // Use NGROK_URL for local dev, otherwise use production backend URL
+    // Backend URL is same as VITE_API_URL in production
+    const backendUrl = process.env.NGROK_URL || process.env.BACKEND_URL || 'https://rl-studio-backend-290319355713.us-central1.run.app'
+    
+    // Frontend URL - use from environment (set in Convex env vars)
+    const frontendUrl = process.env.FRONTEND_URL
+    if (!frontendUrl) {
+      throw new Error('FRONTEND_URL not configured in Convex environment variables')
+    }
+    
+    // Validate frontend URL is not localhost in production
+    if (frontendUrl.includes('localhost') && !process.env.NGROK_URL) {
+      throw new Error('FRONTEND_URL is set to localhost in production. Please set the production frontend URL in Convex environment variables.')
+    }
+    
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`
 
     const emailSubject = 'Reset Your Password - RL Studio'
