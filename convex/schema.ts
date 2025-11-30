@@ -9,40 +9,45 @@ export default defineSchema({
     passwordHash: v.optional(v.string()),
     autumnCustomerId: v.optional(v.string()),
     plan: v.union(v.literal('free'), v.literal('pro')),
-  }).index('by_auth', ['authProviderId'])
+  })
+    .index('by_auth', ['authProviderId'])
     .index('by_email', ['email']),
 
-      environments: defineTable({
-        ownerId: v.id('users'),
-        name: v.string(),
-        description: v.optional(v.string()),
-        // Universal EnvSpec structure
-        envSpec: v.optional(v.any()), // Full universal EnvSpec object
-        // Legacy fields for backward compatibility (will be migrated)
-        envType: v.optional(v.union(
-          v.literal('grid'),
-          v.literal('continuous2d'),
-          v.literal('graph'),
-          v.literal('bandit'),
-          v.literal('custom')
-        )),
-        stateSpace: v.optional(v.any()),
-        actionSpace: v.optional(v.any()),
-        dynamics: v.optional(v.any()),
-        reward: v.optional(v.any()),
-        agents: v.optional(v.array(v.any())),
-        episode: v.optional(v.any()),
-        curriculum: v.optional(v.any()),
-        visuals: v.optional(v.any()),
-        metadata: v.optional(v.object({
-          tags: v.array(v.string()),
-          notes: v.optional(v.string()),
-        })),
-        spec: v.optional(v.any()),
-        type: v.optional(v.union(v.literal('grid'), v.literal('continuous'))),
-        createdAt: v.number(),
-        updatedAt: v.number(),
+  environments: defineTable({
+    ownerId: v.id('users'),
+    name: v.string(),
+    description: v.optional(v.string()),
+    // Universal EnvSpec structure
+    envSpec: v.optional(v.any()), // Full universal EnvSpec object
+    // Legacy fields for backward compatibility (will be migrated)
+    envType: v.optional(
+      v.union(
+        v.literal('grid'),
+        v.literal('continuous2d'),
+        v.literal('graph'),
+        v.literal('bandit'),
+        v.literal('custom')
+      )
+    ),
+    stateSpace: v.optional(v.any()),
+    actionSpace: v.optional(v.any()),
+    dynamics: v.optional(v.any()),
+    reward: v.optional(v.any()),
+    agents: v.optional(v.array(v.any())),
+    episode: v.optional(v.any()),
+    curriculum: v.optional(v.any()),
+    visuals: v.optional(v.any()),
+    metadata: v.optional(
+      v.object({
+        tags: v.array(v.string()),
+        notes: v.optional(v.string()),
       })
+    ),
+    spec: v.optional(v.any()),
+    type: v.optional(v.union(v.literal('grid'), v.literal('continuous'))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
     .index('by_owner', ['ownerId'])
     .index('by_created', ['createdAt'])
     .index('by_envType', ['envType']),
@@ -121,9 +126,60 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_expires', ['expiresAt']),
 
+  emailVerifications: defineTable({
+    userId: v.id('users'),
+    newEmail: v.string(),
+    token: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    verified: v.optional(v.boolean()),
+  })
+    .index('by_token', ['token'])
+    .index('by_user', ['userId'])
+    .index('by_expires', ['expiresAt']),
+
+  receivedEmails: defineTable({
+    emailId: v.string(), // Resend email ID
+    fromEmail: v.string(),
+    toEmails: v.array(v.string()),
+    subject: v.string(),
+    receivedAt: v.string(), // ISO timestamp
+    attachments: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          filename: v.string(),
+          content_type: v.string(),
+        })
+      )
+    ),
+    processed: v.boolean(),
+    autoReplied: v.optional(v.boolean()),
+    createdAt: v.number(),
+  })
+    .index('by_emailId', ['emailId'])
+    .index('by_from', ['fromEmail'])
+    .index('by_processed', ['processed']),
+
+  passwordResets: defineTable({
+    userId: v.id('users'),
+    token: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    used: v.boolean(),
+  })
+    .index('by_token', ['token'])
+    .index('by_user', ['userId'])
+    .index('by_expires', ['expiresAt']),
+
   trainingLogs: defineTable({
     runId: v.id('runs'),
-    logLevel: v.union(v.literal('info'), v.literal('warning'), v.literal('error'), v.literal('debug')),
+    logLevel: v.union(
+      v.literal('info'),
+      v.literal('warning'),
+      v.literal('error'),
+      v.literal('debug')
+    ),
     message: v.string(),
     metadata: v.optional(v.any()),
     createdAt: v.number(),
@@ -135,8 +191,7 @@ export default defineSchema({
   assetTypes: defineTable({
     key: v.string(), // 'character', 'vehicle', 'prop', 'tile', 'prefab'
     displayName: v.string(),
-  })
-    .index('by_key', ['key']),
+  }).index('by_key', ['key']),
 
   assets: defineTable({
     projectId: v.optional(v.id('environments')), // NULL = global asset
@@ -211,8 +266,7 @@ export default defineSchema({
     successRate: v.optional(v.number()),
     numEpisodes: v.number(),
     evaluatedAt: v.number(),
-  })
-    .index('by_run', ['runId']),
+  }).index('by_run', ['runId']),
 
   models: defineTable({
     runId: v.id('runs'),
@@ -223,7 +277,5 @@ export default defineSchema({
     evaluationId: v.optional(v.id('evaluations')),
     fileSize: v.optional(v.number()),
     uploadedAt: v.number(),
-  })
-    .index('by_run', ['runId']),
+  }).index('by_run', ['runId']),
 })
-

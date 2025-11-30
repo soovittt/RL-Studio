@@ -44,14 +44,24 @@ export function Layout({ children }: LayoutProps) {
                 >
                   Runs
                 </Link>
+                <Link
+                  to="/settings"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  activeProps={{ className: 'text-foreground border-b-2 border-primary' }}
+                >
+                  Settings
+                </Link>
               </div>
             </div>
             <div className="flex items-center gap-4">
               {user && (
                 <>
-                  <span className="text-sm text-muted-foreground hidden sm:inline">
+                  <Link
+                    to="/settings"
+                    className="text-sm text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+                  >
                     {user.displayName}
-                  </span>
+                  </Link>
                   <button
                     onClick={signOut}
                     className="text-sm text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
