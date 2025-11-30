@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RunsRouteImport } from './routes/runs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as EnvironmentsRouteImport } from './routes/environments'
@@ -20,6 +21,11 @@ import { Route as RunsIdRouteImport } from './routes/runs/$id'
 import { Route as EnvironmentsNewRouteImport } from './routes/environments/new'
 import { Route as EnvironmentsIdRouteImport } from './routes/environments/$id'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RunsRoute = RunsRouteImport.update({
   id: '/runs',
   path: '/runs',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/environments': typeof EnvironmentsRouteWithChildren
   '/login': typeof LoginRoute
   '/runs': typeof RunsRouteWithChildren
+  '/settings': typeof SettingsRoute
   '/environments/$id': typeof EnvironmentsIdRoute
   '/environments/new': typeof EnvironmentsNewRoute
   '/runs/$id': typeof RunsIdRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/environments': typeof EnvironmentsRouteWithChildren
   '/login': typeof LoginRoute
   '/runs': typeof RunsRouteWithChildren
+  '/settings': typeof SettingsRoute
   '/environments/$id': typeof EnvironmentsIdRoute
   '/environments/new': typeof EnvironmentsNewRoute
   '/runs/$id': typeof RunsIdRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/environments': typeof EnvironmentsRouteWithChildren
   '/login': typeof LoginRoute
   '/runs': typeof RunsRouteWithChildren
+  '/settings': typeof SettingsRoute
   '/environments/$id': typeof EnvironmentsIdRoute
   '/environments/new': typeof EnvironmentsNewRoute
   '/runs/$id': typeof RunsIdRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/environments'
     | '/login'
     | '/runs'
+    | '/settings'
     | '/environments/$id'
     | '/environments/new'
     | '/runs/$id'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/environments'
     | '/login'
     | '/runs'
+    | '/settings'
     | '/environments/$id'
     | '/environments/new'
     | '/runs/$id'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/environments'
     | '/login'
     | '/runs'
+    | '/settings'
     | '/environments/$id'
     | '/environments/new'
     | '/runs/$id'
@@ -154,10 +166,18 @@ export interface RootRouteChildren {
   EnvironmentsRoute: typeof EnvironmentsRouteWithChildren
   LoginRoute: typeof LoginRoute
   RunsRoute: typeof RunsRouteWithChildren
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/runs': {
       id: '/runs'
       path: '/runs'
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   EnvironmentsRoute: EnvironmentsRouteWithChildren,
   LoginRoute: LoginRoute,
   RunsRoute: RunsRouteWithChildren,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
