@@ -603,8 +603,12 @@ RL Studio Team
     `.trim()
 
     // Send email via backend email service (Resend)
-    // Use ngrok URL for local dev, or BACKEND_URL for production
-    const BACKEND_URL = process.env.BACKEND_URL || process.env.NGROK_URL || 'http://localhost:8000'
+    // Use NGROK_URL for local dev, or BACKEND_URL for production
+    // Backend URL must be set in environment variables
+    const BACKEND_URL = process.env.NGROK_URL || process.env.BACKEND_URL
+    if (!BACKEND_URL) {
+      throw new Error('BACKEND_URL or NGROK_URL must be configured in Convex environment variables')
+    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/email/send`, {
