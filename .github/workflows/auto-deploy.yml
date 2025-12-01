@@ -173,13 +173,11 @@ jobs:
         run: |
           echo "🚀 Building and deploying backend..."
           
-          # Build Docker image
+          # Build Docker image in Google Cloud Build (offload heavy lifting from GitHub runner)
           IMAGE_NAME="gcr.io/${{ secrets.GCP_PROJECT_ID }}/rl-studio-backend:latest"
-          
-          docker build -t $IMAGE_NAME .
-          
-          # Push to GCR
-          docker push $IMAGE_NAME
+          gcloud builds submit . \
+            --tag "$IMAGE_NAME" \
+            --project="${{ secrets.GCP_PROJECT_ID }}"
           
           # Deploy to Cloud Run
           echo "🚀 Deploying to Cloud Run..."
