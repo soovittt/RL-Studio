@@ -85,9 +85,29 @@ jobs:
           
           echo "Build ID: $BUILD_ID"
           
-          # Wait for build to complete
+          # Wait for build to complete by polling status
           echo "⏳ Waiting for build to complete..."
-          gcloud builds wait $BUILD_ID --project=${{ secrets.GCP_PROJECT_ID }}
+          MAX_WAIT=1800  # 30 minutes max
+          ELAPSED=0
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(gcloud builds describe $BUILD_ID --project=${{ secrets.GCP_PROJECT_ID }} --format="value(status)" 2>/dev/null || echo "UNKNOWN")
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "✅ Build completed successfully!"
+              break
+            elif [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "CANCELLED" ] || [ "$STATUS" = "EXPIRED" ]; then
+              echo "❌ Build failed with status: $STATUS"
+              exit 1
+            else
+              echo "⏳ Build status: $STATUS (waiting...)"
+              sleep 10
+              ELAPSED=$((ELAPSED + 10))
+            fi
+          done
+          
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "❌ Build timeout after $MAX_WAIT seconds"
+            exit 1
+          fi
           
           # Deploy to Cloud Run
           echo "🚀 Deploying to Cloud Run..."
