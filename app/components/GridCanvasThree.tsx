@@ -27,7 +27,7 @@ interface GridCanvasThreeProps {
 interface SceneContentProps {
   envSpec: EnvSpec
   rolloutState?: { agents: Array<{ id: string; position: Vec2 }> }
-  onCellClick: (x: number, y: number) => void
+  onCellClick: (x: number, y: number, event?: { clientX: number; clientY: number }) => void
   onCellRightClick: (e: any, x: number, y: number) => void
   selectedObjectId?: string
   selectedAgentId?: string
@@ -50,30 +50,27 @@ const TOOL_PALETTE: Array<{ type: ObjectType | 'agent'; label: string; color: st
 function hexToRgb(hex: string): [number, number, number] {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   return result
-    ? [
-        parseInt(result[1], 16) / 255,
-        parseInt(result[2], 16) / 255,
-        parseInt(result[3], 16) / 255,
-      ]
+    ? [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255]
     : [0.5, 0.5, 0.5]
 }
 
 // Grid Cell Component - Memoized for performance
-const GridCell = memo(function GridCell({ 
-  x, y, 
-  object, 
-  agent, 
+const GridCell = memo(function GridCell({
+  x,
+  y,
+  object,
+  agent,
   isSelected,
   onClick,
   onRightClick,
-  assets = []
+  assets = [],
 }: {
   x: number
   y: number
   object: ObjectSpec | null
   agent: { id: string; position: Vec2 } | null
   isSelected: boolean
-  onClick: () => void
+  onClick: (event?: { clientX: number; clientY: number }) => void
   onRightClick: (e: any) => void
   assets?: Asset[]
 }) {
@@ -85,11 +82,11 @@ const GridCell = memo(function GridCell({
     // Try to find asset by assetId stored in properties
     let asset: Asset | undefined
     if (object.properties?.assetId && assets && Array.isArray(assets) && assets.length > 0) {
-      asset = assets.find(a => a._id === object.properties.assetId)
+      asset = assets.find((a) => a._id === object.properties.assetId)
     }
     // Fallback: find asset by type
     if (!asset && assets && Array.isArray(assets) && assets.length > 0) {
-      asset = assets.find(a => {
+      asset = assets.find((a) => {
         const objectType = assetToObjectType(a)
         return objectType === object.type
       })
@@ -107,12 +104,13 @@ const GridCell = memo(function GridCell({
     }
   } else if (agent) {
     // Find agent asset
-    const agentAsset = (assets && Array.isArray(assets) && assets.length > 0) 
-      ? assets.find(a => {
-          const objectType = assetToObjectType(a)
-          return objectType === 'agent'
-        })
-      : undefined
+    const agentAsset =
+      assets && Array.isArray(assets) && assets.length > 0
+        ? assets.find((a) => {
+            const objectType = assetToObjectType(a)
+            return objectType === 'agent'
+          })
+        : undefined
     if (agentAsset) {
       const hexColor = agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
       color = hexToRgb(hexColor)
@@ -125,7 +123,15 @@ const GridCell = memo(function GridCell({
 
   const handleClick = (e: any) => {
     e.stopPropagation()
-    onClick()
+    // Pass event coordinates for tooltip positioning
+    // React Three Fiber events have different structure
+    const event = e.nativeEvent || (e.domEvent ? e.domEvent : e)
+    if (event && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+      onClick(event)
+    } else {
+      // Fallback: try to get coordinates from the event
+      onClick()
+    }
   }
 
   const handleRightClick = (e: any) => {
@@ -165,24 +171,20 @@ const GridCell = memo(function GridCell({
         </group>
       )
     }
-    
+
     if (object) {
       const objectType = object.type
-      
+
       if (objectType === 'wall') {
         // Wall: Tall 3D box
         return (
           <mesh position={[0, 0.5, 0]} castShadow>
             <boxGeometry args={[0.9, 1.0, 0.9]} />
-            <meshStandardMaterial
-              color={color}
-              metalness={0.3}
-              roughness={0.7}
-            />
+            <meshStandardMaterial color={color} metalness={0.3} roughness={0.7} />
           </mesh>
         )
       }
-      
+
       if (objectType === 'goal') {
         // Goal: Cylinder with glowing top
         return (
@@ -199,16 +201,12 @@ const GridCell = memo(function GridCell({
             </mesh>
             <mesh position={[0, 0.5, 0]}>
               <cylinderGeometry args={[0.3, 0.3, 0.1, 16]} />
-              <meshStandardMaterial
-                color={color}
-                emissive={emissive}
-                emissiveIntensity={1.5}
-              />
+              <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={1.5} />
             </mesh>
           </group>
         )
       }
-      
+
       if (objectType === 'key' || objectType === 'pickup') {
         // Key/Pickup: Small 3D shape on pedestal
         return (
@@ -230,18 +228,14 @@ const GridCell = memo(function GridCell({
           </group>
         )
       }
-      
+
       if (objectType === 'door') {
         // Door: Tall box with frame
         return (
           <group>
             <mesh position={[0, 0.5, 0]} castShadow>
               <boxGeometry args={[0.85, 1.0, 0.1]} />
-              <meshStandardMaterial
-                color={color}
-                metalness={0.4}
-                roughness={0.6}
-              />
+              <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
             </mesh>
             <mesh position={[0, 0.5, 0]}>
               <boxGeometry args={[0.9, 1.05, 0.05]} />
@@ -250,31 +244,23 @@ const GridCell = memo(function GridCell({
           </group>
         )
       }
-      
+
       if (objectType === 'trap' || objectType === 'hazard') {
         // Trap/Hazard: Spiky shape
         return (
           <group>
             <mesh position={[0, 0.1, 0]}>
               <coneGeometry args={[0.3, 0.2, 8]} />
-              <meshStandardMaterial
-                color={color}
-                emissive={emissive}
-                emissiveIntensity={0.4}
-              />
+              <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={0.4} />
             </mesh>
             <mesh position={[0, 0.25, 0]}>
               <coneGeometry args={[0.2, 0.15, 8]} />
-              <meshStandardMaterial
-                color={color}
-                emissive={emissive}
-                emissiveIntensity={0.6}
-              />
+              <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={0.6} />
             </mesh>
           </group>
         )
       }
-      
+
       // Default: Low box for other objects
       return (
         <mesh position={[0, 0.15, 0]} castShadow>
@@ -289,7 +275,7 @@ const GridCell = memo(function GridCell({
         </mesh>
       )
     }
-    
+
     // Empty cell: just floor
     return null
   }
@@ -297,7 +283,15 @@ const GridCell = memo(function GridCell({
   return (
     <group
       position={[x, 0, y]}
-      onClick={handleClick}
+      onClick={(e) => {
+        // Get DOM event from React Three Fiber event
+        const domEvent = e.nativeEvent || (e as any).domEvent
+        if (domEvent) {
+          handleClick(domEvent)
+        } else {
+          handleClick()
+        }
+      }}
       onContextMenu={handleRightClick}
       onPointerOver={(e) => {
         e.stopPropagation()
@@ -316,7 +310,7 @@ const GridCell = memo(function GridCell({
           roughness={0.8}
         />
       </mesh>
-      
+
       {/* Visible grid cell borders - raised edges */}
       <group position={[0, 0.06, 0]}>
         {/* Top edge */}
@@ -340,10 +334,10 @@ const GridCell = memo(function GridCell({
           <meshStandardMaterial color="#64748b" />
         </mesh>
       </group>
-      
+
       {/* 3D object/agent */}
       {get3DShape()}
-      
+
       {/* Selection indicator */}
       {isSelected && (
         <mesh position={[0, 0.02, 0]}>
@@ -363,18 +357,18 @@ const GridCell = memo(function GridCell({
 })
 
 // Scene Content - Memoized for performance
-function SceneContentInner({ 
-  envSpec, 
+function SceneContentInner({
+  envSpec,
   rolloutState,
   onCellClick,
   onCellRightClick,
   selectedObjectId,
   selectedAgentId,
-  assets
+  assets,
 }: {
   envSpec: EnvSpec
   rolloutState?: { agents: Array<{ id: string; position: Vec2 }> }
-  onCellClick: (x: number, y: number) => void
+  onCellClick: (x: number, y: number, event?: { clientX: number; clientY: number }) => void
   onCellRightClick: (e: any, x: number, y: number) => void
   selectedObjectId?: string
   selectedAgentId?: string
@@ -389,10 +383,10 @@ function SceneContentInner({
     if (!envSpec) {
       return []
     }
-    
+
     const objects = Array.isArray(envSpec.objects) ? envSpec.objects : []
     const agents = Array.isArray(envSpec.agents) ? envSpec.agents : []
-    
+
     // Convert grid position to world coordinates
     const gridToWorld = (gridX: number, gridY: number): Vec2 => {
       return [gridX * cellSize, gridY * cellSize]
@@ -401,59 +395,64 @@ function SceneContentInner({
     // Get object at grid position
     const getObjectAt = (gridX: number, gridY: number): ObjectSpec | null => {
       const worldPos = gridToWorld(gridX, gridY)
-      return objects.find((obj) => {
-        if (!obj || !obj.position || !Array.isArray(obj.position)) return false
-        const [objX, objY] = obj.position
-        return Math.floor(objX) === Math.floor(worldPos[0]) && 
-               Math.floor(objY) === Math.floor(worldPos[1])
-      }) || null
+      return (
+        objects.find((obj) => {
+          if (!obj || !obj.position || !Array.isArray(obj.position)) return false
+          const [objX, objY] = obj.position
+          return (
+            Math.floor(objX) === Math.floor(worldPos[0]) &&
+            Math.floor(objY) === Math.floor(worldPos[1])
+          )
+        }) || null
+      )
     }
 
     // Get agent at grid position
     const getAgentAt = (gridX: number, gridY: number) => {
       const worldPos = gridToWorld(gridX, gridY)
       let agentsToCheck: Array<{ id: string; position: Vec2 }> = []
-      
+
       if (rolloutState?.agents && Array.isArray(rolloutState.agents)) {
         agentsToCheck = rolloutState.agents
       } else if (Array.isArray(agents)) {
-        agentsToCheck = agents.map(a => ({ id: a.id, position: a.position }))
+        agentsToCheck = agents.map((a) => ({ id: a.id, position: a.position }))
       }
-      
+
       for (const agent of agentsToCheck) {
         if (!agent || !agent.position || !Array.isArray(agent.position)) continue
         const [agentX, agentY] = agent.position
-        
+
         // Convert agent world position to grid coordinates
-        const agentGridX = Math.round(agentX / cellSize)  // Use round instead of floor for better matching
+        const agentGridX = Math.round(agentX / cellSize) // Use round instead of floor for better matching
         const agentGridY = Math.round(agentY / cellSize)
-        
+
         // Exact grid match
         if (agentGridX === gridX && agentGridY === gridY) {
           return agent
         }
-        
+
         // Tolerance check (for floating point precision)
         const cellWorldX = worldPos[0]
         const cellWorldY = worldPos[1]
-        const tolerance = cellSize * 0.6  // Increased tolerance
-        if (Math.abs(agentX - cellWorldX) < tolerance && 
-            Math.abs(agentY - cellWorldY) < tolerance) {
+        const tolerance = cellSize * 0.6 // Increased tolerance
+        if (
+          Math.abs(agentX - cellWorldX) < tolerance &&
+          Math.abs(agentY - cellWorldY) < tolerance
+        ) {
           return agent
         }
       }
-      
+
       return null
     }
-    
+
     const result: JSX.Element[] = []
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const object = getObjectAt(x, y)
         const agent = getAgentAt(x, y)
-        const isSelected = 
-          (object && selectedObjectId === object.id) ||
-          (agent && selectedAgentId === agent.id)
+        const isSelected =
+          (object && selectedObjectId === object.id) || (agent && selectedAgentId === agent.id)
 
         // Center cells: cell at (0,0) should be at (-width/2 + 0.5, -height/2 + 0.5)
         result.push(
@@ -464,7 +463,7 @@ function SceneContentInner({
             object={object}
             agent={agent}
             isSelected={isSelected}
-            onClick={() => onCellClick(x, y)}
+            onClick={(event) => onCellClick(x, y, event)}
             onRightClick={(e) => onCellRightClick(e, x, y)}
             assets={assets}
           />
@@ -472,7 +471,18 @@ function SceneContentInner({
       }
     }
     return result
-  }, [envSpec, rolloutState, selectedObjectId, selectedAgentId, width, height, cellSize, onCellClick, onCellRightClick, assets])
+  }, [
+    envSpec,
+    rolloutState,
+    selectedObjectId,
+    selectedAgentId,
+    width,
+    height,
+    cellSize,
+    onCellClick,
+    onCellRightClick,
+    assets,
+  ])
 
   return (
     <>
@@ -521,22 +531,38 @@ function SceneContentInner({
 
 const SceneContent = memo(SceneContentInner)
 
-export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutState, selectedAssetId, onAssetSelect }: GridCanvasThreeProps) {
+export function GridCanvasThree({
+  envSpec,
+  sceneGraph,
+  onSpecChange,
+  rolloutState,
+  selectedAssetId,
+  onAssetSelect,
+}: GridCanvasThreeProps) {
   const { selection, selectObject, selectAgent } = useSelection()
   // Declare assets state first before using it
   const [assets, setAssets] = useState<Asset[]>([])
   // Use external selectedAssetId if provided (from LayersPanel), otherwise use local state
   const [localSelectedAsset, setLocalSelectedAsset] = useState<Asset | null>(null)
-  const selectedAsset = selectedAssetId 
-    ? assets.find(a => a._id === selectedAssetId) || null
+  const selectedAsset = selectedAssetId
+    ? assets.find((a) => a._id === selectedAssetId) || null
     : localSelectedAsset
   const [selectedTool, setSelectedTool] = useState<ObjectType | 'agent' | null>(null)
   const [showAssetSelector, setShowAssetSelector] = useState(false)
-  
+
+  // Tooltip state for object info and delete button
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean
+    x: number
+    y: number
+    object?: ObjectSpec
+    agent?: { id: string; position: Vec2 }
+  }>({ visible: false, x: 0, y: 0 })
+
   // Use ref to persist asset selection across re-renders
   const selectedAssetRef = useRef<Asset | null>(null)
   const selectedToolRef = useRef<ObjectType | 'agent' | null>(null)
-  
+
   // Sync refs with state
   useEffect(() => {
     selectedAssetRef.current = selectedAsset
@@ -557,18 +583,18 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
       try {
         const { listAssets } = await import('~/lib/assetClient')
         const loadedAssets = await listAssets({ mode: 'grid' })
-        
+
         console.log('🔍 GridCanvasThree: Loaded assets:', loadedAssets)
-        
+
         // Ensure loadedAssets is an array
         if (!Array.isArray(loadedAssets)) {
           console.warn('⚠️ GridCanvasThree: Assets not loaded as array:', loadedAssets)
           setAssets([])
           return
         }
-        
+
         console.log(`📦 GridCanvasThree: Total assets: ${loadedAssets.length}`)
-        
+
         // Show all grid assets - be very lenient
         const gridAssets = loadedAssets
           .filter((asset) => {
@@ -583,15 +609,20 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
             // Very lenient: include if has grid tag, grid mode, OR no mode restriction
             const result = tags.includes('grid') || assetMode === 'grid' || !assetMode
             if (!result) {
-              console.log(`⏭️ GridCanvasThree: Skipping ${asset.name} - tags: ${tags.join(', ')}, mode: ${assetMode}`)
+              console.log(
+                `⏭️ GridCanvasThree: Skipping ${asset.name} - tags: ${tags.join(', ')}, mode: ${assetMode}`
+              )
             }
             return result
           })
           .sort((a, b) => a.name.localeCompare(b.name))
-        
+
         console.log(`✅ GridCanvasThree: Filtered to ${gridAssets.length} grid assets`)
-        console.log('📋 GridCanvasThree: Assets:', gridAssets.map(a => a.name))
-        
+        console.log(
+          '📋 GridCanvasThree: Assets:',
+          gridAssets.map((a) => a.name)
+        )
+
         setAssets(gridAssets)
       } catch (err) {
         console.error('❌ GridCanvasThree: Failed to load assets:', err)
@@ -632,95 +663,134 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
   const getObjectAt = (gridX: number, gridY: number): ObjectSpec | null => {
     const worldPos = gridToWorld(gridX, gridY)
     const objects = Array.isArray(envSpec.objects) ? envSpec.objects : []
-    return objects.find((obj) => {
-      if (!obj || !obj.position || !Array.isArray(obj.position)) return false
-      const [objX, objY] = obj.position
-      return Math.floor(objX) === Math.floor(worldPos[0]) && 
-             Math.floor(objY) === Math.floor(worldPos[1])
-    }) || null
+    return (
+      objects.find((obj) => {
+        if (!obj || !obj.position || !Array.isArray(obj.position)) return false
+        const [objX, objY] = obj.position
+        return (
+          Math.floor(objX) === Math.floor(worldPos[0]) &&
+          Math.floor(objY) === Math.floor(worldPos[1])
+        )
+      }) || null
+    )
   }
 
   // Get agent at grid position
   const getAgentAt = (gridX: number, gridY: number) => {
     const worldPos = gridToWorld(gridX, gridY)
     let agentsToCheck: Array<{ id: string; position: Vec2 }> = []
-    
+
     if (rolloutState?.agents && Array.isArray(rolloutState.agents)) {
       agentsToCheck = rolloutState.agents
     } else {
       const agents = Array.isArray(envSpec.agents) ? envSpec.agents : []
-      agentsToCheck = agents.map(a => ({ id: a.id, position: a.position }))
+      agentsToCheck = agents.map((a) => ({ id: a.id, position: a.position }))
     }
-    
+
     for (const agent of agentsToCheck) {
       if (!agent || !agent.position || !Array.isArray(agent.position)) continue
       const [agentX, agentY] = agent.position
-      
+
       // Convert agent world position to grid coordinates (use round for better matching)
       const agentGridX = Math.round(agentX / cellSize)
       const agentGridY = Math.round(agentY / cellSize)
-      
+
       // Exact grid match
       if (agentGridX === gridX && agentGridY === gridY) {
         return agent
       }
-      
+
       // Tolerance check (for floating point precision)
       const cellWorldX = worldPos[0]
       const cellWorldY = worldPos[1]
-      const tolerance = cellSize * 0.6  // Increased tolerance
-      if (Math.abs(agentX - cellWorldX) < tolerance && 
-          Math.abs(agentY - cellWorldY) < tolerance) {
+      const tolerance = cellSize * 0.6 // Increased tolerance
+      if (Math.abs(agentX - cellWorldX) < tolerance && Math.abs(agentY - cellWorldY) < tolerance) {
         return agent
       }
     }
-    
+
     return null
   }
 
-  const handleCellClick = (gridX: number, gridY: number) => {
+  const handleCellClick = (
+    gridX: number,
+    gridY: number,
+    event?: { clientX: number; clientY: number }
+  ) => {
     if (rolloutState) return // Prevent editing during rollout
 
     const existingObject = getObjectAt(gridX, gridY)
     const existingAgent = getAgentAt(gridX, gridY)
 
-    // If clicking on existing object/agent, select it but KEEP asset selection for potential replacement
+    // If clicking on existing object/agent, show tooltip with info and delete button
     if (existingObject) {
       selectObject(existingObject.id)
-      // Don't clear asset selection - user might want to replace it or place more
-      console.log('📌 Selected existing object, asset selection persists:', selectedAsset?.name, 'selectedTool:', selectedTool)
+      // Show tooltip at click position
+      if (event) {
+        setTooltip({
+          visible: true,
+          x: event.clientX,
+          y: event.clientY,
+          object: existingObject,
+        })
+      }
       return
     }
 
     if (existingAgent) {
       selectAgent(existingAgent.id)
-      // Don't clear asset selection - user might want to replace it or place more
-      console.log('📌 Selected existing agent, asset selection persists:', selectedAsset?.name, 'selectedTool:', selectedTool)
+      // Show tooltip at click position
+      if (event) {
+        setTooltip({
+          visible: true,
+          x: event.clientX,
+          y: event.clientY,
+          agent: existingAgent,
+        })
+      }
       return
     }
+
+    // Hide tooltip when clicking empty cell
+    setTooltip({ visible: false, x: 0, y: 0 })
 
     // Place new object or agent using selected asset or hardcoded tool
     const worldPos = gridToWorld(gridX, gridY)
 
-    console.log('🎯 handleCellClick - selectedAsset:', selectedAsset?.name, 'selectedTool:', selectedTool)
+    console.log(
+      '🎯 handleCellClick - selectedAsset:',
+      selectedAsset?.name,
+      'selectedTool:',
+      selectedTool
+    )
 
     // Use selected tool (from hardcoded palette) or asset
     // Use refs to ensure we have the latest values even if state hasn't updated yet
     const currentSelectedTool = selectedToolRef.current || selectedTool
     const currentSelectedAsset = selectedAssetRef.current || selectedAsset
-    
+
     let objectType: ObjectType | 'agent' | null = null
     if (currentSelectedTool) {
       objectType = currentSelectedTool
       console.log('✅ Using selectedTool:', currentSelectedTool)
     } else if (currentSelectedAsset) {
       objectType = assetToObjectType(currentSelectedAsset) as ObjectType
-      console.log('✅ Using selectedAsset, converted to objectType:', objectType, 'asset:', currentSelectedAsset.name)
+      console.log(
+        '✅ Using selectedAsset, converted to objectType:',
+        objectType,
+        'asset:',
+        currentSelectedAsset.name
+      )
     }
 
     if (!objectType) {
       // No asset/tool selected - open asset selector to help user
-      console.warn('⚠️ No objectType available - selectedAsset:', selectedAsset?.name, 'selectedTool:', selectedTool)
+      console.warn(
+        '⚠️ No objectType available - selectedAsset:',
+        selectedAsset?.name,
+        'selectedTool:',
+        selectedTool
+      )
       if (!selectedAsset && !selectedTool) {
         console.log('📂 Opening asset selector...')
         setShowAssetSelector(true)
@@ -745,7 +815,12 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         currentSelectedAsset ? { assetId: currentSelectedAsset._id } : {} // Store asset reference if available
       )
       // Asset selection persists - user can place multiple objects
-      console.log('✅ Placed object, selectedAsset still:', currentSelectedAsset?.name, 'state:', selectedAsset?.name)
+      console.log(
+        '✅ Placed object, selectedAsset still:',
+        currentSelectedAsset?.name,
+        'state:',
+        selectedAsset?.name
+      )
     }
 
     onSpecChange(sceneGraph.getSpec())
@@ -770,9 +845,56 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
     }
   }
 
+  // Handle delete from tooltip
+  const handleDelete = () => {
+    if (tooltip.object) {
+      sceneGraph.removeObject(tooltip.object.id)
+      onSpecChange(sceneGraph.getSpec())
+      setTooltip({ visible: false, x: 0, y: 0 })
+    } else if (tooltip.agent) {
+      sceneGraph.removeAgent(tooltip.agent.id)
+      onSpecChange(sceneGraph.getSpec())
+      setTooltip({ visible: false, x: 0, y: 0 })
+    }
+  }
+
+  // Close tooltip when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!tooltip.visible) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const tooltipElement = document.querySelector('[data-tooltip]')
+      if (tooltipElement && !tooltipElement.contains(e.target as Node)) {
+        setTooltip({ visible: false, x: 0, y: 0 })
+      }
+    }
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setTooltip({ visible: false, x: 0, y: 0 })
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [tooltip.visible])
+
   // Debug: Log state on every render
   useEffect(() => {
-    console.log('🔄 GridCanvasThree render - selectedAsset:', selectedAsset?.name, 'selectedTool:', selectedTool, 'showAssetSelector:', showAssetSelector, 'assets.length:', assets.length)
+    console.log(
+      '🔄 GridCanvasThree render - selectedAsset:',
+      selectedAsset?.name,
+      'selectedTool:',
+      selectedTool,
+      'showAssetSelector:',
+      showAssetSelector,
+      'assets.length:',
+      assets.length
+    )
   })
 
   // CRITICAL: Ensure button is always visible - add explicit check
@@ -784,7 +906,12 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
     return (
       <button
         onClick={() => {
-          console.log('🖱️ Asset button clicked, current selectedAsset:', selectedAsset?.name, 'ref:', selectedAssetRef.current?.name)
+          console.log(
+            '🖱️ Asset button clicked, current selectedAsset:',
+            selectedAsset?.name,
+            'ref:',
+            selectedAssetRef.current?.name
+          )
           setShowAssetSelector(true)
         }}
         className={`px-4 py-2 rounded text-sm border transition-all flex items-center gap-2 ${
@@ -792,35 +919,47 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
             ? 'border-primary bg-primary text-primary-foreground shadow-md'
             : 'border-border hover:bg-muted'
         }`}
-        title={selectedAsset ? `Selected: ${selectedAsset.name} - Click to change or place more` : 'Select an asset to place'}
-        style={{ 
+        title={
+          selectedAsset
+            ? `Selected: ${selectedAsset.name} - Click to change or place more`
+            : 'Select an asset to place'
+        }
+        style={{
           minWidth: '120px',
           visibility: 'visible',
           opacity: 1,
           display: 'flex',
           position: 'relative',
           zIndex: 1001,
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
         }}
       >
-            {selectedAsset ? (
-              <>
-                <span
-                  className="inline-block w-3 h-3 rounded"
-                  style={{ 
-                    backgroundColor: selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af' 
-                  }}
-                />
-                <span>{selectedAsset.name}</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span>Select Asset</span>
-              </>
-            )}
+        {selectedAsset ? (
+          <>
+            <span
+              className="inline-block w-3 h-3 rounded"
+              style={{
+                backgroundColor:
+                  selectedAsset.meta?.paletteColor ||
+                  selectedAsset.visualProfile?.color ||
+                  '#9ca3af',
+              }}
+            />
+            <span>{selectedAsset.name}</span>
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            <span>Select Asset</span>
+          </>
+        )}
       </button>
     )
   }
@@ -832,8 +971,9 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         <div className="p-1.5 border-b border-border bg-card text-xs text-muted-foreground flex items-center gap-2">
           <span
             className="inline-block w-2.5 h-2.5 rounded"
-            style={{ 
-              backgroundColor: selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af' 
+            style={{
+              backgroundColor:
+                selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af',
             }}
           />
           <span>Selected: {selectedAsset.name} - Click empty cells to place</span>
@@ -881,7 +1021,10 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
       )}
 
       {/* 3D Canvas */}
-      <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" style={{ zIndex: 1 }}>
+      <div
+        className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
+        style={{ zIndex: 1 }}
+      >
         <Canvas
           shadows
           gl={{ antialias: true, alpha: false }}
@@ -889,10 +1032,14 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
         >
           <PerspectiveCamera
             makeDefault
-            position={[Math.max(width, height) * 0.8, Math.max(width, height) * 0.8, Math.max(width, height) * 0.8]}
+            position={[
+              Math.max(width, height) * 0.8,
+              Math.max(width, height) * 0.8,
+              Math.max(width, height) * 0.8,
+            ]}
             fov={50}
           />
-          
+
           <SceneContent
             envSpec={envSpec}
             rolloutState={rolloutState}
@@ -921,9 +1068,58 @@ export function GridCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutStat
 
       {/* Info */}
       <div className="p-2 text-sm text-muted-foreground border-t border-border bg-card">
-        Grid: {width} × {height} | Objects: {envSpec.objects.length} | Agents: {envSpec.agents.length}
+        Grid: {width} × {height} | Objects: {envSpec.objects.length} | Agents:{' '}
+        {envSpec.agents.length}
       </div>
+
+      {/* Object Tooltip - Shows info and delete button when clicking on objects */}
+      {tooltip.visible && (tooltip.object || tooltip.agent) && (
+        <div
+          data-tooltip
+          className="fixed z-50 bg-background border-2 border-border rounded-lg shadow-2xl p-4 min-w-[200px] pointer-events-auto backdrop-blur-none"
+          style={{
+            left: `${tooltip.x + 15}px`,
+            top: `${tooltip.y - 10}px`,
+            transform: 'translateY(-100%)',
+            maxWidth: '250px',
+            backgroundColor: 'hsl(var(--background))',
+            opacity: 1,
+          }}
+        >
+          <div className="space-y-2">
+            {/* Object/Agent Info */}
+            <div className="space-y-1">
+              <div className="font-semibold text-sm">
+                {tooltip.object ? (
+                  <span className="capitalize">{tooltip.object.type}</span>
+                ) : (
+                  <>Agent</>
+                )}
+              </div>
+              {tooltip.object && tooltip.object.position && (
+                <div className="text-xs text-muted-foreground">
+                  Position: ({Math.round(tooltip.object.position[0])},{' '}
+                  {Math.round(tooltip.object.position[1])})
+                </div>
+              )}
+              {tooltip.agent && tooltip.agent.position && (
+                <div className="text-xs text-muted-foreground">
+                  Position: ({Math.round(tooltip.agent.position[0])},{' '}
+                  {Math.round(tooltip.agent.position[1])})
+                </div>
+              )}
+            </div>
+
+            {/* Delete Button */}
+            <button
+              onClick={handleDelete}
+              className="w-full px-3 py-1.5 bg-destructive text-destructive-foreground rounded text-sm font-medium hover:bg-destructive/90 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
