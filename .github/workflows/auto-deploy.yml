@@ -194,10 +194,38 @@ jobs:
           echo "🚀 Building and deploying backend..."
           
           # Build Docker image in Google Cloud Build (offload heavy lifting from GitHub runner)
+          # Use async submit + manual polling to avoid log streaming permission issues
           IMAGE_NAME="gcr.io/${{ secrets.GCP_PROJECT_ID }}/rl-studio-backend:latest"
-          gcloud builds submit . \
+          BUILD_ID=$(gcloud builds submit . \
             --tag "$IMAGE_NAME" \
-            --project="${{ secrets.GCP_PROJECT_ID }}"
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --format="value(id)" \
+            --async)
+
+          echo "Backend Build ID: $BUILD_ID"
+          echo "⏳ Waiting for backend build to complete..."
+
+          MAX_WAIT=1800  # 30 minutes max
+          ELAPSED=0
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(gcloud builds describe "$BUILD_ID" --project="${{ secrets.GCP_PROJECT_ID }}" --format="value(status)" 2>/dev/null || echo "UNKNOWN")
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "✅ Backend build completed successfully!"
+              break
+            elif [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "CANCELLED" ] || [ "$STATUS" = "EXPIRED" ]; then
+              echo "❌ Backend build failed with status: $STATUS"
+              exit 1
+            else
+              echo "⏳ Backend build status: $STATUS (waiting...)"
+              sleep 10
+              ELAPSED=$((ELAPSED + 10))
+            fi
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "❌ Backend build timeout after $MAX_WAIT seconds"
+            exit 1
+          fi
           
           # Deploy to Cloud Run
           echo "🚀 Deploying to Cloud Run..."
