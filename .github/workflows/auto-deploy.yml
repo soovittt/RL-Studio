@@ -196,11 +196,30 @@ jobs:
           # Build Docker image in Google Cloud Build (offload heavy lifting from GitHub runner)
           # Use async submit + manual polling to avoid log streaming permission issues
           IMAGE_NAME="gcr.io/${{ secrets.GCP_PROJECT_ID }}/rl-studio-backend:latest"
-          BUILD_ID=$(gcloud builds submit . \
+          # Submit build asynchronously to avoid log streaming permission errors
+          # Even with --async, gcloud may try to stream logs and fail, so we capture output
+          # and extract build ID even if command exits with error
+          set +e  # Don't fail on error
+          BUILD_OUTPUT=$(gcloud builds submit . \
             --tag "$IMAGE_NAME" \
             --project="${{ secrets.GCP_PROJECT_ID }}" \
             --format="value(id)" \
-            --async)
+            --async 2>&1)
+          BUILD_EXIT_CODE=$?
+          set -e  # Re-enable error handling
+          
+          # Extract build ID from output (UUID format or from URL)
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oE "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}" | head -1)
+          
+          if [ -z "$BUILD_ID" ]; then
+            echo "⚠️  Could not extract build ID from output:"
+            echo "$BUILD_OUTPUT"
+            echo "❌ Failed to get build ID from gcloud builds submit"
+            exit 1
+          fi
+          
+          echo "📋 Build submission output (exit code: $BUILD_EXIT_CODE):"
+          echo "$BUILD_OUTPUT" | head -5
 
           echo "Backend Build ID: $BUILD_ID"
           echo "⏳ Waiting for backend build to complete..."
