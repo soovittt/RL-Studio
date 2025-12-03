@@ -20,7 +20,12 @@ interface StudioBottomPanelProps {
   onStepChange?: (stepState: { agents: Array<{ id: string; position: Vec2 }> } | null) => void
 }
 
-export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }: StudioBottomPanelProps) {
+export function StudioBottomPanel({
+  envSpec,
+  envId,
+  onRunRollout,
+  onStepChange,
+}: StudioBottomPanelProps) {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<BottomPanelTab>('rollout')
   const [rolloutResult, setRolloutResult] = useState<SimulatorResult | null>(null)
@@ -73,33 +78,39 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
     { id: 'analysis', label: 'RL Analysis' },
   ]
 
-      const handleRunRollout = useCallback(async () => {
-        if (!envSpec) {
-          alert('❌ No environment specification found')
-          return
-        }
+  const handleRunRollout = useCallback(async () => {
+    if (!envSpec) {
+      alert('❌ No environment specification found')
+      return
+    }
 
-        // Validate environment using the validation function
-        const { validateEnvSpec } = await import('~/lib/universalSimulator')
-        const validation = validateEnvSpec(envSpec)
-        if (!validation.valid) {
-          alert(`❌ Invalid environment: ${validation.error}\n\nPlease fix the environment before running rollout.`)
-          return
-        }
+    // Validate environment using the validation function
+    const { validateEnvSpec } = await import('~/lib/universalSimulator')
+    const validation = validateEnvSpec(envSpec)
+    if (!validation.valid) {
+      alert(
+        `❌ Invalid environment: ${validation.error}\n\nPlease fix the environment before running rollout.`
+      )
+      return
+    }
 
-        // Check if goals exist for greedy policy
-        const goals = envSpec.objects?.filter((o) => o?.type === 'goal') || []
-        if (policy === 'greedy' && goals.length === 0) {
-          alert('⚠️ Greedy policy requires at least one goal object. Please add a goal to your environment.')
-          return
-        }
-        
-        // Check if runId is provided for trained_model policy
-        if (policy === 'trained_model' && !selectedRunId) {
-          alert('⚠️ Trained model policy requires a Run ID. Please enter a Run ID or select a completed training run.')
-          return
-        }
-    
+    // Check if goals exist for greedy policy
+    const goals = envSpec.objects?.filter((o) => o?.type === 'goal') || []
+    if (policy === 'greedy' && goals.length === 0) {
+      alert(
+        '⚠️ Greedy policy requires at least one goal object. Please add a goal to your environment.'
+      )
+      return
+    }
+
+    // Check if runId is provided for trained_model policy
+    if (policy === 'trained_model' && !selectedRunId) {
+      alert(
+        '⚠️ Trained model policy requires a Run ID. Please enter a Run ID or select a completed training run.'
+      )
+      return
+    }
+
     console.log('🚀 Running rollout:', {
       policy,
       agentCount: envSpec.agents.length,
@@ -120,31 +131,42 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
       // IMPORTANT: Read maxSteps from the input field directly to avoid stale closure
       const currentMaxStepsInput = document.getElementById('maxSteps') as HTMLInputElement
       const userInputValue = currentMaxStepsInput ? parseInt(currentMaxStepsInput.value, 10) : null
-      const timeoutRuleSteps = envSpec.rules?.terminations?.find((r) => r.condition.type === 'timeout')?.condition.steps
-      
+      const timeoutRuleSteps = envSpec.rules?.terminations?.find(
+        (r) => r.condition.type === 'timeout'
+      )?.condition.steps
+
       // Use the actual input value if valid, otherwise fall back to state, then timeout rule, then default
-      const effectiveMaxSteps = (userInputValue && !isNaN(userInputValue) && userInputValue > 0 && userInputValue <= 10000) 
-        ? userInputValue 
-        : (maxSteps && maxSteps > 0 ? maxSteps : (timeoutRuleSteps || 100))
-      
+      const effectiveMaxSteps =
+        userInputValue && !isNaN(userInputValue) && userInputValue > 0 && userInputValue <= 10000
+          ? userInputValue
+          : maxSteps && maxSteps > 0
+            ? maxSteps
+            : timeoutRuleSteps || 100
+
       // Update state if input value is different (to keep in sync)
-      if (userInputValue && userInputValue !== maxSteps && !isNaN(userInputValue) && userInputValue > 0 && userInputValue <= 10000) {
+      if (
+        userInputValue &&
+        userInputValue !== maxSteps &&
+        !isNaN(userInputValue) &&
+        userInputValue > 0 &&
+        userInputValue <= 10000
+      ) {
         setMaxSteps(userInputValue)
       }
-      
-      console.log('📊 Rollout config:', { 
+
+      console.log('📊 Rollout config:', {
         inputFieldValue: userInputValue,
-        stateMaxSteps: maxSteps, 
-        timeoutRuleSteps, 
-        effectiveMaxSteps, 
+        stateMaxSteps: maxSteps,
+        timeoutRuleSteps,
+        effectiveMaxSteps,
         policy,
-        willUse: effectiveMaxSteps
+        willUse: effectiveMaxSteps,
       })
-      
+
       // Try Python backend first, fallback to TypeScript simulator
       let result: SimulatorResult
       const backendAvailable = await checkRolloutServiceHealth()
-      
+
       if (backendAvailable) {
         console.log('✅ Using Python backend for rollout')
         try {
@@ -155,20 +177,20 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
             objectsCount: envSpec.objects?.length || 0,
             goalsCount: goals.length,
           })
-          
+
           const response = await runRolloutHTTP({
             envSpec,
             policy,
             maxSteps: effectiveMaxSteps,
             ...(policy === 'trained_model' && selectedRunId && { runId: selectedRunId }),
           })
-          
+
           console.log('📥 Backend response:', {
             success: response.success,
             stepsCount: response.result?.steps?.length || 0,
             error: response.error,
           })
-          
+
           if (response.success && response.result) {
             // Convert Python backend response to SimulatorResult format
             result = {
@@ -225,7 +247,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
           success: result.success,
         })
       }
-      
+
       console.log('✅ Rollout complete:', {
         totalReward: result.totalReward,
         episodeLength: result.episodeLength,
@@ -235,14 +257,14 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
         firstStepPosition: result.steps[0]?.state.agents[0]?.position,
         lastStepPosition: result.steps[result.steps.length - 1]?.state.agents[0]?.position,
       })
-      
+
       if (!result || !result.steps || result.steps.length === 0) {
         throw new Error('Rollout returned no steps')
       }
-      
+
       setRolloutResult(result)
       setCurrentStepIndex(0)
-      
+
       // Use requestAnimationFrame to avoid setState during render warning
       requestAnimationFrame(() => {
         // Update visualization with first step
@@ -258,7 +280,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
         // Auto-play the rollout
         setIsPlaying(true)
       })
-      
+
       // Save rollout to history if we have an envId and user
       // Only save summary data to avoid Convex 1MB limit
       // Full step data is stored in memory for current session only
@@ -274,7 +296,9 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
             terminationReason: result.terminationReason,
             // Save only first and last agent positions for visualization
             startPosition: result.steps[0]?.state?.agents?.[0]?.position || [0, 0],
-            endPosition: result.steps[result.steps.length - 1]?.state?.agents?.[0]?.position || [0, 0],
+            endPosition: result.steps[result.steps.length - 1]?.state?.agents?.[0]?.position || [
+              0, 0,
+            ],
             // Save only final step info (for termination analysis)
             finalInfo: {
               events: result.steps[result.steps.length - 1]?.state?.info?.events?.slice(-5) || [],
@@ -289,7 +313,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
               note: 'Full step data available via backend API for analysis',
             },
           }
-          
+
           await saveRolloutMutation({
             envId: envId as any,
             ownerId: user._id,
@@ -406,7 +430,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
 
       {/* Tab Content */}
       <div className="flex-1 overflow-auto p-4">
-            {activeTab === 'rollout' && (
+        {activeTab === 'rollout' && (
           <div className="space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
               <select
@@ -451,7 +475,11 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                     }
                     const value = parseInt(inputValue, 10)
                     if (!isNaN(value) && value > 0 && value <= 10000) {
-                      console.log('📝 MaxSteps input changed:', { inputValue, parsedValue: value, currentState: maxSteps })
+                      console.log('📝 MaxSteps input changed:', {
+                        inputValue,
+                        parsedValue: value,
+                        currentState: maxSteps,
+                      })
                       setMaxSteps(value)
                     } else {
                       console.warn('⚠️ Invalid maxSteps input:', { inputValue, parsedValue: value })
@@ -461,7 +489,9 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                     // Ensure valid value on blur
                     const value = parseInt(e.target.value, 10)
                     if (isNaN(value) || value <= 0 || value > 10000) {
-                      const timeoutRule = envSpec?.rules?.terminations?.find((r) => r.condition.type === 'timeout')
+                      const timeoutRule = envSpec?.rules?.terminations?.find(
+                        (r) => r.condition.type === 'timeout'
+                      )
                       const fallback = timeoutRule?.condition.steps || 100
                       setMaxSteps(fallback)
                     }
@@ -542,7 +572,9 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                     <div className="w-full bg-muted rounded-full h-1.5 mt-1">
                       <div
                         className="bg-primary h-1.5 rounded-full transition-all duration-100"
-                        style={{ width: `${((currentStepIndex + 1) / rolloutResult.steps.length) * 100}%` }}
+                        style={{
+                          width: `${((currentStepIndex + 1) / rolloutResult.steps.length) * 100}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -560,20 +592,25 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                     <div>
                       <span className="text-muted-foreground">Action: </span>
                       <span className="font-mono">
-                        {typeof currentStep.action === 'string' 
-                          ? currentStep.action 
-                          : `[${currentStep.action.map(a => a.toFixed(2)).join(', ')}]`}
+                        {typeof currentStep.action === 'string'
+                          ? currentStep.action
+                          : `[${currentStep.action.map((a) => a.toFixed(2)).join(', ')}]`}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Step Reward: </span>
-                      <span className={`font-mono ${currentStep.reward > 0 ? 'text-green-600' : currentStep.reward < 0 ? 'text-red-600' : ''}`}>
-                        {currentStep.reward >= 0 ? '+' : ''}{currentStep.reward.toFixed(2)}
+                      <span
+                        className={`font-mono ${currentStep.reward > 0 ? 'text-green-600' : currentStep.reward < 0 ? 'text-red-600' : ''}`}
+                      >
+                        {currentStep.reward >= 0 ? '+' : ''}
+                        {currentStep.reward.toFixed(2)}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Cumulative: </span>
-                      <span className={`font-mono ${currentStep.state.totalReward > 0 ? 'text-green-600' : currentStep.state.totalReward < 0 ? 'text-red-600' : ''}`}>
+                      <span
+                        className={`font-mono ${currentStep.state.totalReward > 0 ? 'text-green-600' : currentStep.state.totalReward < 0 ? 'text-red-600' : ''}`}
+                      >
                         {currentStep.state.totalReward.toFixed(2)}
                       </span>
                     </div>
@@ -581,7 +618,8 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                       <div>
                         <span className="text-muted-foreground">Position: </span>
                         <span className="font-mono">
-                          ({currentStep.state.agents[0].position[0].toFixed(1)}, {currentStep.state.agents[0].position[1].toFixed(1)})
+                          ({currentStep.state.agents[0].position[0].toFixed(1)},{' '}
+                          {currentStep.state.agents[0].position[1].toFixed(1)})
                         </span>
                       </div>
                     )}
@@ -591,7 +629,8 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                         <div className="ml-4 space-y-0.5">
                           {currentStep.state.info.rewards.map((r, i) => (
                             <div key={i} className="text-xs">
-                              {r.reason}: {r.value >= 0 ? '+' : ''}{r.value.toFixed(2)}
+                              {r.reason}: {r.value >= 0 ? '+' : ''}
+                              {r.value.toFixed(2)}
                             </div>
                           ))}
                         </div>
@@ -610,84 +649,89 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
           </div>
         )}
 
-            {activeTab === 'rewards' && (
-              <div className="text-sm">
+        {activeTab === 'rewards' && (
+          <div className="text-sm">
+            <div className="space-y-2">
+              {rolloutResult && currentStep ? (
+                // Show rewards from current step
                 <div className="space-y-2">
-                  {rolloutResult && currentStep ? (
-                    // Show rewards from current step
-                    <div className="space-y-2">
-                      <div className="text-xs font-medium text-muted-foreground mb-2">
-                        Step {currentStepIndex + 1} Rewards:
+                  <div className="text-xs font-medium text-muted-foreground mb-2">
+                    Step {currentStepIndex + 1} Rewards:
+                  </div>
+                  {currentStep.state.info.rewards && currentStep.state.info.rewards.length > 0 ? (
+                    currentStep.state.info.rewards.map((r: any, i: number) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-2 bg-muted rounded"
+                      >
+                        <div>
+                          <span className="text-xs font-medium">{r.reason || 'unknown'}</span>
+                          {r.ruleId && r.ruleId !== 'unknown' && (
+                            <span className="text-xs text-muted-foreground ml-2">({r.ruleId})</span>
+                          )}
+                        </div>
+                        <span
+                          className={`font-mono ${r.value >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                        >
+                          {r.value >= 0 ? '+' : ''}
+                          {r.value.toFixed(2)}
+                        </span>
                       </div>
-                      {currentStep.state.info.rewards && currentStep.state.info.rewards.length > 0 ? (
-                        currentStep.state.info.rewards.map((r: any, i: number) => (
-                          <div key={i} className="flex items-center justify-between p-2 bg-muted rounded">
-                            <div>
-                              <span className="text-xs font-medium">
-                                {r.reason || 'unknown'}
-                              </span>
-                              {r.ruleId && r.ruleId !== 'unknown' && (
-                                <span className="text-xs text-muted-foreground ml-2">
-                                  ({r.ruleId})
-                                </span>
-                              )}
-                            </div>
-                            <span className={`font-mono ${r.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {r.value >= 0 ? '+' : ''}{r.value.toFixed(2)}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-xs">No rewards for this step</p>
-                      )}
-                    </div>
+                    ))
                   ) : (
-                    // Show reward rules from envSpec
-                    <>
-                      {envSpec?.rules?.rewards && envSpec.rules.rewards.length > 0 ? (
-                        <div className="space-y-2">
-                          <div className="text-xs font-medium text-muted-foreground mb-2">
-                            Configured Reward Rules:
-                          </div>
-                          {envSpec.rules.rewards.map((rule) => (
-                            <div key={rule.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                              <div>
-                                <span className="text-xs font-medium">
-                                  {rule.condition.type}
-                                </span>
-                                {rule.shaping && (
-                                  <span className="text-xs text-muted-foreground ml-2">(shaping)</span>
-                                )}
-                              </div>
-                              <span className={`font-mono ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {rule.reward >= 0 ? '+' : ''}{rule.reward}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-2 p-4 border border-yellow-500/50 bg-yellow-500/10 rounded">
-                          <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
-                            ⚠️ No reward rules defined
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Add reward rules in the <strong>Rules panel</strong> (right sidebar → Rewards tab) before running rollout.
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Common rules:
-                          </p>
-                          <ul className="text-xs text-muted-foreground ml-4 list-disc space-y-1">
-                            <li>Goal reached: +10</li>
-                            <li>Per step: -0.1</li>
-                            <li>Trap hit: -10</li>
-                          </ul>
-                        </div>
-                      )}
-                    </>
+                    <p className="text-muted-foreground text-xs">No rewards for this step</p>
                   )}
                 </div>
-              </div>
-            )}
+              ) : (
+                // Show reward rules from envSpec
+                <>
+                  {envSpec?.rules?.rewards && envSpec.rules.rewards.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Configured Reward Rules:
+                      </div>
+                      {envSpec.rules.rewards.map((rule) => (
+                        <div
+                          key={rule.id}
+                          className="flex items-center justify-between p-2 bg-muted rounded"
+                        >
+                          <div>
+                            <span className="text-xs font-medium">{rule.condition.type}</span>
+                            {rule.shaping && (
+                              <span className="text-xs text-muted-foreground ml-2">(shaping)</span>
+                            )}
+                          </div>
+                          <span
+                            className={`font-mono ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                          >
+                            {rule.reward >= 0 ? '+' : ''}
+                            {rule.reward}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 p-4 border border-yellow-500/50 bg-yellow-500/10 rounded">
+                      <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
+                        ⚠️ No reward rules defined
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Add reward rules in the <strong>Rules panel</strong> (right sidebar →
+                        Rewards tab) before running rollout.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">Common rules:</p>
+                      <ul className="text-xs text-muted-foreground ml-4 list-disc space-y-1">
+                        <li>Goal reached: +10</li>
+                        <li>Per step: -0.1</li>
+                        <li>Trap hit: -10</li>
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {activeTab === 'events' && (
           <div className="text-sm h-full flex flex-col">
@@ -697,19 +741,22 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                   Showing events up to step {currentStepIndex + 1} / {rolloutResult.steps.length}
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-0.5 pr-2">
-                  {rolloutResult.steps.slice(0, currentStepIndex + 1).map((step, stepIdx) => 
-                    step.state.info.events?.map((event, eventIdx) => (
-                      <div 
-                        key={`${stepIdx}-${eventIdx}`} 
-                        className="text-xs text-muted-foreground p-1.5 hover:bg-muted/50 rounded transition-colors border-l-2 border-transparent hover:border-primary/30"
-                      >
-                        <span className="text-muted-foreground/60 font-mono text-[10px] mr-2">
-                          Step {stepIdx + 1}:
-                        </span>
-                        {event}
-                      </div>
-                    ))
-                  ).flat()}
+                  {rolloutResult.steps
+                    .slice(0, currentStepIndex + 1)
+                    .map((step, stepIdx) =>
+                      step.state.info.events?.map((event, eventIdx) => (
+                        <div
+                          key={`${stepIdx}-${eventIdx}`}
+                          className="text-xs text-muted-foreground p-1.5 hover:bg-muted/50 rounded transition-colors border-l-2 border-transparent hover:border-primary/30"
+                        >
+                          <span className="text-muted-foreground/60 font-mono text-[10px] mr-2">
+                            Step {stepIdx + 1}:
+                          </span>
+                          {event}
+                        </div>
+                      ))
+                    )
+                    .flat()}
                 </div>
               </>
             ) : (
@@ -727,7 +774,9 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
             ) : rolloutHistory === undefined ? (
               <p className="text-muted-foreground">Loading history...</p>
             ) : rolloutHistory.length === 0 ? (
-              <p className="text-muted-foreground">No rollout history yet. Run a rollout to see it here.</p>
+              <p className="text-muted-foreground">
+                No rollout history yet. Run a rollout to see it here.
+              </p>
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-3">
@@ -740,15 +789,19 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                     const result = history.result as SimulatorResult
                     const isSelected = selectedHistoryId === history._id
                     // Check if this is summary-only (no step data)
-                    const isSummaryOnly = result?._metadata?.hasFullData === false || (result?.steps?.length === 0 && result?.episodeLength > 0)
+                    const isSummaryOnly =
+                      result?._metadata?.hasFullData === false ||
+                      (result?.steps?.length === 0 && result?.episodeLength > 0)
                     const hasSteps = result && result.steps && result.steps.length > 0
-                    
+
                     return (
                       <div
                         key={history._id}
                         onClick={() => {
                           if (isSummaryOnly) {
-                            alert('This rollout is stored as summary-only to save space. Re-run the rollout to see full visualization, or use RL Analysis tab for detailed analysis.')
+                            alert(
+                              'This rollout is stored as summary-only to save space. Re-run the rollout to see full visualization, or use RL Analysis tab for detailed analysis.'
+                            )
                           } else if (hasSteps) {
                             setSelectedHistoryId(history._id)
                             setRolloutResult(result)
@@ -772,7 +825,10 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                               {new Date(history.createdAt).toLocaleTimeString()}
                             </span>
                             {isSummaryOnly && (
-                              <span className="text-xs text-blue-600" title="Summary-only (full data available via backend)">
+                              <span
+                                className="text-xs text-blue-600"
+                                title="Summary-only (full data available via backend)"
+                              >
                                 (summary)
                               </span>
                             )}
@@ -782,10 +838,16 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                               {result?.success ? '✓' : '✗'}
                             </span>
                             <span className="text-muted-foreground">
-                              Reward: <span className="font-mono">{result?.totalReward?.toFixed(2) || 'N/A'}</span>
+                              Reward:{' '}
+                              <span className="font-mono">
+                                {result?.totalReward?.toFixed(2) || 'N/A'}
+                              </span>
                             </span>
                             <span className="text-muted-foreground">
-                              Steps: <span className="font-mono">{result?.episodeLength || result?._metadata?.totalSteps || 'N/A'}</span>
+                              Steps:{' '}
+                              <span className="font-mono">
+                                {result?.episodeLength || result?._metadata?.totalSteps || 'N/A'}
+                              </span>
                             </span>
                           </div>
                         </div>
@@ -798,9 +860,7 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
           </div>
         )}
 
-        {activeTab === 'code' && (
-          <CodeViewTab envSpec={envSpec} />
-        )}
+        {activeTab === 'code' && <CodeViewTab envSpec={envSpec} />}
 
         {activeTab === 'analysis' && (
           <div className="p-4 h-full overflow-y-auto space-y-6">
@@ -808,7 +868,9 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center">
                   <p className="text-sm mb-2">Run a rollout to see RL analysis</p>
-                  <p className="text-xs">The analysis tab provides scientific insights into agent behavior</p>
+                  <p className="text-xs">
+                    The analysis tab provides scientific insights into agent behavior
+                  </p>
                 </div>
               </div>
             ) : (
@@ -823,17 +885,15 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
 
                 {/* Trajectory Path */}
                 <div className="bg-card border border-border rounded-lg p-4">
-                  <TrajectoryPathVisualizer
-                    rolloutSteps={rolloutResult.steps}
-                    envSpec={envSpec}
-                  />
+                  <TrajectoryPathVisualizer rolloutSteps={rolloutResult.steps} envSpec={envSpec} />
                 </div>
 
                 {/* Policy Entropy */}
                 {rolloutHistory && rolloutHistory.length > 0 && (
                   <div className="bg-card border border-border rounded-lg p-4">
                     <div className="mb-2 text-xs text-muted-foreground">
-                      Note: Policy entropy analysis requires full step data. Summary-only rollouts will be skipped.
+                      Note: Policy entropy analysis requires full step data. Summary-only rollouts
+                      will be skipped.
                     </div>
                     <PolicyEntropyChart
                       rollouts={rolloutHistory
@@ -841,11 +901,13 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                         .filter((h) => {
                           // Only use rollouts with actual step data (not summary-only)
                           const result = h?.result
-                          return result && 
-                                 result.steps && 
-                                 Array.isArray(result.steps) && 
-                                 result.steps.length > 0 &&
-                                 result._metadata?.hasFullData !== false
+                          return (
+                            result &&
+                            result.steps &&
+                            Array.isArray(result.steps) &&
+                            result.steps.length > 0 &&
+                            result._metadata?.hasFullData !== false
+                          )
                         })
                         .map((h) =>
                           (h.result.steps || [])
@@ -867,7 +929,8 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                 {rolloutHistory && rolloutHistory.length > 1 && (
                   <div className="bg-card border border-border rounded-lg p-4">
                     <div className="mb-2 text-xs text-muted-foreground">
-                      Note: Termination analysis requires full step data. Summary-only rollouts will be skipped.
+                      Note: Termination analysis requires full step data. Summary-only rollouts will
+                      be skipped.
                     </div>
                     <TerminationAnalysisChart
                       rollouts={rolloutHistory
@@ -875,11 +938,13 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
                         .filter((h) => {
                           // Only use rollouts with actual step data (not summary-only)
                           const result = h?.result
-                          return result && 
-                                 result.steps && 
-                                 Array.isArray(result.steps) && 
-                                 result.steps.length > 0 &&
-                                 result._metadata?.hasFullData !== false
+                          return (
+                            result &&
+                            result.steps &&
+                            Array.isArray(result.steps) &&
+                            result.steps.length > 0 &&
+                            result._metadata?.hasFullData !== false
+                          )
                         })
                         .map((h) =>
                           (h.result.steps || [])
@@ -904,4 +969,3 @@ export function StudioBottomPanel({ envSpec, envId, onRunRollout, onStepChange }
     </div>
   )
 }
-

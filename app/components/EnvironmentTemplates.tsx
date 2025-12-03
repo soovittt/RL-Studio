@@ -39,7 +39,9 @@ export const TEMPLATES: EnvironmentTemplate[] = [
       },
       visuals: {
         renderer: 'grid',
-        grid: Array(10).fill(null).map(() => Array(10).fill('empty')),
+        grid: Array(10)
+          .fill(null)
+          .map(() => Array(10).fill('empty')),
       },
       metadata: {
         tags: ['grid', 'basic'],
@@ -78,7 +80,9 @@ export const TEMPLATES: EnvironmentTemplate[] = [
       visuals: {
         renderer: 'grid',
         grid: (() => {
-          const grid = Array(10).fill(null).map(() => Array(10).fill('empty'))
+          const grid = Array(10)
+            .fill(null)
+            .map(() => Array(10).fill('empty'))
           // Create a simple maze pattern
           for (let i = 1; i < 9; i++) {
             grid[1][i] = 'wall'
@@ -131,7 +135,9 @@ export const TEMPLATES: EnvironmentTemplate[] = [
       visuals: {
         renderer: 'grid',
         grid: (() => {
-          const grid = Array(10).fill(null).map(() => Array(10).fill('empty'))
+          const grid = Array(10)
+            .fill(null)
+            .map(() => Array(10).fill('empty'))
           grid[0][0] = 'agent'
           grid[5][5] = 'key'
           grid[9][9] = 'goal'
@@ -158,11 +164,17 @@ export const TEMPLATES: EnvironmentTemplate[] = [
       stateSpace: {
         type: 'continuous',
         shape: [2],
-        bounds: [[-10, 10], [-10, 10]],
+        bounds: [
+          [-10, 10],
+          [-10, 10],
+        ],
       },
       actionSpace: {
         type: 'continuous',
-        bounds: [[-1, 1], [-1, 1]],
+        bounds: [
+          [-1, 1],
+          [-1, 1],
+        ],
       },
       dynamics: {
         type: 'physics',
@@ -233,4 +245,3 @@ export const TEMPLATES: EnvironmentTemplate[] = [
     },
   },
 ]
-

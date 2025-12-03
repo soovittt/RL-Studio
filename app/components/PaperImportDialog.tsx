@@ -128,9 +128,7 @@ export function PaperImportDialog({ onClose, onImport }: PaperImportDialogProps)
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
-              URL (arXiv, blog post, etc.)
-            </label>
+            <label className="block text-sm font-medium mb-2">URL (arXiv, blog post, etc.)</label>
             <input
               type="url"
               value={url}
@@ -208,4 +206,3 @@ export function PaperImportDialog({ onClose, onImport }: PaperImportDialogProps)
     </div>
   )
 }
-

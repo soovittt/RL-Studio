@@ -23,14 +23,14 @@ function getCachedTemplates(): Template[] | null {
   try {
     const cached = localStorage.getItem(TEMPLATES_CACHE_KEY)
     if (!cached) return null
-    
+
     const parsed: CachedTemplates = JSON.parse(cached)
-    
+
     // Check if cache is still valid
     if (Date.now() - parsed.timestamp < TEMPLATES_CACHE_TTL) {
       return parsed.data
     }
-    
+
     // Cache expired
     localStorage.removeItem(TEMPLATES_CACHE_KEY)
     return null
@@ -72,7 +72,7 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
     async function loadData() {
       try {
         setLoading(true)
-        
+
         // Load templates
         const cachedTemplates = getCachedTemplates()
         if (cachedTemplates && cachedTemplates.length > 0) {
@@ -84,16 +84,16 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
           setCachedTemplates(templates)
           setBackendTemplates(templates)
         }
-        
+
         // Load assets (all modes)
         try {
           const allAssets = await listAssets({})
           console.log('Loaded assets:', allAssets)
-          
+
           // Ensure allAssets is an array
           const assetsArray = Array.isArray(allAssets) ? allAssets : []
           console.log('Assets array length:', assetsArray.length)
-          
+
           // Filter to primary palette assets (or show all if none have palette set)
           const primaryAssets = assetsArray
             .filter((asset) => !asset.meta?.palette || asset.meta.palette === 'primary')
@@ -105,11 +105,10 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
           // Don't set error for assets - it's not critical
           setAssets([])
         }
-        
       } catch (err) {
         console.error('Failed to load data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
-        
+
         // Try to use cached templates even if expired
         const cached = getCachedTemplates()
         if (cached && cached.length > 0) {
@@ -125,7 +124,7 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
   const handleSelect = (template: EnvironmentTemplate) => {
     try {
       console.log('Selecting built-in template:', template.name, template)
-      
+
       // Convert template spec to universal EnvSpec
       let envSpec: EnvSpec
 
@@ -136,7 +135,7 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
       } else {
         // Migrate from legacy format - template.spec is the legacy format
         console.log('Migrating template from legacy format', template.spec)
-        
+
         // The template spec has visuals.grid, reward.rules, etc. at the root level
         // migrateFromLegacy expects them nested, so we need to restructure
         const legacyFormat = {
@@ -149,7 +148,7 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
           episode: template.spec.episode || {},
           metadata: template.spec.metadata || {},
         }
-        
+
         envSpec = SceneGraphManager.migrateFromLegacy(legacyFormat)
         console.log('Migrated EnvSpec:', envSpec)
       }
@@ -173,15 +172,17 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
       console.log('Loading template:', template._id, template.name)
       setLoading(true)
       setError(null)
-      
+
       // Load template data with scene version
-      const templateData = await import('~/lib/templateClient').then(m => m.getTemplate(template._id))
+      const templateData = await import('~/lib/templateClient').then((m) =>
+        m.getTemplate(template._id)
+      )
       console.log('Template data loaded:', templateData)
-      
+
       if (!templateData.sceneVersion) {
         throw new Error('Template does not have a scene version')
       }
-      
+
       // Convert sceneGraph + rlConfig to EnvSpec using proper converter
       const { sceneGraphToEnvSpec } = await import('~/lib/sceneGraphToEnvSpec')
       const envSpec = sceneGraphToEnvSpec(
@@ -205,7 +206,10 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl" style={{ backgroundColor: '#ffffff', border: '1px solid #d1d5db' }}>
+      <div
+        className="rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl"
+        style={{ backgroundColor: '#ffffff', border: '1px solid #d1d5db' }}
+      >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Templates & Assets Library</h2>
           <button
@@ -250,15 +254,15 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
         {activeTab === 'templates' && (
           <div>
             {loading && (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading templates...
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Loading templates...</div>
             )}
 
             {/* Backend Templates Section */}
             {backendTemplates.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">📚 Templates from Library ({backendTemplates.length})</h3>
+                <h3 className="text-lg font-semibold mb-3">
+                  📚 Templates from Library ({backendTemplates.length})
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {backendTemplates.map((template) => (
                     <div
@@ -272,7 +276,9 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
                       onDoubleClick={() => handleSelectBackendTemplate(template)}
                     >
                       <h3 className="font-semibold mb-2">{template.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-3">{template.description || 'No description'}</p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {template.description || 'No description'}
+                      </p>
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex gap-1 flex-wrap">
                           {template.category && (
@@ -310,50 +316,52 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
             {/* Legacy Templates Section */}
             {TEMPLATES.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">🔧 Built-in Templates ({TEMPLATES.length})</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {TEMPLATES.map((template) => (
-            <div
-              key={template.id}
-              className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                selectedTemplate?.id === template.id
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50 hover:bg-muted/50'
-              }`}
-              onClick={() => setSelectedTemplate(template)}
-              onDoubleClick={() => handleSelect(template)}
-            >
-              <h3 className="font-semibold mb-2">{template.name}</h3>
-              <p className="text-sm text-muted-foreground mb-3">{template.description}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-xs px-2 py-1 bg-muted rounded">
-                  {template.envType}
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    try {
-                      handleSelect(template)
-                    } catch (err) {
-                      console.error('Error in Use Template button (legacy):', err)
-                      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
-                    }
-                  }}
-                  className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
-                >
-                  Use Template
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                <h3 className="text-lg font-semibold mb-3">
+                  🔧 Built-in Templates ({TEMPLATES.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {TEMPLATES.map((template) => (
+                    <div
+                      key={template.id}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                        selectedTemplate?.id === template.id
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      }`}
+                      onClick={() => setSelectedTemplate(template)}
+                      onDoubleClick={() => handleSelect(template)}
+                    >
+                      <h3 className="font-semibold mb-2">{template.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-3">{template.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs px-2 py-1 bg-muted rounded">
+                          {template.envType}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            try {
+                              handleSelect(template)
+                            } catch (err) {
+                              console.error('Error in Use Template button (legacy):', err)
+                              alert(
+                                `Error: ${err instanceof Error ? err.message : 'Unknown error'}`
+                              )
+                            }
+                          }}
+                          className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
+                        >
+                          Use Template
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {!loading && backendTemplates.length === 0 && TEMPLATES.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No templates available
-              </div>
+              <div className="text-center py-8 text-muted-foreground">No templates available</div>
             )}
           </div>
         )}
@@ -362,19 +370,19 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
         {activeTab === 'assets' && (
           <div>
             {loading && (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading assets...
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Loading assets...</div>
             )}
 
             {assets.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">🎨 Available Assets ({assets.length})</h3>
+                <h3 className="text-lg font-semibold mb-3">
+                  🎨 Available Assets ({assets.length})
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {assets.map((asset) => {
                     const paletteColor = asset.meta?.paletteColor || '#9ca3af'
                     const labelColor = asset.meta?.labelColor || '#ffffff'
-                    
+
                     return (
                       <div
                         key={asset._id}
@@ -386,7 +394,10 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
                             className="inline-block w-4 h-4 rounded flex-shrink-0"
                             style={{ backgroundColor: paletteColor }}
                           />
-                          <span className="font-medium text-sm truncate" style={{ color: labelColor === '#ffffff' ? undefined : labelColor }}>
+                          <span
+                            className="font-medium text-sm truncate"
+                            style={{ color: labelColor === '#ffffff' ? undefined : labelColor }}
+                          >
                             {asset.name}
                           </span>
                         </div>
@@ -404,7 +415,8 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
                   })}
                 </div>
                 <div className="mt-4 p-3 bg-muted/50 rounded text-sm text-muted-foreground">
-                  💡 <strong>Tip:</strong> Assets are automatically available in the Asset Palette when editing environments. Select them from the top of the canvas.
+                  💡 <strong>Tip:</strong> Assets are automatically available in the Asset Palette
+                  when editing environments. Select them from the top of the canvas.
                 </div>
               </div>
             )}
@@ -424,7 +436,9 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
               {selectedTemplate?.name || selectedBackendTemplate?.name}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              {selectedTemplate?.description || selectedBackendTemplate?.description || 'No description'}
+              {selectedTemplate?.description ||
+                selectedBackendTemplate?.description ||
+                'No description'}
             </p>
             <div className="flex gap-2">
               <button
@@ -461,4 +475,3 @@ export function TemplateSelector({ onClose, onSelect, projectId }: TemplateSelec
     </div>
   )
 }
-

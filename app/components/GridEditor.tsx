@@ -16,7 +16,12 @@ const CELL_TYPES = {
 
 export function GridEditor({ spec, onChange }: GridEditorProps) {
   const [selectedType, setSelectedType] = useState<keyof typeof CELL_TYPES>('wall')
-  const [grid, setGrid] = useState(spec.grid || Array(10).fill(null).map(() => Array(10).fill('empty')))
+  const [grid, setGrid] = useState(
+    spec.grid ||
+      Array(10)
+        .fill(null)
+        .map(() => Array(10).fill('empty'))
+  )
 
   const handleCellClick = (row: number, col: number) => {
     const newGrid = grid.map((r: string[], rIdx: number) =>
@@ -54,7 +59,10 @@ export function GridEditor({ spec, onChange }: GridEditorProps) {
       </div>
 
       <div className="border border-border rounded-lg p-4 bg-white">
-        <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${grid[0].length}, 1fr)` }}>
+        <div
+          className="grid gap-0"
+          style={{ gridTemplateColumns: `repeat(${grid[0].length}, 1fr)` }}
+        >
           {grid.map((row: string[], rowIdx: number) =>
             row.map((cell: string, colIdx: number) => {
               const cellType = cell as keyof typeof CELL_TYPES
@@ -78,4 +86,3 @@ export function GridEditor({ spec, onChange }: GridEditorProps) {
     </div>
   )
 }
-

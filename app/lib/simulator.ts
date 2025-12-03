@@ -198,10 +198,7 @@ function randomAction(actions: string[]): string {
 }
 
 // Greedy policy (towards goal)
-function greedyAction(
-  state: GridState,
-  actions: string[]
-): string {
+function greedyAction(state: GridState, actions: string[]): string {
   // Find goal position
   let goalPos: [number, number] | null = null
   for (let row = 0; row < state.grid.length; row++) {
@@ -245,8 +242,7 @@ export function runRollout(
 
   while (!state.done && state.step < maxSteps) {
     // Select action
-    const action =
-      policy === 'greedy' ? greedyAction(state, actions) : randomAction(actions)
+    const action = policy === 'greedy' ? greedyAction(state, actions) : randomAction(actions)
 
     // Step environment
     const prevReward = state.reward
@@ -295,12 +291,9 @@ export function runMultipleRollouts(
     results.push(runRollout(grid, rewardRules, maxSteps, policy))
   }
 
-  const avgReward =
-    results.reduce((sum, r) => sum + r.totalReward, 0) / results.length
-  const avgLength =
-    results.reduce((sum, r) => sum + r.episodeLength, 0) / results.length
-  const successRate =
-    results.filter((r) => r.success).length / results.length
+  const avgReward = results.reduce((sum, r) => sum + r.totalReward, 0) / results.length
+  const avgLength = results.reduce((sum, r) => sum + r.episodeLength, 0) / results.length
+  const successRate = results.filter((r) => r.success).length / results.length
 
   return {
     results,
@@ -311,4 +304,3 @@ export function runMultipleRollouts(
     },
   }
 }
-

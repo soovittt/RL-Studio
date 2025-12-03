@@ -31,10 +31,7 @@ export interface RenderContext {
   roughness?: number
 }
 
-export type RendererFunction = (
-  geometry: AssetGeometry,
-  context: RenderContext
-) => THREE.Mesh
+export type RendererFunction = (geometry: AssetGeometry, context: RenderContext) => THREE.Mesh
 
 /**
  * Renderer registry mapping primitives to renderer functions
@@ -93,4 +90,3 @@ export function renderAsset(
     roughness,
   })
 }
-

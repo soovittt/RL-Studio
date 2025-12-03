@@ -7,4 +7,3 @@ export const Route = createFileRoute('/environments/$id')({
     return <EnvironmentEditor id={id} />
   },
 })
-

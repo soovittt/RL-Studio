@@ -20,10 +20,14 @@ interface RunComparisonProps {
 }
 
 export function RunComparison({ runIds }: RunComparisonProps) {
-  const [statisticalComparison, setStatisticalComparison] = useState<StatisticalComparison | null>(null)
+  const [statisticalComparison, setStatisticalComparison] = useState<StatisticalComparison | null>(
+    null
+  )
   const [loadingStats, setLoadingStats] = useState(false)
-  const [selectedMetric, setSelectedMetric] = useState<'mean_reward' | 'success_rate'>('mean_reward')
-  
+  const [selectedMetric, setSelectedMetric] = useState<'mean_reward' | 'success_rate'>(
+    'mean_reward'
+  )
+
   // Query all runs
   const runs = useQuery(api.runs.listRecent, {})
   const selectedRuns = useMemo(() => {
@@ -32,10 +36,8 @@ export function RunComparison({ runIds }: RunComparisonProps) {
   }, [runs, runIds])
 
   // Query metrics for each run
-  const metricsQueries = runIds.map((runId) =>
-    useQuery(api.metrics.get, { runId: runId as any })
-  )
-  
+  const metricsQueries = runIds.map((runId) => useQuery(api.metrics.get, { runId: runId as any }))
+
   // Query evaluations for each run
   const evaluationQueries = runIds.map((runId) =>
     useQuery(api.evaluations.get, { runId: runId as any })
@@ -46,11 +48,12 @@ export function RunComparison({ runIds }: RunComparisonProps) {
     return selectedRuns.map((run, idx) => {
       const metrics = metricsQueries[idx]
       const evaluation = evaluationQueries[idx]
-      
+
       // Calculate training duration
-      const duration = run.completedAt && run.startedAt
-        ? Math.round((run.completedAt - run.startedAt) / 1000 / 60) // minutes
-        : null
+      const duration =
+        run.completedAt && run.startedAt
+          ? Math.round((run.completedAt - run.startedAt) / 1000 / 60) // minutes
+          : null
 
       // Get hyperparameters
       const hyperparams = run.hyperparams || {}
@@ -64,18 +67,14 @@ export function RunComparison({ runIds }: RunComparisonProps) {
         hyperparams,
         metrics,
         evaluation,
-        finalReward: metrics && metrics.length > 0
-          ? metrics[metrics.length - 1].reward || 0
-          : null,
-        avgReward: metrics && metrics.length > 0
-          ? metrics.reduce((sum, m) => sum + (m.reward || 0), 0) / metrics.length
-          : null,
-        maxReward: metrics && metrics.length > 0
-          ? Math.max(...metrics.map((m) => m.reward || 0))
-          : null,
-        totalSteps: metrics && metrics.length > 0
-          ? metrics[metrics.length - 1].step || 0
-          : null,
+        finalReward: metrics && metrics.length > 0 ? metrics[metrics.length - 1].reward || 0 : null,
+        avgReward:
+          metrics && metrics.length > 0
+            ? metrics.reduce((sum, m) => sum + (m.reward || 0), 0) / metrics.length
+            : null,
+        maxReward:
+          metrics && metrics.length > 0 ? Math.max(...metrics.map((m) => m.reward || 0)) : null,
+        totalSteps: metrics && metrics.length > 0 ? metrics[metrics.length - 1].step || 0 : null,
         meanReward: evaluation?.meanReward || null,
         successRate: evaluation?.successRate || null,
         meanLength: evaluation?.meanLength || null,
@@ -89,16 +88,14 @@ export function RunComparison({ runIds }: RunComparisonProps) {
 
     // Find max step across all runs
     const maxStep = Math.max(
-      ...metricsQueries
-        .filter((m) => m && m.length > 0)
-        .map((m) => m![m!.length - 1].step || 0)
+      ...metricsQueries.filter((m) => m && m.length > 0).map((m) => m![m!.length - 1].step || 0)
     )
 
     // Create data points for each step
     const data: any[] = []
     for (let step = 0; step <= maxStep; step += Math.max(1, Math.floor(maxStep / 100))) {
       const point: any = { step }
-      
+
       selectedRuns.forEach((run, idx) => {
         const metrics = metricsQueries[idx]
         if (metrics && metrics.length > 0) {
@@ -108,13 +105,13 @@ export function RunComparison({ runIds }: RunComparisonProps) {
             const currDiff = Math.abs((curr.step || 0) - step)
             return currDiff < prevDiff ? curr : prev
           })
-          
+
           if (Math.abs((closest.step || 0) - step) < maxStep / 50) {
             point[`reward_${run._id.slice(0, 8)}`] = closest.reward || 0
           }
         }
       })
-      
+
       data.push(point)
     }
 
@@ -126,12 +123,12 @@ export function RunComparison({ runIds }: RunComparisonProps) {
     const values = comparisonData
       .map((d) => d[metric as keyof typeof d])
       .filter((v) => v !== null && v !== undefined) as number[]
-    
+
     if (values.length === 0) return { best: null, worst: null }
-    
+
     const max = Math.max(...values)
     const min = Math.min(...values)
-    
+
     return {
       best: max,
       worst: min,
@@ -359,7 +356,9 @@ export function RunComparison({ runIds }: RunComparisonProps) {
                 </div>
                 <div className="bg-muted/50 border border-border rounded p-3">
                   <div className="text-xs text-muted-foreground mb-1">Test</div>
-                  <div className="font-bold text-sm">{statisticalComparison.statistical_test.test}</div>
+                  <div className="font-bold text-sm">
+                    {statisticalComparison.statistical_test.test}
+                  </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     p = {statisticalComparison.statistical_test.p_value.toFixed(4)}
                   </div>
@@ -403,7 +402,7 @@ export function RunComparison({ runIds }: RunComparisonProps) {
               runId: d.runId.slice(0, 8),
               value: d.hyperparams[param],
             }))
-            
+
             if (values.every((v) => v.value === undefined)) return null
 
             return (
@@ -431,4 +430,3 @@ export function RunComparison({ runIds }: RunComparisonProps) {
     </div>
   )
 }
-

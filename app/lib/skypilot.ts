@@ -18,4 +18,3 @@ envs:
   CONVEX_URL: ${process.env.VITE_CONVEX_URL}
 `
 }
-

@@ -90,8 +90,29 @@ def sync_run_metadata_to_convex(run_id: str, job_id: str, convex_url: str) -> bo
             logger.warning(f"Failed to sync metadata: {response.text}")
             return False
 
+    except requests.exceptions.Timeout as e:
+        logger.error(
+            f"Timeout syncing job status to Convex: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "convex_url": convex_url},
+        )
+        # Timeout is retryable, but we'll let the caller decide
+        return False
+    except requests.exceptions.ConnectionError as e:
+        logger.error(
+            f"Connection error syncing job status to Convex: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "convex_url": convex_url},
+        )
+        # Connection errors are retryable
+        return False
     except Exception as e:
-        logger.error(f"Failed to sync job status to Convex: {e}")
+        logger.error(
+            f"Failed to sync job status to Convex: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "convex_url": convex_url},
+        )
+        # Log all errors with full context - don't silently fail
         return False
 
 
@@ -154,6 +175,28 @@ def sync_detailed_logs_to_convex(run_id: str, convex_url: str, logs: str) -> boo
         logger.debug(f"Synced {len(log_lines)} log lines for run {run_id}")
         return True
 
-    except Exception as e:
-        logger.error(f"Failed to sync logs to Convex: {e}")
+    except requests.exceptions.Timeout as e:
+        logger.error(
+            f"Timeout syncing logs to Convex: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "batch_count": len(log_lines) // batch_size},
+        )
         return False
+    except requests.exceptions.ConnectionError as e:
+        logger.error(
+            f"Connection error syncing logs to Convex: {e}",
+            exc_info=True,
+            extra={"run_id": run_id},
+        )
+        return False
+    except Exception as e:
+        logger.error(
+            f"Failed to sync logs to Convex: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "log_lines": len(log_lines)},
+        )
+        # Log all errors with full context
+        return False
+
+
+

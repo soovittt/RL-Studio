@@ -81,7 +81,7 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error'
         setError(errorMessage)
-        
+
         // Better error messages
         const backendUrl = import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'
         let userMessage = `Unable to generate code: ${errorMessage}\n\n`
@@ -98,7 +98,7 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
           userMessage += '1. Backend is running\n'
           userMessage += '2. Environment configuration is valid\n'
         }
-        
+
         setCode(userMessage)
       } finally {
         setLoading(false)
@@ -109,42 +109,45 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
   }, [envSpec, selectedFileType, trainingConfig, algorithm])
 
   // Auto-save code after user stops typing (debounced)
-  const handleCodeChange = useCallback((newCode: string) => {
-    setCode(newCode)
-    setSaveStatus('idle')
-    
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
-    
-    // Only save if code actually changed
-    if (newCode === originalCodeRef.current || !envSpec) {
-      return
-    }
-    
-    // Debounce: Save after 2 seconds of no typing
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        setSaveStatus('saving')
-        await saveCode({
-          env_spec: envSpec,
-          file_type: selectedFileType,
-          code: newCode,
-          file_name: fileName,
-          training_config: trainingConfig,
-          algorithm: algorithm,
-        })
-        setSaveStatus('saved')
-        originalCodeRef.current = newCode
-        // Clear saved status after 2 seconds
-        setTimeout(() => setSaveStatus('idle'), 2000)
-      } catch (err) {
-        setSaveStatus('error')
-        console.error('Auto-save failed:', err)
+  const handleCodeChange = useCallback(
+    (newCode: string) => {
+      setCode(newCode)
+      setSaveStatus('idle')
+
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
       }
-    }, 2000)
-  }, [envSpec, selectedFileType, fileName, trainingConfig, algorithm])
+
+      // Only save if code actually changed
+      if (newCode === originalCodeRef.current || !envSpec) {
+        return
+      }
+
+      // Debounce: Save after 2 seconds of no typing
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          setSaveStatus('saving')
+          await saveCode({
+            env_spec: envSpec,
+            file_type: selectedFileType,
+            code: newCode,
+            file_name: fileName,
+            training_config: trainingConfig,
+            algorithm: algorithm,
+          })
+          setSaveStatus('saved')
+          originalCodeRef.current = newCode
+          // Clear saved status after 2 seconds
+          setTimeout(() => setSaveStatus('idle'), 2000)
+        } catch (err) {
+          setSaveStatus('error')
+          console.error('Auto-save failed:', err)
+        }
+      }, 2000)
+    },
+    [envSpec, selectedFileType, fileName, trainingConfig, algorithm]
+  )
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -162,7 +165,7 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
 
     const fileMapping = getFileTypeMapping()
     const actualFileName = fileName || `${fileMapping[selectedFileType] || selectedFileType}`
-    
+
     const blob = new Blob([code], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -190,15 +193,9 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
             {isCached && !loading && (
               <span className="ml-2 text-green-600">⚡ Cached (instant)</span>
             )}
-            {saveStatus === 'saving' && (
-              <span className="ml-2 text-blue-600">💾 Saving...</span>
-            )}
-            {saveStatus === 'saved' && (
-              <span className="ml-2 text-green-600">✅ Saved</span>
-            )}
-            {saveStatus === 'error' && (
-              <span className="ml-2 text-red-600">❌ Save failed</span>
-            )}
+            {saveStatus === 'saving' && <span className="ml-2 text-blue-600">💾 Saving...</span>}
+            {saveStatus === 'saved' && <span className="ml-2 text-green-600">✅ Saved</span>}
+            {saveStatus === 'error' && <span className="ml-2 text-red-600">❌ Save failed</span>}
           </p>
         </div>
         <div className="flex gap-2">
@@ -223,7 +220,9 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
           </select>
           <button
             onClick={handleDownload}
-            disabled={loading || !code || code.startsWith('Error:') || code.startsWith('No environment')}
+            disabled={
+              loading || !code || code.startsWith('Error:') || code.startsWith('No environment')
+            }
             className="px-3 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Generating...' : 'Download'}
@@ -266,13 +265,15 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
                 type="number"
                 step="0.0001"
                 value={trainingConfig.hyperparams.learning_rate}
-                onChange={(e) => setTrainingConfig({
-                  ...trainingConfig,
-                  hyperparams: {
-                    ...trainingConfig.hyperparams,
-                    learning_rate: parseFloat(e.target.value) || 3e-4,
-                  },
-                })}
+                onChange={(e) =>
+                  setTrainingConfig({
+                    ...trainingConfig,
+                    hyperparams: {
+                      ...trainingConfig.hyperparams,
+                      learning_rate: parseFloat(e.target.value) || 3e-4,
+                    },
+                  })
+                }
                 className="w-full px-2 py-1 border border-border rounded bg-background"
               />
             </div>
@@ -282,13 +283,15 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
                 type="number"
                 step="0.01"
                 value={trainingConfig.hyperparams.gamma}
-                onChange={(e) => setTrainingConfig({
-                  ...trainingConfig,
-                  hyperparams: {
-                    ...trainingConfig.hyperparams,
-                    gamma: parseFloat(e.target.value) || 0.99,
-                  },
-                })}
+                onChange={(e) =>
+                  setTrainingConfig({
+                    ...trainingConfig,
+                    hyperparams: {
+                      ...trainingConfig.hyperparams,
+                      gamma: parseFloat(e.target.value) || 0.99,
+                    },
+                  })
+                }
                 className="w-full px-2 py-1 border border-border rounded bg-background"
               />
             </div>
@@ -298,13 +301,15 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
                 type="number"
                 step="100000"
                 value={trainingConfig.hyperparams.steps}
-                onChange={(e) => setTrainingConfig({
-                  ...trainingConfig,
-                  hyperparams: {
-                    ...trainingConfig.hyperparams,
-                    steps: parseInt(e.target.value) || 1000000,
-                  },
-                })}
+                onChange={(e) =>
+                  setTrainingConfig({
+                    ...trainingConfig,
+                    hyperparams: {
+                      ...trainingConfig.hyperparams,
+                      steps: parseInt(e.target.value) || 1000000,
+                    },
+                  })
+                }
                 className="w-full px-2 py-1 border border-border rounded bg-background"
               />
             </div>
@@ -320,8 +325,8 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
                 {code === 'Loading...' ? 'Fetching code...' : 'Generating code...'}
               </div>
               <div className="text-xs text-muted-foreground">
-                {code === 'Loading...' 
-                  ? 'Loading code' 
+                {code === 'Loading...'
+                  ? 'Loading code'
                   : 'Creating production-ready code from your environment'}
               </div>
             </div>
@@ -332,7 +337,12 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
           value={code}
           onChange={(e) => handleCodeChange(e.target.value)}
           spellCheck={false}
-          disabled={loading || code === 'Loading...' || code.startsWith('Error:') || code.startsWith('No environment')}
+          disabled={
+            loading ||
+            code === 'Loading...' ||
+            code.startsWith('Error:') ||
+            code.startsWith('No environment')
+          }
         />
       </div>
 
@@ -351,4 +361,3 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
     </div>
   )
 }
-

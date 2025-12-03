@@ -58,48 +58,51 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     if (!envSpec.objects || !Array.isArray(envSpec.objects)) {
       return null
     }
-    return envSpec.objects.find((obj) => {
-      if (!obj || !obj.position || !Array.isArray(obj.position)) return false
-      const [objX, objY] = obj.position
-      return Math.floor(objX) === Math.floor(worldPos[0]) && 
-             Math.floor(objY) === Math.floor(worldPos[1])
-    }) || null
+    return (
+      envSpec.objects.find((obj) => {
+        if (!obj || !obj.position || !Array.isArray(obj.position)) return false
+        const [objX, objY] = obj.position
+        return (
+          Math.floor(objX) === Math.floor(worldPos[0]) &&
+          Math.floor(objY) === Math.floor(worldPos[1])
+        )
+      }) || null
+    )
   }
 
   // Get agent at grid position (use rollout state if available, otherwise use envSpec)
   const getAgentAt = (gridX: number, gridY: number) => {
     const worldPos = gridToWorld(gridX, gridY)
     let agentsToCheck: Array<{ id: string; position: Vec2 }> = []
-    
+
     if (rolloutState?.agents && Array.isArray(rolloutState.agents)) {
       agentsToCheck = rolloutState.agents
     } else if (envSpec.agents && Array.isArray(envSpec.agents)) {
-      agentsToCheck = envSpec.agents.map(a => ({ id: a.id, position: a.position }))
+      agentsToCheck = envSpec.agents.map((a) => ({ id: a.id, position: a.position }))
     }
-    
+
     // For each agent, check if it's in this grid cell
     for (const agent of agentsToCheck) {
       const [agentX, agentY] = agent.position
-      
+
       // Convert agent world position to grid coordinates
       const agentGridX = Math.floor(agentX / cellSize)
       const agentGridY = Math.floor(agentY / cellSize)
-      
+
       // Check if this agent is in the current grid cell
       if (agentGridX === gridX && agentGridY === gridY) {
         return agent
       }
-      
+
       // Also check with tolerance for floating point precision issues
       const cellWorldX = worldPos[0]
       const cellWorldY = worldPos[1]
       const tolerance = cellSize * 0.5
-      if (Math.abs(agentX - cellWorldX) < tolerance && 
-          Math.abs(agentY - cellWorldY) < tolerance) {
+      if (Math.abs(agentX - cellWorldX) < tolerance && Math.abs(agentY - cellWorldY) < tolerance) {
         return agent
       }
     }
-    
+
     return null
   }
 
@@ -170,7 +173,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     if (object) {
       // Try to find asset by assetId stored in properties
       if (object.properties?.assetId && assets && assets.length > 0) {
-        const asset = assets.find(a => a._id === object.properties.assetId)
+        const asset = assets.find((a) => a._id === object.properties.assetId)
         if (asset) {
           const hexColor = asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
           // Convert hex to inline style (we'll use inline style for dynamic colors)
@@ -179,7 +182,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
       }
       // Fallback: find asset by type
       if (assets && assets.length > 0) {
-        const asset = assets.find(a => {
+        const asset = assets.find((a) => {
           const objectType = assetToObjectType(a)
           return objectType === object.type
         })
@@ -189,7 +192,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
         }
       }
       // Final fallback: use hardcoded colors
-      const tool = TOOL_PALETTE.find(t => t.type === object.type)
+      const tool = TOOL_PALETTE.find((t) => t.type === object.type)
       if (tool) {
         return '' // Use inline style for hardcoded colors
       }
@@ -198,12 +201,13 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     if (agent) {
       // Find agent asset
       if (assets && assets.length > 0) {
-        const agentAsset = assets.find(a => {
+        const agentAsset = assets.find((a) => {
           const objectType = assetToObjectType(a)
           return objectType === 'agent'
         })
         if (agentAsset) {
-          const hexColor = agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
+          const hexColor =
+            agentAsset.meta?.paletteColor || agentAsset.visualProfile?.color || '#4a90e2'
           return '' // Return empty string, we'll use inline style
         }
       }
@@ -218,14 +222,14 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     if (object) {
       // Try to find asset by assetId stored in properties
       if (object.properties?.assetId && assets && assets.length > 0) {
-        const asset = assets.find(a => a._id === object.properties.assetId)
+        const asset = assets.find((a) => a._id === object.properties.assetId)
         if (asset) {
           return asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
         }
       }
       // Fallback: find asset by type
       if (assets && assets.length > 0) {
-        const asset = assets.find(a => {
+        const asset = assets.find((a) => {
           const objectType = assetToObjectType(a)
           return objectType === object.type
         })
@@ -234,7 +238,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
         }
       }
       // Final fallback: use hardcoded colors
-      const tool = TOOL_PALETTE.find(t => t.type === object.type)
+      const tool = TOOL_PALETTE.find((t) => t.type === object.type)
       if (tool) {
         return tool.color
       }
@@ -243,7 +247,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
     if (agent) {
       // Find agent asset
       if (assets && assets.length > 0) {
-        const agentAsset = assets.find(a => {
+        const agentAsset = assets.find((a) => {
           const objectType = assetToObjectType(a)
           return objectType === 'agent'
         })
@@ -265,7 +269,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
       for (let x = 0; x < width; x++) {
         const object = getObjectAt(x, y)
         const agent = getAgentAt(x, y)
-        const isSelected = 
+        const isSelected =
           (object && selection.selectedObjectId === object.id) ||
           (agent && selection.selectedAgentId === agent.id)
 
@@ -343,8 +347,11 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
               <>
                 <span
                   className="inline-block w-3 h-3 rounded"
-                  style={{ 
-                    backgroundColor: selectedAsset.meta?.paletteColor || selectedAsset.visualProfile?.color || '#9ca3af' 
+                  style={{
+                    backgroundColor:
+                      selectedAsset.meta?.paletteColor ||
+                      selectedAsset.visualProfile?.color ||
+                      '#9ca3af',
                   }}
                 />
                 <span>{selectedAsset.name}</span>
@@ -352,7 +359,12 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
                 </svg>
                 <span>Select Asset</span>
               </>
@@ -427,10 +439,7 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
       {/* Grid Canvas */}
       <div className="flex-1 overflow-auto p-4">
         <div className="inline-block border border-border rounded-lg p-4 bg-white">
-          <div 
-            className="grid gap-0" 
-            style={{ gridTemplateColumns: `repeat(${width}, 1fr)` }}
-          >
+          <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${width}, 1fr)` }}>
             {renderGrid()}
           </div>
         </div>
@@ -438,9 +447,10 @@ export function GridCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState }: 
 
       {/* Info */}
       <div className="p-2 text-sm text-muted-foreground border-t border-border">
-        Grid: {width} × {height} | Objects: {envSpec.objects && Array.isArray(envSpec.objects) ? envSpec.objects.length : 0} | Agents: {envSpec.agents && Array.isArray(envSpec.agents) ? envSpec.agents.length : 0}
+        Grid: {width} × {height} | Objects:{' '}
+        {envSpec.objects && Array.isArray(envSpec.objects) ? envSpec.objects.length : 0} | Agents:{' '}
+        {envSpec.agents && Array.isArray(envSpec.agents) ? envSpec.agents.length : 0}
       </div>
     </div>
   )
 }
-

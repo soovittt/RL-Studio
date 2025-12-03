@@ -17,7 +17,7 @@ export const create = mutation({
       .query('models')
       .withIndex('by_run', (q) => q.eq('runId', args.runId))
       .first()
-    
+
     if (existing) {
       // Update existing model
       return await ctx.db.patch(existing._id, {
@@ -43,4 +43,3 @@ export const get = query({
       .first()
   },
 })
-

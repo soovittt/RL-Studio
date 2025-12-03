@@ -18,7 +18,9 @@ export function RunViewer() {
   const { id } = useParams({ from: '/runs/$id' })
   const [exporting, setExporting] = useState(false)
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
-  const [activeTab, setActiveTab] = useState<'metrics' | 'evaluation' | 'model' | 'versions'>('metrics')
+  const [activeTab, setActiveTab] = useState<'metrics' | 'evaluation' | 'model' | 'versions'>(
+    'metrics'
+  )
   const [wandbMetrics, setWandbMetrics] = useState<any>(null)
   const [loadingWandb, setLoadingWandb] = useState(false)
 
@@ -35,12 +37,12 @@ export function RunViewer() {
   // Load EnvSpec from environment
   const envSpec = useMemo(() => {
     if (!environment) return null
-    
+
     // If already in universal format, return as-is
     if (environment.envSpec) {
       return environment.envSpec as EnvSpec
     }
-    
+
     // Migrate from legacy format using SceneGraphManager
     return SceneGraphManager.migrateFromLegacy(environment)
   }, [environment])
@@ -62,10 +64,12 @@ export function RunViewer() {
     const loadWandbMetrics = async () => {
       const trackingSettings = getExperimentTrackingSettings()
       const trackingUrl = (run as any)?.experimentTrackingUrl
-      
-      if (trackingSettings.backend === 'wandb' && 
-          trackingSettings.wandbAuthenticated && 
-          trackingUrl) {
+
+      if (
+        trackingSettings.backend === 'wandb' &&
+        trackingSettings.wandbAuthenticated &&
+        trackingUrl
+      ) {
         // Extract run ID from W&B URL (format: https://wandb.ai/.../runs/RUN_ID)
         const match = trackingUrl.match(/\/runs\/([^\/\?]+)/)
         if (match && match[1]) {
@@ -83,7 +87,7 @@ export function RunViewer() {
         }
       }
     }
-    
+
     if (run) {
       loadWandbMetrics()
     }
@@ -91,12 +95,12 @@ export function RunViewer() {
 
   const handleExport = () => {
     if (!run || !environment) return
-    
+
     setExporting(true)
-    
+
     // Load EnvSpec from environment
     const envSpec = environment.envSpec || environment
-    
+
     const files = exportProject({
       envSpec,
       algorithm: run.algorithm,
@@ -116,7 +120,7 @@ export function RunViewer() {
       a.click()
       URL.revokeObjectURL(url)
     })
-    
+
     setExporting(false)
   }
 
@@ -124,12 +128,13 @@ export function RunViewer() {
     return <div className="max-w-7xl mx-auto px-4 py-8">Loading...</div>
   }
 
-  const chartData = metrics?.map((m) => ({
-    step: m.step,
-    reward: m.reward,
-    loss: m.loss || 0,
-    entropy: m.entropy || 0,
-  })) || []
+  const chartData =
+    metrics?.map((m) => ({
+      step: m.step,
+      reward: m.reward,
+      loss: m.loss || 0,
+      entropy: m.entropy || 0,
+    })) || []
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -183,7 +188,7 @@ export function RunViewer() {
                         alert('Environment not loaded')
                         return
                       }
-                      
+
                       // Navigate to environment editor with rollout using trained model
                       // For now, we'll open a dialog or navigate
                       // This will be handled by the rollout UI
@@ -201,12 +206,17 @@ export function RunViewer() {
                   <button
                     onClick={async () => {
                       if (!model.modelUrl) return
-                      
+
                       try {
                         // For S3 URLs, we'd need a backend endpoint to generate signed URLs
                         // For now, show the URL or download via backend
-                        if (model.modelUrl.startsWith('s3://') || model.modelUrl.startsWith('gs://')) {
-                          alert(`Model stored at: ${model.modelUrl}\n\nTo download, configure backend with storage credentials and use the download API.`)
+                        if (
+                          model.modelUrl.startsWith('s3://') ||
+                          model.modelUrl.startsWith('gs://')
+                        ) {
+                          alert(
+                            `Model stored at: ${model.modelUrl}\n\nTo download, configure backend with storage credentials and use the download API.`
+                          )
                         } else {
                           // For file:// URLs or direct URLs, try to download
                           window.open(model.modelUrl, '_blank')
@@ -222,15 +232,15 @@ export function RunViewer() {
                   </button>
                 </>
               )}
-          <button
-            onClick={handleExport}
-            disabled={exporting || !environment}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50"
-          >
-            {exporting ? 'Exporting...' : 'Export Project'}
-          </button>
+              <button
+                onClick={handleExport}
+                disabled={exporting || !environment}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50"
+              >
+                {exporting ? 'Exporting...' : 'Export Project'}
+              </button>
             </>
-        )}
+          )}
         </div>
       </div>
 
@@ -311,7 +321,11 @@ export function RunViewer() {
           {/* W&B Metrics (if authenticated) */}
           {(() => {
             const trackingSettings = getExperimentTrackingSettings()
-            if (trackingSettings.backend === 'wandb' && trackingSettings.wandbAuthenticated && wandbMetrics) {
+            if (
+              trackingSettings.backend === 'wandb' &&
+              trackingSettings.wandbAuthenticated &&
+              wandbMetrics
+            ) {
               return (
                 <div className="bg-card border border-border rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -333,9 +347,11 @@ export function RunViewer() {
                       </a>
                     )}
                   </div>
-                  
+
                   {loadingWandb ? (
-                    <div className="text-center py-8 text-muted-foreground">Loading W&B metrics...</div>
+                    <div className="text-center py-8 text-muted-foreground">
+                      Loading W&B metrics...
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       {/* Summary Metrics */}
@@ -343,44 +359,54 @@ export function RunViewer() {
                         <div>
                           <h3 className="text-sm font-semibold mb-2">Summary</h3>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {Object.entries(wandbMetrics.summary).slice(0, 8).map(([key, value]) => (
-                              <div key={key} className="bg-muted/50 rounded p-3">
-                                <div className="text-xs text-muted-foreground">{key}</div>
-                                <div className="text-lg font-semibold mt-1">
-                                  {typeof value === 'number' ? value.toFixed(4) : String(value)}
+                            {Object.entries(wandbMetrics.summary)
+                              .slice(0, 8)
+                              .map(([key, value]) => (
+                                <div key={key} className="bg-muted/50 rounded p-3">
+                                  <div className="text-xs text-muted-foreground">{key}</div>
+                                  <div className="text-lg font-semibold mt-1">
+                                    {typeof value === 'number' ? value.toFixed(4) : String(value)}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Metrics Charts */}
                       {wandbMetrics.metrics && Object.keys(wandbMetrics.metrics).length > 0 && (
                         <div>
                           <h3 className="text-sm font-semibold mb-2">Metrics Over Time</h3>
                           <div className="space-y-4">
-                            {Object.entries(wandbMetrics.metrics).slice(0, 5).map(([metricName, values]) => (
-                              <div key={metricName} className="bg-muted/30 rounded p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm font-medium">{metricName}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {Array.isArray(values) ? `${values.length} points` : 'N/A'}
-                                  </span>
-                                </div>
-                                {Array.isArray(values) && values.length > 0 && (
-                                  <div className="text-xs text-muted-foreground">
-                                    Latest: {typeof values[values.length - 1] === 'number' 
-                                      ? values[values.length - 1].toFixed(4) 
-                                      : String(values[values.length - 1])}
-                                    {' | '}
-                                    Max: {typeof Math.max(...values.filter(v => typeof v === 'number')) === 'number'
-                                      ? Math.max(...values.filter(v => typeof v === 'number')).toFixed(4)
-                                      : 'N/A'}
+                            {Object.entries(wandbMetrics.metrics)
+                              .slice(0, 5)
+                              .map(([metricName, values]) => (
+                                <div key={metricName} className="bg-muted/30 rounded p-4">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm font-medium">{metricName}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {Array.isArray(values) ? `${values.length} points` : 'N/A'}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                            ))}
+                                  {Array.isArray(values) && values.length > 0 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Latest:{' '}
+                                      {typeof values[values.length - 1] === 'number'
+                                        ? values[values.length - 1].toFixed(4)
+                                        : String(values[values.length - 1])}
+                                      {' | '}
+                                      Max:{' '}
+                                      {typeof Math.max(
+                                        ...values.filter((v) => typeof v === 'number')
+                                      ) === 'number'
+                                        ? Math.max(
+                                            ...values.filter((v) => typeof v === 'number')
+                                          ).toFixed(4)
+                                        : 'N/A'}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                           </div>
                         </div>
                       )}
@@ -391,7 +417,7 @@ export function RunViewer() {
             }
             return null
           })()}
-          
+
           {/* Local Metrics */}
           <div className="bg-card border border-border rounded-lg p-6">
             <LiveMetricsVisualization runId={id} autoRefresh={run.status === 'running'} />
@@ -419,9 +445,11 @@ export function RunViewer() {
             <div>
               <span className="text-muted-foreground">Storage:</span>
               <span className="ml-2 font-medium font-mono text-xs">
-                {model.modelUrl.startsWith('s3://') ? 'AWS S3' : 
-                 model.modelUrl.startsWith('gs://') ? 'Google Cloud Storage' : 
-                 'Local File'}
+                {model.modelUrl.startsWith('s3://')
+                  ? 'AWS S3'
+                  : model.modelUrl.startsWith('gs://')
+                    ? 'Google Cloud Storage'
+                    : 'Local File'}
               </span>
             </div>
             {model.fileSize && (
@@ -485,4 +513,3 @@ export function RunViewer() {
     </div>
   )
 }
-

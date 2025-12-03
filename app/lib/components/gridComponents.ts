@@ -1,9 +1,9 @@
 /**
  * Grid World Component System
- * 
+ *
  * This file defines all components used in grid worlds.
  * Components are stored in sceneGraph.entities[n].components
- * 
+ *
  * Design Philosophy:
  * - Everything is an entity with components
  * - Assets define default components
@@ -316,4 +316,3 @@ export function hasComponent(
 ): boolean {
   return componentType in entity.components
 }
-

@@ -12,9 +12,7 @@ export function EnvironmentList() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Environments</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Design and manage RL environments
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Design and manage RL environments</p>
         </div>
         <Link
           to="/environments/new"
@@ -61,4 +59,3 @@ export function EnvironmentList() {
     </div>
   )
 }
-

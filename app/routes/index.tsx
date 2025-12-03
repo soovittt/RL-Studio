@@ -32,12 +32,8 @@ function LandingPage() {
         <div className="max-w-[880px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
-                src="/images/logo.png" 
-                alt="RL Studio Logo" 
-                className="h-8 w-8"
-              />
-            <div className="text-xl font-semibold text-gray-900">RL Studio</div>
+              <img src="/images/logo.png" alt="RL Studio Logo" className="h-8 w-8" />
+              <div className="text-xl font-semibold text-gray-900">RL Studio</div>
             </div>
             <div className="flex items-center">
               <Link
@@ -56,20 +52,15 @@ function LandingPage() {
         <div className="flex flex-col md:flex-row items-start gap-12">
           <div className="flex-1">
             <div className="flex items-center gap-4 mb-6">
-              <img 
-                src="/images/logo.png" 
-                alt="RL Studio Logo" 
-                className="h-16 w-16"
-              />
-              <h1 className="text-5xl font-bold text-gray-900 leading-tight">
-              RL Studio
-            </h1>
+              <img src="/images/logo.png" alt="RL Studio Logo" className="h-16 w-16" />
+              <h1 className="text-5xl font-bold text-gray-900 leading-tight">RL Studio</h1>
             </div>
             <p className="text-xl text-gray-700 mb-4 leading-relaxed">
               Build, visualize, and train reinforcement learning environments — all in your browser.
             </p>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              A lightweight studio for designing RL environments, running rollouts, launching training jobs, and exporting Gym-ready Python code.
+              A lightweight studio for designing RL environments, running rollouts, launching
+              training jobs, and exporting Gym-ready Python code.
             </p>
             <p className="text-gray-600 mb-8 leading-relaxed">
               No setup. No boilerplate. Everything happens in one place.
@@ -105,9 +96,7 @@ function LandingPage() {
       {/* How It Works Section */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-[880px] mx-auto px-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">
-            How It Works
-          </h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">How It Works</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-6 border-2 border-gray-300 rounded flex items-center justify-center">
@@ -125,11 +114,10 @@ function LandingPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                1. Create an Environment
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">1. Create an Environment</h3>
               <p className="text-gray-600 leading-relaxed">
-                Use the visual editor to place objects, define agents, set action/observation spaces, and build rules for rewards and termination.
+                Use the visual editor to place objects, define agents, set action/observation
+                spaces, and build rules for rewards and termination.
               </p>
               <p className="text-gray-600 leading-relaxed mt-2">
                 Grid or continuous — it all fits one universal EnvSpec.
@@ -157,9 +145,7 @@ function LandingPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                2. Simulate & Debug
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">2. Simulate & Debug</h3>
               <p className="text-gray-600 leading-relaxed">
                 Run rollouts instantly in your browser.
               </p>
@@ -183,14 +169,13 @@ function LandingPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                3. Train & Export
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">3. Train & Export</h3>
               <p className="text-gray-600 leading-relaxed">
                 Launch PPO, DQN, or imitation learning runs on GPU via a single click.
               </p>
               <p className="text-gray-600 leading-relaxed mt-2">
-                Track metrics live, replay rollouts, and export full Gym environments with ready-to-run training scripts.
+                Track metrics live, replay rollouts, and export full Gym environments with
+                ready-to-run training scripts.
               </p>
             </div>
           </div>
@@ -200,9 +185,7 @@ function LandingPage() {
       {/* What It Can Do Section */}
       <section className="py-16">
         <div className="max-w-[880px] mx-auto px-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">
-            What It Can Do
-          </h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">What It Can Do</h2>
           <div className="space-y-16">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
@@ -210,7 +193,8 @@ function LandingPage() {
                   Universal Environment Builder
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Design grid worlds, 2D continuous environments, custom geometry, multi-agent setups — all powered by the same SceneGraph engine.
+                  Design grid worlds, 2D continuous environments, custom geometry, multi-agent
+                  setups — all powered by the same SceneGraph engine.
                 </p>
               </div>
               <div className="border border-gray-200 rounded overflow-hidden bg-white shadow-sm cursor-pointer hover:opacity-90 transition-opacity">
@@ -238,20 +222,20 @@ function LandingPage() {
                   Live Rollout Visualizer
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Step through episodes, inspect state transitions, debug reward triggers, and preview learned policies.
+                  Step through episodes, inspect state transitions, debug reward triggers, and
+                  preview learned policies.
                 </p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
-                <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                  One-Click Training
-                </h3>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-4">One-Click Training</h3>
                 <p className="text-gray-600 leading-relaxed">
                   Launch GPU training jobs with PPO or DQN.
                 </p>
                 <p className="text-gray-600 leading-relaxed mt-2">
-                  Monitor progress in real time with metrics, logs, and rollouts streamed back into the studio.
+                  Monitor progress in real time with metrics, logs, and rollouts streamed back into
+                  the studio.
                 </p>
               </div>
               <div className="border border-gray-200 rounded overflow-hidden bg-white shadow-sm cursor-pointer hover:opacity-90 transition-opacity">
@@ -275,11 +259,10 @@ function LandingPage() {
                 />
               </div>
               <div className="order-1 md:order-2">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                  Export Everything
-                </h3>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-4">Export Everything</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Generate Gymnasium-compatible Python code, training scripts, config files, and complete project bundles.
+                  Generate Gymnasium-compatible Python code, training scripts, config files, and
+                  complete project bundles.
                 </p>
               </div>
             </div>
@@ -290,33 +273,39 @@ function LandingPage() {
       {/* Why RL Studio Section */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-[880px] mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            Why RL Studio
-          </h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">Why RL Studio</h2>
           <div className="max-w-2xl mx-auto space-y-6 mb-12">
             <ul className="space-y-4 text-left">
               <li className="flex items-start gap-3">
                 <span className="text-gray-900 mt-1">•</span>
                 <span className="text-gray-600 flex-1">
-                  <strong className="text-gray-900">Simple enough to start.</strong> Powerful enough for real RL research.
+                  <strong className="text-gray-900">Simple enough to start.</strong> Powerful enough
+                  for real RL research.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-gray-900 mt-1">•</span>
                 <span className="text-gray-600 flex-1">
-                  <strong className="text-gray-900">No local setup or Python environment headaches.</strong> Everything runs in your browser.
+                  <strong className="text-gray-900">
+                    No local setup or Python environment headaches.
+                  </strong>{' '}
+                  Everything runs in your browser.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-gray-900 mt-1">•</span>
                 <span className="text-gray-600 flex-1">
-                  <strong className="text-gray-900">Every environment uses a clean, universal spec.</strong> Built-in rollout debugger and metrics viewer.
+                  <strong className="text-gray-900">
+                    Every environment uses a clean, universal spec.
+                  </strong>{' '}
+                  Built-in rollout debugger and metrics viewer.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-gray-900 mt-1">•</span>
                 <span className="text-gray-600 flex-1">
-                  <strong className="text-gray-900">GPU training that just works.</strong> Perfect for students, researchers, and engineers.
+                  <strong className="text-gray-900">GPU training that just works.</strong> Perfect
+                  for students, researchers, and engineers.
                 </span>
               </li>
             </ul>
@@ -342,12 +331,7 @@ function LandingPage() {
               className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
               aria-label="Close"
             >
-              <svg
-                className="w-8 h-8"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

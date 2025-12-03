@@ -8,4 +8,3 @@ export const Route = createFileRoute('/environments/new')({
 function NewEnvironmentEditor() {
   return <EnvironmentEditor id="new" />
 }
-

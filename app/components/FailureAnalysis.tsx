@@ -115,9 +115,7 @@ export function FailureAnalysis({ runId }: FailureAnalysisProps) {
               >
                 <div className="flex items-start justify-between mb-2">
                   <span className="font-medium">{issue.type.replace(/_/g, ' ').toUpperCase()}</span>
-                  <span className="text-xs px-2 py-1 rounded bg-white/50">
-                    {issue.severity}
-                  </span>
+                  <span className="text-xs px-2 py-1 rounded bg-white/50">{issue.severity}</span>
                 </div>
                 <p className="text-sm mb-2">{issue.message}</p>
                 <p className="text-xs italic">{issue.suggestion}</p>
@@ -132,15 +130,10 @@ export function FailureAnalysis({ runId }: FailureAnalysisProps) {
           <h4 className="text-md font-semibold mb-3">Recommendations</h4>
           <div className="space-y-2">
             {analysis.recommendations.map((rec: any, idx: number) => (
-              <div
-                key={idx}
-                className={`p-3 border rounded-md ${getSeverityColor(rec.priority)}`}
-              >
+              <div key={idx} className={`p-3 border rounded-md ${getSeverityColor(rec.priority)}`}>
                 <div className="flex items-start justify-between mb-1">
                   <span className="font-medium text-sm">{rec.action.replace(/_/g, ' ')}</span>
-                  <span className="text-xs px-2 py-1 rounded bg-white/50">
-                    {rec.priority}
-                  </span>
+                  <span className="text-xs px-2 py-1 rounded bg-white/50">{rec.priority}</span>
                 </div>
                 <p className="text-xs">{rec.description}</p>
               </div>
@@ -151,10 +144,11 @@ export function FailureAnalysis({ runId }: FailureAnalysisProps) {
 
       {analysis.issues.length === 0 && (
         <div className="p-4 bg-green-50 border border-green-200 rounded-md text-green-800">
-          <p className="text-sm">✅ No major issues detected. Training appears to be progressing normally.</p>
+          <p className="text-sm">
+            ✅ No major issues detected. Training appears to be progressing normally.
+          </p>
         </div>
       )}
     </div>
   )
 }
-

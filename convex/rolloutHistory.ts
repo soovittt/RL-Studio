@@ -50,12 +50,11 @@ export const clearForEnvironment = mutation({
       .query('rolloutHistory')
       .withIndex('by_env', (q) => q.eq('envId', args.envId))
       .collect()
-    
+
     for (const history of histories) {
       await ctx.db.delete(history._id)
     }
-    
+
     return { deleted: histories.length }
   },
 })
-

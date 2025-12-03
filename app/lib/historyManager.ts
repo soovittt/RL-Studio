@@ -142,4 +142,3 @@ export class HistoryManager {
     this.push(spec)
   }
 }
-

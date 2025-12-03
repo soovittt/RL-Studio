@@ -7,4 +7,3 @@ export const Route = createFileRoute('/$')({
     </div>
   ),
 })
-

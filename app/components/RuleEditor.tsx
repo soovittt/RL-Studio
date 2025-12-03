@@ -1,6 +1,13 @@
 // Rule Editor - Universal rule builder using ConditionSpec
 import { useState } from 'react'
-import { EnvSpec, ConditionSpec, RewardRule, TerminationRule, EventRule, ObjectType } from '~/lib/envSpec'
+import {
+  EnvSpec,
+  ConditionSpec,
+  RewardRule,
+  TerminationRule,
+  EventRule,
+  ObjectType,
+} from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { InlineCodeReviewer } from './InlineCodeReviewer'
 
@@ -37,10 +44,18 @@ export function RuleEditor({ envSpec, sceneGraph, onSpecChange }: RuleEditorProp
       {/* Content */}
       <div className="flex-1 overflow-auto p-4">
         {activeTab === 'rewards' && (
-          <RewardRulesEditor envSpec={envSpec} sceneGraph={sceneGraph} onSpecChange={onSpecChange} />
+          <RewardRulesEditor
+            envSpec={envSpec}
+            sceneGraph={sceneGraph}
+            onSpecChange={onSpecChange}
+          />
         )}
         {activeTab === 'terminations' && (
-          <TerminationRulesEditor envSpec={envSpec} sceneGraph={sceneGraph} onSpecChange={onSpecChange} />
+          <TerminationRulesEditor
+            envSpec={envSpec}
+            sceneGraph={sceneGraph}
+            onSpecChange={onSpecChange}
+          />
         )}
         {activeTab === 'events' && (
           <EventRulesEditor envSpec={envSpec} sceneGraph={sceneGraph} onSpecChange={onSpecChange} />
@@ -121,8 +136,11 @@ function RewardRulesEditor({ envSpec, sceneGraph, onSpecChange }: RuleEditorProp
               {rules.map((rule) => (
                 <div key={rule.id} className="flex justify-between">
                   <span>{formatCondition(rule.condition)}:</span>
-                  <span className={`font-mono ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {rule.reward >= 0 ? '+' : ''}{rule.reward}
+                  <span
+                    className={`font-mono ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {rule.reward >= 0 ? '+' : ''}
+                    {rule.reward}
                   </span>
                 </div>
               ))}
@@ -299,8 +317,11 @@ function RewardRuleCard({
             onChange={(e) => onUpdate({ reward: parseFloat(e.target.value) || 0 })}
             className="flex-1 px-2 py-1 border border-border rounded text-xs"
           />
-          <span className={`text-xs font-mono w-16 text-right ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {rule.reward >= 0 ? '+' : ''}{rule.reward}
+          <span
+            className={`text-xs font-mono w-16 text-right ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}
+          >
+            {rule.reward >= 0 ? '+' : ''}
+            {rule.reward}
           </span>
         </div>
         <label className="flex items-center gap-2 text-xs">
@@ -402,9 +423,9 @@ function ConditionBuilder({
   scriptType?: 'reward' | 'termination' | 'custom'
 }) {
   const conditionType = condition.type
-  
+
   // Safety: Ensure envSpec has valid arrays and filter out any invalid items
-  const safeAgents = Array.isArray(envSpec?.agents) 
+  const safeAgents = Array.isArray(envSpec?.agents)
     ? envSpec.agents.filter((a) => {
         if (!a || typeof a !== 'object' || Array.isArray(a)) return false
         if (!a.id || typeof a.id !== 'string') return false
@@ -433,7 +454,10 @@ function ConditionBuilder({
               case 'agent_at_position':
                 newCondition = {
                   type: 'agent_at_position',
-                  agentId: (Array.isArray(envSpec.agents) && envSpec.agents[0]?.id) ? String(envSpec.agents[0].id) : '',
+                  agentId:
+                    Array.isArray(envSpec.agents) && envSpec.agents[0]?.id
+                      ? String(envSpec.agents[0].id)
+                      : '',
                   position: [0, 0],
                   tolerance: 0.5,
                 }
@@ -441,26 +465,43 @@ function ConditionBuilder({
               case 'agent_at_object':
                 newCondition = {
                   type: 'agent_at_object',
-                  agentId: (Array.isArray(envSpec.agents) && envSpec.agents[0]?.id) ? String(envSpec.agents[0].id) : '',
-                  objectId: (Array.isArray(envSpec.objects) && envSpec.objects[0]?.id) ? String(envSpec.objects[0].id) : '',
+                  agentId:
+                    Array.isArray(envSpec.agents) && envSpec.agents[0]?.id
+                      ? String(envSpec.agents[0].id)
+                      : '',
+                  objectId:
+                    Array.isArray(envSpec.objects) && envSpec.objects[0]?.id
+                      ? String(envSpec.objects[0].id)
+                      : '',
                 }
                 break
               case 'collision':
                 newCondition = {
                   type: 'collision',
-                  a: (Array.isArray(envSpec.agents) && envSpec.agents[0]?.id) ? String(envSpec.agents[0].id) : '',
-                  b: (Array.isArray(envSpec.objects) && envSpec.objects[0]?.id) ? String(envSpec.objects[0].id) : '',
+                  a:
+                    Array.isArray(envSpec.agents) && envSpec.agents[0]?.id
+                      ? String(envSpec.agents[0].id)
+                      : '',
+                  b:
+                    Array.isArray(envSpec.objects) && envSpec.objects[0]?.id
+                      ? String(envSpec.objects[0].id)
+                      : '',
                 }
                 break
               case 'timeout':
                 newCondition = { type: 'timeout', steps: 100 }
                 break
               case 'inside_region':
-                const regionObj = Array.isArray(envSpec.objects) ? envSpec.objects.find((o) => o && o.type === 'region') : null
+                const regionObj = Array.isArray(envSpec.objects)
+                  ? envSpec.objects.find((o) => o && o.type === 'region')
+                  : null
                 newCondition = {
                   type: 'inside_region',
-                  agentId: (Array.isArray(envSpec.agents) && envSpec.agents[0]?.id) ? String(envSpec.agents[0].id) : '',
-                  regionId: (regionObj?.id) ? String(regionObj.id) : '',
+                  agentId:
+                    Array.isArray(envSpec.agents) && envSpec.agents[0]?.id
+                      ? String(envSpec.agents[0].id)
+                      : '',
+                  regionId: regionObj?.id ? String(regionObj.id) : '',
                 }
                 break
               case 'custom':
@@ -489,16 +530,22 @@ function ConditionBuilder({
             <label className="text-xs text-muted-foreground w-16">Agent:</label>
             <select
               value={condition.agentId || ''}
-              onChange={(e) =>
-                onChange({ ...condition, agentId: e.target.value } as ConditionSpec)
-              }
+              onChange={(e) => onChange({ ...condition, agentId: e.target.value } as ConditionSpec)}
               className="flex-1 px-2 py-1 border border-border rounded text-xs"
             >
               {safeAgents
                 .filter((a) => a && a.id && typeof a.id === 'string')
                 .map((a) => {
-                  const agentName = a?.name ? (typeof a.name === 'string' ? a.name : String(a.name || 'Unknown Agent')) : 'Unknown Agent'
-                  const agentId = a?.id ? (typeof a.id === 'string' ? a.id : String(a.id || '')) : ''
+                  const agentName = a?.name
+                    ? typeof a.name === 'string'
+                      ? a.name
+                      : String(a.name || 'Unknown Agent')
+                    : 'Unknown Agent'
+                  const agentId = a?.id
+                    ? typeof a.id === 'string'
+                      ? a.id
+                      : String(a.id || '')
+                    : ''
                   return (
                     <option key={agentId} value={agentId}>
                       {String(agentName)}
@@ -551,8 +598,16 @@ function ConditionBuilder({
               {safeAgents
                 .filter((a) => a && a.id && typeof a.id === 'string')
                 .map((a) => {
-                  const agentName = a?.name ? (typeof a.name === 'string' ? a.name : String(a.name || 'Unknown Agent')) : 'Unknown Agent'
-                  const agentId = a?.id ? (typeof a.id === 'string' ? a.id : String(a.id || '')) : ''
+                  const agentName = a?.name
+                    ? typeof a.name === 'string'
+                      ? a.name
+                      : String(a.name || 'Unknown Agent')
+                    : 'Unknown Agent'
+                  const agentId = a?.id
+                    ? typeof a.id === 'string'
+                      ? a.id
+                      : String(a.id || '')
+                    : ''
                   return (
                     <option key={agentId} value={agentId}>
                       {String(agentName)}
@@ -565,14 +620,24 @@ function ConditionBuilder({
             <label className="text-xs text-muted-foreground w-16">Object:</label>
             <select
               value={condition.objectId || ''}
-              onChange={(e) => onChange({ ...condition, objectId: e.target.value } as ConditionSpec)}
+              onChange={(e) =>
+                onChange({ ...condition, objectId: e.target.value } as ConditionSpec)
+              }
               className="flex-1 px-2 py-1 border border-border rounded text-xs"
             >
               {safeObjects
                 .filter((o) => o && o.id && typeof o.id === 'string')
                 .map((o) => {
-                  const objectType = o?.type ? (typeof o.type === 'string' ? o.type : String(o.type || 'object')) : 'object'
-                  const objectId = o?.id ? (typeof o.id === 'string' ? o.id : String(o.id || '')) : ''
+                  const objectType = o?.type
+                    ? typeof o.type === 'string'
+                      ? o.type
+                      : String(o.type || 'object')
+                    : 'object'
+                  const objectId = o?.id
+                    ? typeof o.id === 'string'
+                      ? o.id
+                      : String(o.id || '')
+                    : ''
                   const shortId = objectId ? objectId.slice(0, 8) : 'unknown'
                   return (
                     <option key={objectId} value={objectId}>
@@ -605,9 +670,11 @@ function ConditionBuilder({
                   // Ensure we always get a string, never an object
                   let displayName = 'Unknown'
                   if ('name' in item && item.name) {
-                    displayName = typeof item.name === 'string' ? item.name : String(item.name || 'Unknown')
+                    displayName =
+                      typeof item.name === 'string' ? item.name : String(item.name || 'Unknown')
                   } else if ('type' in item && item.type) {
-                    displayName = typeof item.type === 'string' ? item.type : String(item.type || 'Unknown')
+                    displayName =
+                      typeof item.type === 'string' ? item.type : String(item.type || 'Unknown')
                   }
                   const itemId = typeof item.id === 'string' ? item.id : String(item.id || '')
                   const shortId = itemId ? itemId.slice(0, 8) : 'unknown'
@@ -637,9 +704,11 @@ function ConditionBuilder({
                   // Ensure we always get a string, never an object
                   let displayName = 'Unknown'
                   if ('name' in item && item.name) {
-                    displayName = typeof item.name === 'string' ? item.name : String(item.name || 'Unknown')
+                    displayName =
+                      typeof item.name === 'string' ? item.name : String(item.name || 'Unknown')
                   } else if ('type' in item && item.type) {
-                    displayName = typeof item.type === 'string' ? item.type : String(item.type || 'Unknown')
+                    displayName =
+                      typeof item.type === 'string' ? item.type : String(item.type || 'Unknown')
                   }
                   const itemId = typeof item.id === 'string' ? item.id : String(item.id || '')
                   const shortId = itemId ? itemId.slice(0, 8) : 'unknown'
@@ -680,8 +749,16 @@ function ConditionBuilder({
               {safeAgents
                 .filter((a) => a && a.id && typeof a.id === 'string')
                 .map((a) => {
-                  const agentName = a?.name ? (typeof a.name === 'string' ? a.name : String(a.name || 'Unknown Agent')) : 'Unknown Agent'
-                  const agentId = a?.id ? (typeof a.id === 'string' ? a.id : String(a.id || '')) : ''
+                  const agentName = a?.name
+                    ? typeof a.name === 'string'
+                      ? a.name
+                      : String(a.name || 'Unknown Agent')
+                    : 'Unknown Agent'
+                  const agentId = a?.id
+                    ? typeof a.id === 'string'
+                      ? a.id
+                      : String(a.id || '')
+                    : ''
                   return (
                     <option key={agentId} value={agentId}>
                       {String(agentName)}
@@ -694,13 +771,19 @@ function ConditionBuilder({
             <label className="text-xs text-muted-foreground w-16">Region:</label>
             <select
               value={condition.regionId || ''}
-              onChange={(e) => onChange({ ...condition, regionId: e.target.value } as ConditionSpec)}
+              onChange={(e) =>
+                onChange({ ...condition, regionId: e.target.value } as ConditionSpec)
+              }
               className="flex-1 px-2 py-1 border border-border rounded text-xs"
             >
               {safeObjects
                 .filter((o) => o && o.id && typeof o.id === 'string' && o.type === 'region')
                 .map((o) => {
-                  const regionId = o?.id ? (typeof o.id === 'string' ? o.id : String(o.id || '')) : ''
+                  const regionId = o?.id
+                    ? typeof o.id === 'string'
+                      ? o.id
+                      : String(o.id || '')
+                    : ''
                   const shortId = regionId ? regionId.slice(0, 8) : 'unknown'
                   return (
                     <option key={regionId} value={regionId}>
@@ -722,10 +805,7 @@ function ConditionBuilder({
             placeholder="Python script: return reward_value"
           />
           {scriptType && (
-            <InlineCodeReviewer
-              script={condition.script || ''}
-              scriptType={scriptType}
-            />
+            <InlineCodeReviewer script={condition.script || ''} scriptType={scriptType} />
           )}
         </div>
       )}
@@ -751,4 +831,3 @@ function formatCondition(condition: ConditionSpec): string {
       return 'Unknown condition'
   }
 }
-

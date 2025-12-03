@@ -45,7 +45,9 @@ export interface JobStatusResponse {
 /**
  * Launch a training job via GraphQL
  */
-export async function launchTrainingJob(request: LaunchTrainingRequest): Promise<LaunchTrainingResponse> {
+export async function launchTrainingJob(
+  request: LaunchTrainingRequest
+): Promise<LaunchTrainingResponse> {
   if (!request.envSpec) {
     throw new Error('envSpec is required for GraphQL training launch')
   }
@@ -126,7 +128,10 @@ export async function getTrainingJobStatus(jobId: string): Promise<JobStatusResp
     }
 
     const status = data.trainingStatus
-    const statusMap: Record<string, 'queued' | 'running' | 'completed' | 'error' | 'stopped' | 'not_found'> = {
+    const statusMap: Record<
+      string,
+      'queued' | 'running' | 'completed' | 'error' | 'stopped' | 'not_found'
+    > = {
       PENDING: 'queued',
       RUNNING: 'running',
       SUCCEEDED: 'completed',
@@ -149,7 +154,9 @@ export async function getTrainingJobStatus(jobId: string): Promise<JobStatusResp
 /**
  * Stop a running training job via GraphQL
  */
-export async function stopTrainingJob(jobId: string): Promise<{ success: boolean; error?: string }> {
+export async function stopTrainingJob(
+  jobId: string
+): Promise<{ success: boolean; error?: string }> {
   const gqlMutation = `
     mutation StopTraining($jobId: String!) {
       stopTraining(jobId: $jobId)
@@ -188,4 +195,3 @@ export async function checkTrainingServiceHealth(): Promise<boolean> {
     return false
   }
 }
-

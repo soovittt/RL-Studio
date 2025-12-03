@@ -186,7 +186,9 @@ def install_skypilot() -> bool:
         )
         logger.info("✅ SkyPilot already installed")
         return True
-    except:
+    except Exception as e:
+        # SkyPilot not found - this is expected if not installed
+        logger.debug(f"SkyPilot check failed: {e}")
         pass
 
     try:
@@ -251,7 +253,9 @@ def setup_infrastructure() -> Dict[str, Any]:
         subprocess.run(["sky", "--version"], capture_output=True, check=True, timeout=5)
         result["skypilot_installed"] = True
         logger.info("✅ SkyPilot already installed")
-    except:
+    except Exception as e:
+        # SkyPilot not found - this is expected, we'll install it
+        logger.debug(f"SkyPilot check failed: {e}")
         logger.info("📦 SkyPilot not found. Installing automatically...")
         logger.info("   This may take a few minutes...")
         if install_skypilot():

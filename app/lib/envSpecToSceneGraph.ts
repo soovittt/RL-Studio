@@ -102,7 +102,7 @@ export function envSpecToSceneGraph(envSpec: EnvSpec): ConvertedSceneGraph {
 
     // Determine collision properties
     const isSolid = obj.collision?.enabled && (obj.type === 'wall' || obj.type === 'obstacle')
-    
+
     entities.push({
       id: obj.id,
       assetId: `asset_${obj.type}`, // Map to asset ID (will need asset lookup)
@@ -166,11 +166,12 @@ export function envSpecToSceneGraph(envSpec: EnvSpec): ConvertedSceneGraph {
     const col = isGrid ? Math.floor(agent.position[0]) : 0
 
     // Determine action space
-    const actionSpace = envSpec.actionSpace?.type === 'discrete'
-      ? 'grid_moves_4'
-      : envSpec.actionSpace?.type === 'continuous'
-      ? 'custom'
-      : 'grid_moves_4'
+    const actionSpace =
+      envSpec.actionSpace?.type === 'discrete'
+        ? 'grid_moves_4'
+        : envSpec.actionSpace?.type === 'continuous'
+          ? 'custom'
+          : 'grid_moves_4'
 
     // Default agent render (circle, blue)
     const render2D = {
@@ -308,7 +309,7 @@ export function envSpecToRLConfig(envSpec: EnvSpec): ConvertedRLConfig {
   const rewards = envSpec.rules.rewards.map((rule) => {
     // Convert reward condition to trigger
     let trigger: ConvertedRLConfig['rewards'][0]['trigger']
-    
+
     if (rule.condition.type === 'reach_goal') {
       // Find goal entity
       const goalEntity = envSpec.objects.find((obj) => obj.type === 'goal')
@@ -376,4 +377,3 @@ export function envSpecToRLConfig(envSpec: EnvSpec): ConvertedRLConfig {
     episode,
   }
 }
-

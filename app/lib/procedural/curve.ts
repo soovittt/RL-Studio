@@ -11,29 +11,29 @@ export const renderCurve: RendererFunction = (
   context: RenderContext
 ): THREE.Mesh => {
   const params = geometry.params || {}
-  
+
   // Default: simple straight path
   const points = params.points || [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 0, params.length || 1),
   ]
-  
+
   // Create curve from points
   const curve = new THREE.CatmullRomCurve3(points)
-  
+
   // Shape to extrude (default: circle)
   const shapeRadius = params.shapeRadius || 0.1
   const shape = new THREE.Shape()
   shape.moveTo(shapeRadius, 0)
   shape.arc(0, 0, shapeRadius, 0, Math.PI * 2, false)
-  
+
   // Extrude along curve
   const extrudeSettings = {
     steps: params.steps || 100,
     bevelEnabled: params.bevelEnabled || false,
     extrudePath: curve,
   }
-  
+
   const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings)
   const material = new THREE.MeshStandardMaterial({
     color: context.color || '#9ca3af',
@@ -49,4 +49,3 @@ export const renderCurve: RendererFunction = (
 
   return mesh
 }
-

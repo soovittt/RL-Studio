@@ -33,7 +33,8 @@ class JSONExtractor(BaseExtractor):
             try:
                 json.loads(input_data)
                 return True
-            except:
+            except (json.JSONDecodeError, ValueError, TypeError):
+                # Invalid JSON - this is expected for non-JSON input
                 return False
         return False
 

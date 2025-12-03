@@ -66,7 +66,14 @@ def detect_algorithm_from_model(model_path: str) -> str:
                     config = json.load(f)
                     if "algorithm" in config:
                         return config["algorithm"].lower()
-        except:
+        except (KeyError, AttributeError, TypeError):
+            # Config doesn't have algorithm field - this is fine
+            pass
+        except Exception as e:
+            # Log unexpected errors but don't fail
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Error reading algorithm from config: {e}")
             pass
 
         # Default to PPO if we can't detect

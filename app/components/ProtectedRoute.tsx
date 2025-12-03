@@ -21,8 +21,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // If we have a token in localStorage but auth is still loading, wait a bit longer
   // This handles the case where we just logged in and the page is reloading
-  const hasStoredToken = typeof window !== 'undefined' && localStorage.getItem('rl_studio_auth_token')
-  
+  const hasStoredToken =
+    typeof window !== 'undefined' && localStorage.getItem('rl_studio_auth_token')
+
   if (isLoading || (hasStoredToken && !isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

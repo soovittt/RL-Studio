@@ -52,7 +52,9 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
             <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
             <div>
               <div className="font-semibold">Running Code Review...</div>
-              <div className="text-sm text-gray-600">Analyzing code quality and potential issues</div>
+              <div className="text-sm text-gray-600">
+                Analyzing code quality and potential issues
+              </div>
             </div>
           </div>
         </div>
@@ -85,7 +87,8 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
   const warningCount = review.issues.filter((i: any) => i.severity === 'warning').length
   const infoCount = review.issues.filter((i: any) => i.severity === 'info').length
 
-  const scoreColor = review.score >= 80 ? 'text-green-600' : review.score >= 60 ? 'text-yellow-600' : 'text-red-600'
+  const scoreColor =
+    review.score >= 80 ? 'text-green-600' : review.score >= 60 ? 'text-yellow-600' : 'text-red-600'
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -95,10 +98,7 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
             <h2 className="text-2xl font-bold text-gray-900">Code Review Results</h2>
             <p className="text-sm text-gray-600 mt-1">{review.summary}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
             ×
           </button>
         </div>
@@ -108,9 +108,7 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-gray-600">Code Quality Score</div>
-              <div className={`text-4xl font-bold ${scoreColor}`}>
-                {review.score}/100
-              </div>
+              <div className={`text-4xl font-bold ${scoreColor}`}>{review.score}/100</div>
             </div>
             <div className="flex gap-4">
               <div className="text-center">
@@ -141,8 +139,8 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
                     issue.severity === 'error'
                       ? 'bg-red-50 border-red-500'
                       : issue.severity === 'warning'
-                      ? 'bg-yellow-50 border-yellow-500'
-                      : 'bg-blue-50 border-blue-500'
+                        ? 'bg-yellow-50 border-yellow-500'
+                        : 'bg-blue-50 border-blue-500'
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -153,8 +151,8 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
                             issue.severity === 'error'
                               ? 'bg-red-100 text-red-700'
                               : issue.severity === 'warning'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-blue-100 text-blue-700'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-blue-100 text-blue-700'
                           }`}
                         >
                           {issue.severity.toUpperCase()}
@@ -189,8 +187,8 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
                     suggestion.priority === 'high'
                       ? 'bg-red-50 border-red-200'
                       : suggestion.priority === 'medium'
-                      ? 'bg-yellow-50 border-yellow-200'
-                      : 'bg-blue-50 border-blue-200'
+                        ? 'bg-yellow-50 border-yellow-200'
+                        : 'bg-blue-50 border-blue-200'
                   }`}
                 >
                   <div className="font-medium text-gray-900 mb-1">{suggestion.title}</div>
@@ -222,4 +220,3 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
     </div>
   )
 }
-

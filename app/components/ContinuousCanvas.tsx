@@ -45,9 +45,16 @@ export function ContinuousCanvas({ envSpec, sceneGraph, onSpecChange }: Continuo
   const [dragAgent, setDragAgent] = useState<string | null>(null)
 
   const world = envSpec.world
-  const bounds = world.coordinateSystem === 'cartesian' 
-    ? [[-world.width/2, world.width/2], [-world.height/2, world.height/2]]
-    : [[0, world.width], [0, world.height]]
+  const bounds =
+    world.coordinateSystem === 'cartesian'
+      ? [
+          [-world.width / 2, world.width / 2],
+          [-world.height / 2, world.height / 2],
+        ]
+      : [
+          [0, world.width],
+          [0, world.height],
+        ]
 
   const canvasWidth = 600
   const canvasHeight = 600
@@ -132,12 +139,7 @@ export function ContinuousCanvas({ envSpec, sceneGraph, onSpecChange }: Continuo
       sceneGraph.addAgent('Agent', worldPos, { type: 'continuous-velocity', maxSpeed: 1 })
     } else {
       const radius = OBJECT_RADIUS[selectedTool] || 8
-      sceneGraph.addObject(
-        selectedTool,
-        worldPos,
-        { type: 'circle', radius },
-        {}
-      )
+      sceneGraph.addObject(selectedTool, worldPos, { type: 'circle', radius }, {})
     }
 
     onSpecChange(sceneGraph.getSpec())
@@ -302,8 +304,8 @@ export function ContinuousCanvas({ envSpec, sceneGraph, onSpecChange }: Continuo
                 : 'border-border hover:bg-muted'
             }`}
           >
-            <span 
-              className="inline-block w-3 h-3 rounded mr-2" 
+            <span
+              className="inline-block w-3 h-3 rounded mr-2"
               style={{ backgroundColor: OBJECT_COLORS[type] }}
             />
             {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -333,8 +335,13 @@ export function ContinuousCanvas({ envSpec, sceneGraph, onSpecChange }: Continuo
       <div className="p-2 text-sm text-muted-foreground border-t border-border">
         <p>Click to place objects, right-click to remove</p>
         <p>Drag objects to move them</p>
-        <p>Bounds: [{bounds[0][0].toFixed(1)}, {bounds[0][1].toFixed(1)}] × [{bounds[1][0].toFixed(1)}, {bounds[1][1].toFixed(1)}]</p>
-        <p>Objects: {envSpec.objects.length} | Agents: {envSpec.agents.length}</p>
+        <p>
+          Bounds: [{bounds[0][0].toFixed(1)}, {bounds[0][1].toFixed(1)}] × [
+          {bounds[1][0].toFixed(1)}, {bounds[1][1].toFixed(1)}]
+        </p>
+        <p>
+          Objects: {envSpec.objects.length} | Agents: {envSpec.agents.length}
+        </p>
       </div>
     </div>
   )

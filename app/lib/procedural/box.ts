@@ -40,4 +40,3 @@ export const renderBox: RendererFunction = (
 
   return mesh
 }
-

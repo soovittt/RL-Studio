@@ -6,16 +6,26 @@
 
 import { useEffect, useState } from 'react'
 import { analyzeTrajectoryStreaming, type TrajectoryAnalysis } from '~/lib/analysisClient'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import { EnvSpec } from '~/lib/envSpec'
 
 interface PolicyEntropyChartProps {
-  rollouts: Array<Array<{
-    state: any
-    action: any
-    reward: number
-    done: boolean
-  }>>
+  rollouts: Array<
+    Array<{
+      state: any
+      action: any
+      reward: number
+      done: boolean
+    }>
+  >
   envSpec: EnvSpec
 }
 
@@ -23,7 +33,11 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
   const [entropyData, setEntropyData] = useState<Array<{ step: number; entropy: number }>>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<{ current: number; total: number; message: string } | null>(null)
+  const [progress, setProgress] = useState<{
+    current: number
+    total: number
+    message: string
+  } | null>(null)
 
   useEffect(() => {
     if (rollouts.length === 0) return
@@ -54,14 +68,16 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
               entropy: analysis.policy_entropy || 0,
             })
             completed++
-            
+
             if (completed === total) {
               // Sort by step
               analyses.sort((a, b) => a.step - b.step)
               setEntropyData(analyses)
               setLoading(false)
               setProgress(null)
-              console.log('✅ Policy entropy analysis complete - Real Python calculations (scipy.stats.entropy)')
+              console.log(
+                '✅ Policy entropy analysis complete - Real Python calculations (scipy.stats.entropy)'
+              )
             } else {
               setProgress({
                 current: completed,
@@ -91,7 +107,7 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
           </div>
         )}
         <div className="mt-4 w-64 h-2 bg-muted rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-300"
             style={{ width: `${progress ? (progress.current / progress.total) * 100 : 0}%` }}
           />
@@ -106,7 +122,10 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
         <div className="font-semibold mb-2">❌ Backend Required</div>
         <div className="text-sm text-center">{error}</div>
         <div className="text-xs mt-2 text-muted-foreground">
-          Real Python calculations (scipy.stats.entropy) are required. Backend: <code className="bg-muted px-1 rounded">{import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'}</code>
+          Real Python calculations (scipy.stats.entropy) are required. Backend:{' '}
+          <code className="bg-muted px-1 rounded">
+            {import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'}
+          </code>
         </div>
       </div>
     )
@@ -125,7 +144,8 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
   const minEntropy = Math.min(...entropyData.map((d) => d.entropy))
   const maxEntropy = Math.max(...entropyData.map((d) => d.entropy))
   const stdEntropy = Math.sqrt(
-    entropyData.reduce((sum, d) => sum + Math.pow(d.entropy - meanEntropy, 2), 0) / entropyData.length
+    entropyData.reduce((sum, d) => sum + Math.pow(d.entropy - meanEntropy, 2), 0) /
+      entropyData.length
   )
 
   return (
@@ -134,7 +154,9 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
       <div className="flex items-center justify-between pb-3 border-b border-border">
         <div>
           <h3 className="text-xl font-bold text-foreground">Policy Entropy Analysis</h3>
-          <p className="text-xs text-muted-foreground mt-1">Shannon entropy (base 2) over rollouts</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Shannon entropy (base 2) over rollouts
+          </p>
         </div>
         <div className="text-right">
           <div className="text-sm font-semibold text-foreground">{rollouts.length} rollouts</div>
@@ -171,7 +193,9 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
       <div className="bg-card border border-border rounded-lg p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-md font-bold text-foreground">Entropy Over Rollouts</h4>
-          <span className="text-xs text-muted-foreground font-mono">H(policy) = -Σ p(a) log₂ p(a)</span>
+          <span className="text-xs text-muted-foreground font-mono">
+            H(policy) = -Σ p(a) log₂ p(a)
+          </span>
         </div>
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={entropyData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
@@ -180,22 +204,36 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
               dataKey="step"
               stroke="hsl(var(--muted-foreground))"
               tick={{ fontSize: 11 }}
-              label={{ value: 'Rollout Number', position: 'insideBottom', offset: -5, style: { fontSize: 12 } }}
+              label={{
+                value: 'Rollout Number',
+                position: 'insideBottom',
+                offset: -5,
+                style: { fontSize: 12 },
+              }}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
               tick={{ fontSize: 11 }}
-              label={{ value: 'Entropy (bits)', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+              label={{
+                value: 'Entropy (bits)',
+                angle: -90,
+                position: 'insideLeft',
+                style: { fontSize: 12 },
+              }}
               domain={[0, Math.max(maxEntropy * 1.1, 2)]}
             />
             <Tooltip
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--card))', 
+              contentStyle={{
+                backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
                 borderRadius: '6px',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
               }}
-              labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold', marginBottom: '4px' }}
+              labelStyle={{
+                color: 'hsl(var(--foreground))',
+                fontWeight: 'bold',
+                marginBottom: '4px',
+              }}
               itemStyle={{ color: 'hsl(var(--foreground))' }}
               formatter={(value: number) => [`${value.toFixed(3)} bits`, 'Entropy']}
             />
@@ -224,15 +262,17 @@ export function PolicyEntropyChart({ rollouts, envSpec }: PolicyEntropyChartProp
 
       {/* Interpretation */}
       <div className="bg-muted/20 border border-border rounded-md p-3 text-sm">
-        <div className="font-semibold mb-2">Interpretation (calculated with scipy.stats.entropy):</div>
+        <div className="font-semibold mb-2">
+          Interpretation (calculated with scipy.stats.entropy):
+        </div>
         <ul className="list-disc list-inside space-y-1 text-muted-foreground">
           <li>
-            <strong>High entropy</strong> ({meanEntropy > 1.5 ? 'current' : 'typically'} &gt; 1.5): Policy is
-            exploring, actions are diverse
+            <strong>High entropy</strong> ({meanEntropy > 1.5 ? 'current' : 'typically'} &gt; 1.5):
+            Policy is exploring, actions are diverse
           </li>
           <li>
-            <strong>Low entropy</strong> ({meanEntropy < 0.5 ? 'current' : 'typically'} &lt; 0.5): Policy is
-            exploiting, actions are deterministic
+            <strong>Low entropy</strong> ({meanEntropy < 0.5 ? 'current' : 'typically'} &lt; 0.5):
+            Policy is exploiting, actions are deterministic
           </li>
           <li>
             <strong>Decreasing entropy</strong>: Policy is converging, becoming more deterministic

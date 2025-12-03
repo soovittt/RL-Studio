@@ -13,7 +13,7 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const { runId, step, reward, loss, entropy, valueLoss } = await request.json()
-      
+
       if (!runId || step === undefined || reward === undefined) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields: runId, step, reward' }),
@@ -38,16 +38,16 @@ http.route({
         entropy: entropy !== undefined && entropy !== null ? Number(entropy) : undefined,
         valueLoss: valueLoss !== undefined && valueLoss !== null ? Number(valueLoss) : undefined,
       })
-      
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
       console.error('Failed to save metrics:', error)
-      return new Response(
-        JSON.stringify({ error: error.message || 'Failed to save metrics' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message || 'Failed to save metrics' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -59,10 +59,12 @@ http.route({
     try {
       const data = await request.json()
       const { runId, modelUrl, modelPath, algorithm, hyperparams, evaluationId, fileSize } = data
-      
+
       if (!runId || !modelUrl || !modelPath || !algorithm) {
         return new Response(
-          JSON.stringify({ error: 'Missing required fields: runId, modelUrl, modelPath, algorithm' }),
+          JSON.stringify({
+            error: 'Missing required fields: runId, modelUrl, modelPath, algorithm',
+          }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
@@ -85,7 +87,7 @@ http.route({
         evaluationId: evaluationId ? (evaluationId as any) : undefined,
         fileSize: fileSize !== undefined && fileSize !== null ? Number(fileSize) : undefined,
       })
-      
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' },
       })
@@ -105,11 +107,29 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const data = await request.json()
-      const { runId, meanReward, stdReward, meanLength, stdLength, episodeRewards, episodeLengths, successRate, numEpisodes } = data
-      
-      if (!runId || meanReward === undefined || stdReward === undefined || meanLength === undefined || stdLength === undefined) {
+      const {
+        runId,
+        meanReward,
+        stdReward,
+        meanLength,
+        stdLength,
+        episodeRewards,
+        episodeLengths,
+        successRate,
+        numEpisodes,
+      } = data
+
+      if (
+        !runId ||
+        meanReward === undefined ||
+        stdReward === undefined ||
+        meanLength === undefined ||
+        stdLength === undefined
+      ) {
         return new Response(
-          JSON.stringify({ error: 'Missing required fields: runId, meanReward, stdReward, meanLength, stdLength' }),
+          JSON.stringify({
+            error: 'Missing required fields: runId, meanReward, stdReward, meanLength, stdLength',
+          }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
@@ -131,19 +151,20 @@ http.route({
         stdLength: Number(stdLength),
         episodeRewards: Array.isArray(episodeRewards) ? episodeRewards.map(Number) : [],
         episodeLengths: Array.isArray(episodeLengths) ? episodeLengths.map(Number) : [],
-        successRate: successRate !== undefined && successRate !== null ? Number(successRate) : undefined,
+        successRate:
+          successRate !== undefined && successRate !== null ? Number(successRate) : undefined,
         numEpisodes: Number(numEpisodes || episodeRewards?.length || 0),
       })
-      
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
       console.error('Failed to save evaluation:', error)
-      return new Response(
-        JSON.stringify({ error: error.message || 'Failed to save evaluation' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message || 'Failed to save evaluation' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -154,12 +175,12 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const { runId, logLevel, message, metadata } = await request.json()
-      
+
       if (!runId || !message) {
-        return new Response(
-          JSON.stringify({ error: 'Missing required fields: runId, message' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        )
+        return new Response(JSON.stringify({ error: 'Missing required fields: runId, message' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
 
       await ctx.runMutation(api.trainingLogs.append, {
@@ -168,16 +189,16 @@ http.route({
         message: String(message),
         metadata: metadata || {},
       })
-      
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
       console.error('Failed to save training log:', error)
-      return new Response(
-        JSON.stringify({ error: error.message || 'Failed to save log' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message || 'Failed to save log' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -198,24 +219,24 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const { token } = await request.json()
-      
+
       if (!token) {
-        return new Response(
-          JSON.stringify({ error: 'Token required' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        )
+        return new Response(JSON.stringify({ error: 'Token required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
 
       await ctx.runMutation((internal as any).auth.revokeSession, { token })
-      
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message || 'Failed to revoke session' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message || 'Failed to revoke session' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -234,10 +255,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -260,10 +281,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -283,10 +304,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -307,10 +328,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -329,10 +350,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -350,10 +371,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -370,10 +391,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -395,10 +416,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -414,10 +435,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -445,10 +466,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -468,10 +489,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -487,10 +508,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -506,10 +527,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -529,10 +550,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -553,10 +574,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -572,10 +593,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -600,10 +621,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -624,10 +645,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -643,10 +664,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -664,10 +685,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -685,10 +706,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -707,10 +728,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })
@@ -730,10 +751,10 @@ http.route({
         headers: { 'Content-Type': 'application/json' },
       })
     } catch (error: any) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
 })

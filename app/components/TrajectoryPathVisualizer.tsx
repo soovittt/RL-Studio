@@ -38,7 +38,7 @@ export function TrajectoryPathVisualizer({
     setLoading(true)
     setError(null)
     setProgress(null)
-    
+
     // Use streaming for real-time updates
     const cleanup = analyzeTrajectoryStreaming(
       { rollout_steps: rolloutSteps, env_spec: envSpec },
@@ -50,7 +50,9 @@ export function TrajectoryPathVisualizer({
           setAnalysis(backendAnalysis)
           setProgress(null)
           setLoading(false)
-          console.log('✅ Trajectory analysis complete - Real Python calculations (NumPy, SciPy, sklearn)')
+          console.log(
+            '✅ Trajectory analysis complete - Real Python calculations (NumPy, SciPy, sklearn)'
+          )
         },
         onError: (err) => {
           setError(err.message)
@@ -130,7 +132,12 @@ export function TrajectoryPathVisualizer({
       ctx.beginPath()
 
       analysis.trajectory_path.forEach((point, idx) => {
-        if (point && point.position && Array.isArray(point.position) && point.position.length >= 2) {
+        if (
+          point &&
+          point.position &&
+          Array.isArray(point.position) &&
+          point.position.length >= 2
+        ) {
           const [x, y] = worldToCanvas(point.position[0], point.position[1])
           if (idx === 0) {
             ctx.moveTo(x, y)
@@ -144,7 +151,12 @@ export function TrajectoryPathVisualizer({
 
       // Draw path points
       analysis.trajectory_path.forEach((point) => {
-        if (point && point.position && Array.isArray(point.position) && point.position.length >= 2) {
+        if (
+          point &&
+          point.position &&
+          Array.isArray(point.position) &&
+          point.position.length >= 2
+        ) {
           const [x, y] = worldToCanvas(point.position[0], point.position[1])
           ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'
           ctx.beginPath()
@@ -182,7 +194,12 @@ export function TrajectoryPathVisualizer({
       // Draw suboptimal attractors (from sklearn DBSCAN clustering)
       if (analysis.suboptimal_attractors && Array.isArray(analysis.suboptimal_attractors)) {
         analysis.suboptimal_attractors.forEach((attractor) => {
-          if (attractor && attractor.position && Array.isArray(attractor.position) && attractor.position.length >= 2) {
+          if (
+            attractor &&
+            attractor.position &&
+            Array.isArray(attractor.position) &&
+            attractor.position.length >= 2
+          ) {
             const [x, y] = worldToCanvas(attractor.position[0], attractor.position[1])
             ctx.strokeStyle = '#ef4444'
             ctx.lineWidth = 2
@@ -205,11 +222,12 @@ export function TrajectoryPathVisualizer({
         <div className="text-sm mb-2">Running Python analysis (NumPy, SciPy, sklearn)...</div>
         {progress && (
           <div className="text-xs text-muted-foreground">
-            {progress.message} {progress.progress > 0 && `(${Math.round(progress.progress * 100)}%)`}
+            {progress.message}{' '}
+            {progress.progress > 0 && `(${Math.round(progress.progress * 100)}%)`}
           </div>
         )}
         <div className="mt-4 w-64 h-2 bg-muted rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-300"
             style={{ width: `${(progress?.progress || 0) * 100}%` }}
           />
@@ -224,7 +242,10 @@ export function TrajectoryPathVisualizer({
         <div className="font-semibold mb-2">❌ Backend Required</div>
         <div className="text-sm text-center">{error}</div>
         <div className="text-xs mt-2 text-muted-foreground">
-          Real Python calculations (NumPy, SciPy, sklearn) are required. Backend: <code className="bg-muted px-1 rounded">{import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'}</code>
+          Real Python calculations (NumPy, SciPy, sklearn) are required. Backend:{' '}
+          <code className="bg-muted px-1 rounded">
+            {import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'}
+          </code>
         </div>
       </div>
     )
@@ -244,11 +265,17 @@ export function TrajectoryPathVisualizer({
       <div className="flex items-center justify-between pb-3 border-b border-border">
         <div>
           <h3 className="text-xl font-bold text-foreground">Trajectory Path Analysis</h3>
-          <p className="text-xs text-muted-foreground mt-1">Agent movement visualization with RL metrics</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Agent movement visualization with RL metrics
+          </p>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold text-foreground">{analysis.trajectory_length} steps</div>
-          <div className="text-xs text-muted-foreground">Efficiency: {(analysis.path_efficiency * 100).toFixed(1)}%</div>
+          <div className="text-sm font-semibold text-foreground">
+            {analysis.trajectory_length} steps
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Efficiency: {(analysis.path_efficiency * 100).toFixed(1)}%
+          </div>
           <div className="text-xs text-green-600 font-mono mt-1">✓ NumPy/SciPy/sklearn</div>
         </div>
       </div>
@@ -288,24 +315,38 @@ export function TrajectoryPathVisualizer({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
           <div className="text-xs text-muted-foreground mb-1">Policy Entropy</div>
-          <div className="text-2xl font-bold text-foreground">{(analysis.policy_entropy || 0).toFixed(3)}</div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">scipy.stats.entropy</div>
+          <div className="text-2xl font-bold text-foreground">
+            {(analysis.policy_entropy || 0).toFixed(3)}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
+            scipy.stats.entropy
+          </div>
         </div>
         <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
           <div className="text-xs text-muted-foreground mb-1">Path Efficiency</div>
-          <div className="text-2xl font-bold text-foreground">{(analysis.path_efficiency * 100).toFixed(1)}%</div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">scipy.spatial.distance</div>
+          <div className="text-2xl font-bold text-foreground">
+            {(analysis.path_efficiency * 100).toFixed(1)}%
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
+            scipy.spatial.distance
+          </div>
         </div>
         <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
           <div className="text-xs text-muted-foreground mb-1">Oscillations</div>
-          <div className={`text-2xl font-bold ${analysis.oscillation_detection?.detected ? 'text-orange-600' : 'text-green-600'}`}>
+          <div
+            className={`text-2xl font-bold ${analysis.oscillation_detection?.detected ? 'text-orange-600' : 'text-green-600'}`}
+          >
             {analysis.oscillation_detection?.detected ? 'Detected' : 'None'}
           </div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">scipy.signal.correlate</div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
+            scipy.signal.correlate
+          </div>
         </div>
         <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
           <div className="text-xs text-muted-foreground mb-1">Suboptimal Attractors</div>
-          <div className="text-2xl font-bold text-foreground">{analysis.suboptimal_attractors?.length || 0}</div>
+          <div className="text-2xl font-bold text-foreground">
+            {analysis.suboptimal_attractors?.length || 0}
+          </div>
           <div className="text-[10px] text-muted-foreground font-mono mt-1">sklearn.DBSCAN</div>
         </div>
       </div>
@@ -318,7 +359,10 @@ export function TrajectoryPathVisualizer({
             {Object.entries(analysis.action_distribution)
               .sort(([, a], [, b]) => (b || 0) - (a || 0))
               .map(([action, count]) => {
-                const total = Object.values(analysis.action_distribution).reduce((a: number, b: number) => a + (b || 0), 0)
+                const total = Object.values(analysis.action_distribution).reduce(
+                  (a: number, b: number) => a + (b || 0),
+                  0
+                )
                 const percentage = total > 0 ? ((count || 0) / total) * 100 : 0
                 return (
                   <div key={action} className="flex items-center gap-2">
@@ -331,7 +375,9 @@ export function TrajectoryPathVisualizer({
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <div className="w-20 text-xs text-right">{count || 0} ({percentage.toFixed(1)}%)</div>
+                    <div className="w-20 text-xs text-right">
+                      {count || 0} ({percentage.toFixed(1)}%)
+                    </div>
                   </div>
                 )
               })}

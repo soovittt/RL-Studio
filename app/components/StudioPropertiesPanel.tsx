@@ -70,38 +70,19 @@ export function StudioPropertiesPanel({
           />
         )}
 
-        {mode === 'actions' && (
-          <ActionsMode
-            envSpec={envSpec}
-            onSpecChange={onSpecChange}
-          />
-        )}
+        {mode === 'actions' && <ActionsMode envSpec={envSpec} onSpecChange={onSpecChange} />}
 
         {mode === 'rewards' && sceneGraph ? (
-          <RuleEditor
-            envSpec={envSpec}
-            sceneGraph={sceneGraph}
-            onSpecChange={onSpecChange}
-          />
+          <RuleEditor envSpec={envSpec} sceneGraph={sceneGraph} onSpecChange={onSpecChange} />
         ) : mode === 'rewards' ? (
           <div className="text-xs text-muted-foreground p-4">
             Rule editor requires scene graph. Please refresh the page.
           </div>
         ) : null}
 
-        {mode === 'episode' && (
-          <EpisodeMode
-            envSpec={envSpec}
-            onSpecChange={onSpecChange}
-          />
-        )}
+        {mode === 'episode' && <EpisodeMode envSpec={envSpec} onSpecChange={onSpecChange} />}
 
-        {mode === 'code' && (
-          <CodeMode
-            envSpec={envSpec}
-            onSpecChange={onSpecChange}
-          />
-        )}
+        {mode === 'code' && <CodeMode envSpec={envSpec} onSpecChange={onSpecChange} />}
       </div>
 
       {/* Geometry Editor Modal */}
@@ -170,9 +151,7 @@ function StructureMode({ envSpec, onSpecChange, selectedObjectId }: StudioProper
               placeholder="Height"
             />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Grid dimensions (1-100 cells)
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">Grid dimensions (1-100 cells)</p>
         </div>
 
         <div>
@@ -202,7 +181,10 @@ function StructureMode({ envSpec, onSpecChange, selectedObjectId }: StudioProper
   }
 
   if (envType === 'continuous2d') {
-    const bounds = envSpec?.stateSpace?.bounds || [[-10, 10], [-10, 10]]
+    const bounds = envSpec?.stateSpace?.bounds || [
+      [-10, 10],
+      [-10, 10],
+    ]
     return (
       <div className="space-y-4">
         <div>
@@ -407,14 +389,15 @@ function StructureMode({ envSpec, onSpecChange, selectedObjectId }: StudioProper
   }
 
   return (
-    <div className="text-sm text-muted-foreground">
-      Structure mode for {envType} coming soon
-    </div>
+    <div className="text-sm text-muted-foreground">Structure mode for {envType} coming soon</div>
   )
 }
 
 function ActionsMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
-  const actionSpace = envSpec?.actionSpace || { type: 'discrete', actions: ['up', 'down', 'left', 'right'] }
+  const actionSpace = envSpec?.actionSpace || {
+    type: 'discrete',
+    actions: ['up', 'down', 'left', 'right'],
+  }
 
   return (
     <div className="space-y-4">
@@ -427,8 +410,15 @@ function ActionsMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
               ...envSpec,
               actionSpace: {
                 type: e.target.value,
-                actions: e.target.value === 'discrete' ? ['up', 'down', 'left', 'right'] : undefined,
-                bounds: e.target.value === 'continuous' ? [[-1, 1], [-1, 1]] : undefined,
+                actions:
+                  e.target.value === 'discrete' ? ['up', 'down', 'left', 'right'] : undefined,
+                bounds:
+                  e.target.value === 'continuous'
+                    ? [
+                        [-1, 1],
+                        [-1, 1],
+                      ]
+                    : undefined,
               },
             })
           }}
@@ -510,8 +500,11 @@ function RewardsMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
         {reward.rules?.map((rule: any, i: number) => {
-          const conditionLabel = commonConditions.find((c) => c.type === rule.condition?.type)?.label || rule.condition?.type || 'unknown'
-          
+          const conditionLabel =
+            commonConditions.find((c) => c.type === rule.condition?.type)?.label ||
+            rule.condition?.type ||
+            'unknown'
+
           return (
             <div key={i} className="p-2 border border-border rounded bg-muted/50">
               <div className="flex items-center justify-between mb-2">
@@ -537,7 +530,8 @@ function RewardsMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
                     value={rule.condition?.type || ''}
                     onChange={(e) => {
                       const newRules = [...(reward.rules || [])]
-                      const defaultVal = commonConditions.find((c) => c.type === e.target.value)?.default || 0
+                      const defaultVal =
+                        commonConditions.find((c) => c.type === e.target.value)?.default || 0
                       newRules[i] = {
                         ...rule,
                         condition: { type: e.target.value },
@@ -575,8 +569,11 @@ function RewardsMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
                     }}
                     className="flex-1 px-2 py-1 border border-border rounded text-xs"
                   />
-                  <span className={`text-xs font-mono w-12 text-right ${rule.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {rule.value >= 0 ? '+' : ''}{rule.value}
+                  <span
+                    className={`text-xs font-mono w-12 text-right ${rule.value >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {rule.value >= 0 ? '+' : ''}
+                    {rule.value}
                   </span>
                 </div>
               </div>
@@ -595,12 +592,18 @@ function RewardsMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
             <div className="font-medium mb-1">Reward Summary:</div>
             <div className="space-y-0.5">
               {reward.rules.map((rule: any, i: number) => {
-                const conditionLabel = commonConditions.find((c) => c.type === rule.condition?.type)?.label || rule.condition?.type || 'unknown'
+                const conditionLabel =
+                  commonConditions.find((c) => c.type === rule.condition?.type)?.label ||
+                  rule.condition?.type ||
+                  'unknown'
                 return (
                   <div key={i} className="flex justify-between">
                     <span>{conditionLabel}:</span>
-                    <span className={`font-mono ${rule.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {rule.value >= 0 ? '+' : ''}{rule.value}
+                    <span
+                      className={`font-mono ${rule.value >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
+                      {rule.value >= 0 ? '+' : ''}
+                      {rule.value}
                     </span>
                   </div>
                 )
@@ -670,7 +673,9 @@ function EpisodeMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
                       }}
                       className="rounded"
                     />
-                    <span className="capitalize">{condition.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <span className="capitalize">
+                      {condition.replace(/([A-Z])/g, ' $1').trim()}
+                    </span>
                   </label>
                 )
               })}
@@ -688,9 +693,10 @@ function EpisodeMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
               const newStage = {
                 id: `stage_${Date.now()}`,
                 name: `Stage ${curriculum.stages.length + 1}`,
-                threshold: curriculum.stages.length > 0 
-                  ? (curriculum.stages[curriculum.stages.length - 1]?.threshold || 0) + 10
-                  : 10,
+                threshold:
+                  curriculum.stages.length > 0
+                    ? (curriculum.stages[curriculum.stages.length - 1]?.threshold || 0) + 10
+                    : 10,
                 envModifications: {},
               }
               onSpecChange({
@@ -777,7 +783,10 @@ function EpisodeMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
               <div className="space-y-0.5">
                 {curriculum.stages.map((stage: any, i: number) => (
                   <div key={stage.id}>
-                    {i === 0 ? 'Start' : `After ${curriculum.stages[i - 1]?.name || 'previous stage'}`} → {stage.name} (threshold: {stage.threshold})
+                    {i === 0
+                      ? 'Start'
+                      : `After ${curriculum.stages[i - 1]?.name || 'previous stage'}`}{' '}
+                    → {stage.name} (threshold: {stage.threshold})
                   </div>
                 ))}
               </div>
@@ -802,7 +811,7 @@ function CodeMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
   const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newCode = e.target.value
     setCode(newCode)
-    
+
     try {
       const parsed = JSON.parse(newCode)
       onSpecChange(parsed)
@@ -853,4 +862,3 @@ function CodeMode({ envSpec, onSpecChange }: StudioPropertiesPanelProps) {
     </div>
   )
 }
-

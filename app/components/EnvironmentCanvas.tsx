@@ -16,7 +16,14 @@ interface EnvironmentCanvasProps {
   onAssetSelect?: (asset: any) => void
 }
 
-export const EnvironmentCanvas = memo(function EnvironmentCanvas({ envSpec, sceneGraph, onSpecChange, rolloutState, selectedAssetId, onAssetSelect }: EnvironmentCanvasProps) {
+export const EnvironmentCanvas = memo(function EnvironmentCanvas({
+  envSpec,
+  sceneGraph,
+  onSpecChange,
+  rolloutState,
+  selectedAssetId,
+  onAssetSelect,
+}: EnvironmentCanvasProps) {
   const envType = envSpec.envType
 
   switch (envType) {
@@ -48,4 +55,3 @@ export const EnvironmentCanvas = memo(function EnvironmentCanvas({ envSpec, scen
       )
   }
 })
-

@@ -57,96 +57,104 @@ export function GeometryEditor({ envSpec, onGeometryChange, onClose }: GeometryE
     drawCanvas(ctx)
   }, [polylines, currentPolyline, mode, width, height, coordinateSystem])
 
-  const drawCanvas = useCallback((ctx: CanvasRenderingContext2D) => {
-    const canvas = ctx.canvas
-    const rect = canvas.getBoundingClientRect()
-    const displayWidth = rect.width
-    const displayHeight = rect.height
+  const drawCanvas = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const canvas = ctx.canvas
+      const rect = canvas.getBoundingClientRect()
+      const displayWidth = rect.width
+      const displayHeight = rect.height
 
-    // Clear canvas
-    ctx.clearRect(0, 0, displayWidth, displayHeight)
+      // Clear canvas
+      ctx.clearRect(0, 0, displayWidth, displayHeight)
 
-    // Draw background
-    ctx.fillStyle = '#1e293b'
-    ctx.fillRect(0, 0, displayWidth, displayHeight)
+      // Draw background
+      ctx.fillStyle = '#1e293b'
+      ctx.fillRect(0, 0, displayWidth, displayHeight)
 
-    // Draw grid if grid coordinate system
-    if (coordinateSystem === 'grid') {
-      ctx.strokeStyle = '#334155'
-      ctx.lineWidth = 1
-      const cellSize = Math.min(displayWidth / width, displayHeight / height)
-      for (let i = 0; i <= width; i++) {
-        const x = (i / width) * displayWidth
+      // Draw grid if grid coordinate system
+      if (coordinateSystem === 'grid') {
+        ctx.strokeStyle = '#334155'
+        ctx.lineWidth = 1
+        const cellSize = Math.min(displayWidth / width, displayHeight / height)
+        for (let i = 0; i <= width; i++) {
+          const x = (i / width) * displayWidth
+          ctx.beginPath()
+          ctx.moveTo(x, 0)
+          ctx.lineTo(x, displayHeight)
+          ctx.stroke()
+        }
+        for (let i = 0; i <= height; i++) {
+          const y = (i / height) * displayHeight
+          ctx.beginPath()
+          ctx.moveTo(0, y)
+          ctx.lineTo(displayWidth, y)
+          ctx.stroke()
+        }
+      }
+
+      // Draw existing polylines
+      polylines.forEach((polyline, idx) => {
+        if (polyline.length < 2) return
+
+        ctx.strokeStyle =
+          idx === editingIndex ? '#fbbf24' : mode === 'walkable' ? '#10b981' : '#ef4444'
+        ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, displayHeight)
+        const [firstX, firstY] = worldToCanvas(polyline[0])
+        ctx.moveTo(firstX, firstY)
+        for (let i = 1; i < polyline.length; i++) {
+          const [x, y] = worldToCanvas(polyline[i])
+          ctx.lineTo(x, y)
+        }
         ctx.stroke()
-      }
-      for (let i = 0; i <= height; i++) {
-        const y = (i / height) * displayHeight
+
+        // Fill region
+        ctx.fillStyle =
+          idx === editingIndex
+            ? 'rgba(251, 191, 36, 0.2)'
+            : mode === 'walkable'
+              ? 'rgba(16, 185, 129, 0.2)'
+              : 'rgba(239, 68, 68, 0.2)'
+        ctx.fill()
+
+        // Draw points
+        polyline.forEach((point) => {
+          const [x, y] = worldToCanvas(point)
+          ctx.fillStyle =
+            idx === editingIndex ? '#fbbf24' : mode === 'walkable' ? '#10b981' : '#ef4444'
+          ctx.beginPath()
+          ctx.arc(x, y, 4, 0, Math.PI * 2)
+          ctx.fill()
+        })
+      })
+
+      // Draw current polyline being drawn
+      if (currentPolyline.length > 0) {
+        ctx.strokeStyle = mode === 'walkable' ? '#10b981' : '#ef4444'
+        ctx.lineWidth = 2
+        ctx.setLineDash([5, 5])
         ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(displayWidth, y)
+        const [firstX, firstY] = worldToCanvas(currentPolyline[0])
+        ctx.moveTo(firstX, firstY)
+        for (let i = 1; i < currentPolyline.length; i++) {
+          const [x, y] = worldToCanvas(currentPolyline[i])
+          ctx.lineTo(x, y)
+        }
         ctx.stroke()
+        ctx.setLineDash([])
+
+        // Draw points
+        currentPolyline.forEach((point) => {
+          const [x, y] = worldToCanvas(point)
+          ctx.fillStyle = mode === 'walkable' ? '#10b981' : '#ef4444'
+          ctx.beginPath()
+          ctx.arc(x, y, 4, 0, Math.PI * 2)
+          ctx.fill()
+        })
       }
-    }
-
-    // Draw existing polylines
-    polylines.forEach((polyline, idx) => {
-      if (polyline.length < 2) return
-
-      ctx.strokeStyle = idx === editingIndex ? '#fbbf24' : (mode === 'walkable' ? '#10b981' : '#ef4444')
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      const [firstX, firstY] = worldToCanvas(polyline[0])
-      ctx.moveTo(firstX, firstY)
-      for (let i = 1; i < polyline.length; i++) {
-        const [x, y] = worldToCanvas(polyline[i])
-        ctx.lineTo(x, y)
-      }
-      ctx.stroke()
-
-      // Fill region
-      ctx.fillStyle = idx === editingIndex 
-        ? 'rgba(251, 191, 36, 0.2)' 
-        : (mode === 'walkable' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)')
-      ctx.fill()
-
-      // Draw points
-      polyline.forEach((point) => {
-        const [x, y] = worldToCanvas(point)
-        ctx.fillStyle = idx === editingIndex ? '#fbbf24' : (mode === 'walkable' ? '#10b981' : '#ef4444')
-        ctx.beginPath()
-        ctx.arc(x, y, 4, 0, Math.PI * 2)
-        ctx.fill()
-      })
-    })
-
-    // Draw current polyline being drawn
-    if (currentPolyline.length > 0) {
-      ctx.strokeStyle = mode === 'walkable' ? '#10b981' : '#ef4444'
-      ctx.lineWidth = 2
-      ctx.setLineDash([5, 5])
-      ctx.beginPath()
-      const [firstX, firstY] = worldToCanvas(currentPolyline[0])
-      ctx.moveTo(firstX, firstY)
-      for (let i = 1; i < currentPolyline.length; i++) {
-        const [x, y] = worldToCanvas(currentPolyline[i])
-        ctx.lineTo(x, y)
-      }
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // Draw points
-      currentPolyline.forEach((point) => {
-        const [x, y] = worldToCanvas(point)
-        ctx.fillStyle = mode === 'walkable' ? '#10b981' : '#ef4444'
-        ctx.beginPath()
-        ctx.arc(x, y, 4, 0, Math.PI * 2)
-        ctx.fill()
-      })
-    }
-  }, [polylines, currentPolyline, mode, editingIndex, width, height, coordinateSystem])
+    },
+    [polylines, currentPolyline, mode, editingIndex, width, height, coordinateSystem]
+  )
 
   const worldToCanvas = (worldPos: Vec2): [number, number] => {
     const canvas = canvasRef.current
@@ -184,7 +192,10 @@ export function GeometryEditor({ envSpec, onGeometryChange, onClose }: GeometryE
       // Cartesian: center at (0,0)
       const x = (canvasX / displayWidth) * width - width / 2
       const y = (canvasY / displayHeight) * height - height / 2
-      return [Math.max(-width / 2, Math.min(width / 2, x)), Math.max(-height / 2, Math.min(height / 2, y))]
+      return [
+        Math.max(-width / 2, Math.min(width / 2, x)),
+        Math.max(-height / 2, Math.min(height / 2, y)),
+      ]
     }
   }
 
@@ -298,9 +309,7 @@ export function GeometryEditor({ envSpec, onGeometryChange, onClose }: GeometryE
             <button
               onClick={() => setMode('walkable')}
               className={`px-4 py-2 rounded ${
-                mode === 'walkable'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-muted text-muted-foreground'
+                mode === 'walkable' ? 'bg-green-600 text-white' : 'bg-muted text-muted-foreground'
               }`}
             >
               Walkable Region
@@ -308,9 +317,7 @@ export function GeometryEditor({ envSpec, onGeometryChange, onClose }: GeometryE
             <button
               onClick={() => setMode('nonWalkable')}
               className={`px-4 py-2 rounded ${
-                mode === 'nonWalkable'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-muted text-muted-foreground'
+                mode === 'nonWalkable' ? 'bg-red-600 text-white' : 'bg-muted text-muted-foreground'
               }`}
             >
               Non-Walkable Region
@@ -318,7 +325,8 @@ export function GeometryEditor({ envSpec, onGeometryChange, onClose }: GeometryE
           </div>
 
           <div className="text-sm text-muted-foreground">
-            {mode === 'walkable' ? 'Green' : 'Red'} regions will be {mode === 'walkable' ? 'walkable' : 'blocked'}
+            {mode === 'walkable' ? 'Green' : 'Red'} regions will be{' '}
+            {mode === 'walkable' ? 'walkable' : 'blocked'}
           </div>
         </div>
 
@@ -413,4 +421,3 @@ export function GeometryEditor({ envSpec, onGeometryChange, onClose }: GeometryE
     </div>
   )
 }
-

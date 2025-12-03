@@ -5,13 +5,13 @@ export type EnvType = 'grid' | 'continuous2d' | 'custom2d'
 
 export type Vec2 = [number, number]
 
-export type SizeSpec = 
+export type SizeSpec =
   | { type: 'point' }
   | { type: 'circle'; radius: number }
   | { type: 'rect'; width: number; height: number }
   | { type: 'polygon'; points: Vec2[] }
 
-export type ObjectType = 
+export type ObjectType =
   | 'wall'
   | 'agent'
   | 'goal'
@@ -60,7 +60,7 @@ export type ObjectSpec = {
   properties: Record<string, any>
 }
 
-export type DynamicsSpec = 
+export type DynamicsSpec =
   | { type: 'grid-step' }
   | { type: 'continuous-velocity'; maxSpeed: number }
   | { type: 'car-like'; maxSpeed: number; turnRate: number }
@@ -181,15 +181,14 @@ export function createDefaultEnvSpec(envType: EnvType, name: string = ''): EnvSp
     world: baseWorld,
     objects: [],
     agents: [],
-    actionSpace: envType === 'grid'
-      ? { type: 'discrete', actions: ['up', 'down', 'left', 'right'] }
-      : { type: 'continuous', dimensions: 2, range: [-1, 1] },
+    actionSpace:
+      envType === 'grid'
+        ? { type: 'discrete', actions: ['up', 'down', 'left', 'right'] }
+        : { type: 'continuous', dimensions: 2, range: [-1, 1] },
     stateSpace: {
       type: 'vector',
       dimensions: envType === 'grid' ? [2] : [2],
-      components: [
-        { name: 'position', type: 'position', dimensions: [2] },
-      ],
+      components: [{ name: 'position', type: 'position', dimensions: [2] }],
     },
     rules: {
       rewards: [],
@@ -204,4 +203,3 @@ export function createDefaultEnvSpec(envType: EnvType, name: string = ''): EnvSp
     },
   }
 }
-

@@ -43,7 +43,9 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
             <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
             <div>
               <div className="font-semibold">Validating Environment Code...</div>
-              <div className="text-sm text-gray-600">Checking for logic errors, bugs, and issues</div>
+              <div className="text-sm text-gray-600">
+                Checking for logic errors, bugs, and issues
+              </div>
             </div>
           </div>
         </div>
@@ -78,11 +80,12 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
 
   // Filter issues by category
   const logicErrors = review.issues.filter((i: any) => i.category === 'logic')
-  const rewardIssues = review.issues.filter((i: any) => 
-    i.message.toLowerCase().includes('reward') || i.category === 'security'
+  const rewardIssues = review.issues.filter(
+    (i: any) => i.message.toLowerCase().includes('reward') || i.category === 'security'
   )
-  const terminationIssues = review.issues.filter((i: any) => 
-    i.message.toLowerCase().includes('terminat') || i.message.toLowerCase().includes('step')
+  const terminationIssues = review.issues.filter(
+    (i: any) =>
+      i.message.toLowerCase().includes('terminat') || i.message.toLowerCase().includes('step')
   )
   const apiIssues = review.issues.filter((i: any) => i.category === 'api_compliance')
 
@@ -94,10 +97,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
             <h2 className="text-2xl font-bold text-gray-900">Environment Code Validation</h2>
             <p className="text-sm text-gray-600 mt-1">{review.summary}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
             ×
           </button>
         </div>
@@ -107,11 +107,15 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-gray-600">Validation Score</div>
-              <div className={`text-4xl font-bold ${
-                review.score >= 80 ? 'text-green-600' : 
-                review.score >= 60 ? 'text-yellow-600' : 
-                'text-red-600'
-              }`}>
+              <div
+                className={`text-4xl font-bold ${
+                  review.score >= 80
+                    ? 'text-green-600'
+                    : review.score >= 60
+                      ? 'text-yellow-600'
+                      : 'text-red-600'
+                }`}
+              >
                 {review.score}/100
               </div>
             </div>
@@ -154,11 +158,14 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
             <h3 className="font-semibold text-gray-900 mb-3">🎯 Reward-Related Issues</h3>
             <div className="space-y-2">
               {rewardIssues.map((issue: any, idx: number) => (
-                <div key={idx} className={`p-3 border-l-4 rounded ${
-                  issue.severity === 'error' 
-                    ? 'bg-red-50 border-red-500'
-                    : 'bg-yellow-50 border-yellow-500'
-                }`}>
+                <div
+                  key={idx}
+                  className={`p-3 border-l-4 rounded ${
+                    issue.severity === 'error'
+                      ? 'bg-red-50 border-red-500'
+                      : 'bg-yellow-50 border-yellow-500'
+                  }`}
+                >
                   <div className="text-sm font-medium text-gray-900 mb-1">{issue.message}</div>
                   {issue.suggestion && (
                     <div className="text-xs text-gray-600 italic">💡 {issue.suggestion}</div>
@@ -174,11 +181,14 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
             <h3 className="font-semibold text-gray-900 mb-3">⏱️ Termination Issues</h3>
             <div className="space-y-2">
               {terminationIssues.map((issue: any, idx: number) => (
-                <div key={idx} className={`p-3 border-l-4 rounded ${
-                  issue.severity === 'error' 
-                    ? 'bg-red-50 border-red-500'
-                    : 'bg-yellow-50 border-yellow-500'
-                }`}>
+                <div
+                  key={idx}
+                  className={`p-3 border-l-4 rounded ${
+                    issue.severity === 'error'
+                      ? 'bg-red-50 border-red-500'
+                      : 'bg-yellow-50 border-yellow-500'
+                  }`}
+                >
                   <div className="text-sm font-medium text-gray-900 mb-1">{issue.message}</div>
                   {issue.suggestion && (
                     <div className="text-xs text-gray-600 italic">💡 {issue.suggestion}</div>
@@ -206,39 +216,44 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
         )}
 
         {/* All Other Issues */}
-        {review.issues.filter((i: any) => 
-          !logicErrors.includes(i) && 
-          !rewardIssues.includes(i) && 
-          !terminationIssues.includes(i) && 
-          !apiIssues.includes(i)
+        {review.issues.filter(
+          (i: any) =>
+            !logicErrors.includes(i) &&
+            !rewardIssues.includes(i) &&
+            !terminationIssues.includes(i) &&
+            !apiIssues.includes(i)
         ).length > 0 && (
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Other Issues</h3>
             <div className="space-y-2">
-              {review.issues.filter((i: any) => 
-                !logicErrors.includes(i) && 
-                !rewardIssues.includes(i) && 
-                !terminationIssues.includes(i) && 
-                !apiIssues.includes(i)
-              ).map((issue: any, idx: number) => (
-                <div key={idx} className={`p-3 border-l-4 rounded ${
-                  issue.severity === 'error' 
-                    ? 'bg-red-50 border-red-500'
-                    : issue.severity === 'warning'
-                    ? 'bg-yellow-50 border-yellow-500'
-                    : 'bg-blue-50 border-blue-500'
-                }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-900">{issue.message}</span>
-                    {issue.file && (
-                      <span className="text-xs text-gray-500">({issue.file})</span>
+              {review.issues
+                .filter(
+                  (i: any) =>
+                    !logicErrors.includes(i) &&
+                    !rewardIssues.includes(i) &&
+                    !terminationIssues.includes(i) &&
+                    !apiIssues.includes(i)
+                )
+                .map((issue: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-3 border-l-4 rounded ${
+                      issue.severity === 'error'
+                        ? 'bg-red-50 border-red-500'
+                        : issue.severity === 'warning'
+                          ? 'bg-yellow-50 border-yellow-500'
+                          : 'bg-blue-50 border-blue-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-gray-900">{issue.message}</span>
+                      {issue.file && <span className="text-xs text-gray-500">({issue.file})</span>}
+                    </div>
+                    {issue.suggestion && (
+                      <div className="text-xs text-gray-600 italic">💡 {issue.suggestion}</div>
                     )}
                   </div>
-                  {issue.suggestion && (
-                    <div className="text-xs text-gray-600 italic">💡 {issue.suggestion}</div>
-                  )}
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         )}
@@ -255,8 +270,8 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
                     suggestion.priority === 'high'
                       ? 'bg-red-50 border-red-200'
                       : suggestion.priority === 'medium'
-                      ? 'bg-yellow-50 border-yellow-200'
-                      : 'bg-blue-50 border-blue-200'
+                        ? 'bg-yellow-50 border-yellow-200'
+                        : 'bg-blue-50 border-blue-200'
                   }`}
                 >
                   <div className="font-medium text-gray-900 mb-1">{suggestion.title}</div>
@@ -280,4 +295,3 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
     </div>
   )
 }
-
