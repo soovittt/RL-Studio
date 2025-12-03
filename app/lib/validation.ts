@@ -38,7 +38,10 @@ export function validateEnvSpec(envSpec: any): ValidationResult {
     if (typeof world.height !== 'number' || world.height <= 0) {
       errors.push('World height must be a positive number')
     }
-    if (!world.coordinateSystem || !['grid', 'cartesian', 'continuous'].includes(world.coordinateSystem)) {
+    if (
+      !world.coordinateSystem ||
+      !['grid', 'cartesian', 'continuous'].includes(world.coordinateSystem)
+    ) {
       errors.push('World coordinateSystem must be "grid", "cartesian", or "continuous"')
     }
   }
@@ -108,8 +111,12 @@ export function validateEnvSpec(envSpec: any): ValidationResult {
       if (Array.isArray(obj.position) && obj.position.length >= 2) {
         const [x, y] = obj.position
         if (typeof x === 'number' && typeof y === 'number' && envSpec.world) {
-          if (x < -envSpec.world.width || x > envSpec.world.width * 2 ||
-              y < -envSpec.world.height || y > envSpec.world.height * 2) {
+          if (
+            x < -envSpec.world.width ||
+            x > envSpec.world.width * 2 ||
+            y < -envSpec.world.height ||
+            y > envSpec.world.height * 2
+          ) {
             warnings.push(`Object ${index} position (${x}, ${y}) is way out of bounds`)
           }
         }
@@ -120,7 +127,7 @@ export function validateEnvSpec(envSpec: any): ValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -178,7 +185,7 @@ export function validateTrainingConfig(config: any): ValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -228,7 +235,7 @@ export function validateEnvironmentName(name: any): ValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -282,7 +289,6 @@ export function validateRolloutRequest(request: any): ValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
-

@@ -92,10 +92,7 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
       <div className="bg-background border border-border rounded-lg shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto text-foreground">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Experiment Tracking Settings</h2>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             ✕
           </button>
         </div>
@@ -103,9 +100,7 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
         <div className="space-y-6">
           {/* Backend Selection */}
           <div>
-            <label className="block text-sm font-semibold mb-2">
-              Tracking Backend
-            </label>
+            <label className="block text-sm font-semibold mb-2">Tracking Backend</label>
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -179,14 +174,16 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
               )}
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  W&B API Key
-                </label>
+                <label className="block text-sm font-semibold mb-2">W&B API Key</label>
                 <input
                   type="password"
                   value={settings.wandbApiKey || ''}
                   onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, wandbApiKey: e.target.value, wandbAuthenticated: false }))
+                    setSettings((prev) => ({
+                      ...prev,
+                      wandbApiKey: e.target.value,
+                      wandbAuthenticated: false,
+                    }))
                   }
                   placeholder="wandb-..."
                   className="w-full px-3 py-2 border border-border rounded bg-background text-foreground placeholder:text-muted-foreground"
@@ -205,9 +202,7 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Project Name (optional)
-                </label>
+                <label className="block text-sm font-semibold mb-2">Project Name (optional)</label>
                 <input
                   type="text"
                   value={settings.projectName || ''}
@@ -244,9 +239,7 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Project Name (optional)
-                </label>
+                <label className="block text-sm font-semibold mb-2">Project Name (optional)</label>
                 <input
                   type="text"
                   value={settings.projectName || ''}
@@ -317,4 +310,3 @@ export function ExperimentTrackingSettings({ onClose }: ExperimentTrackingSettin
     </div>
   )
 }
-

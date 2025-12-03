@@ -39,7 +39,7 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
 
     try {
       let result
-      
+
       if (importType === 'paper') {
         if (!url.trim()) {
           setError('Please enter a URL')
@@ -108,19 +108,14 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
       <div className="bg-white border border-gray-200 rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Import Environment</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
             ×
           </button>
         </div>
 
         {/* Import Type Selector */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Import Type
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Import Type</label>
           <div className="grid grid-cols-4 gap-2">
             <button
               onClick={() => setImportType('paper')}
@@ -169,9 +164,7 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
         <div className="space-y-4 mb-6">
           {importType === 'search' ? (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Query
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search Query</label>
               <input
                 type="text"
                 value={searchQuery}
@@ -197,8 +190,8 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
                   importType === 'github'
                     ? 'https://github.com/owner/repo'
                     : importType === 'diagram'
-                    ? 'URL with diagram/image'
-                    : 'https://arxiv.org/abs/... or blog URL'
+                      ? 'URL with diagram/image'
+                      : 'https://arxiv.org/abs/... or blog URL'
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900"
                 disabled={isImporting}
@@ -207,8 +200,8 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
                 {importType === 'github'
                   ? 'Imports environment from GitHub repository README'
                   : importType === 'diagram'
-                  ? 'Extracts environment layout from images/diagrams'
-                  : 'Supports arXiv papers, blog posts, and other web pages'}
+                    ? 'Extracts environment layout from images/diagrams'
+                    : 'Supports arXiv papers, blog posts, and other web pages'}
               </p>
             </div>
           )}
@@ -235,7 +228,9 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
               >
                 <div className="font-medium text-gray-900">{result.title || result.url}</div>
                 {result.description && (
-                  <div className="text-sm text-gray-600 mt-1">{result.description.substring(0, 150)}...</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {result.description.substring(0, 150)}...
+                  </div>
                 )}
                 <div className="text-xs text-gray-500 mt-1">{result.url}</div>
               </div>
@@ -256,22 +251,24 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
               </div>
               {importResult.extracted.world && (
                 <div>
-                  <span className="font-medium">Size:</span>{' '}
-                  {importResult.extracted.world.width} × {importResult.extracted.world.height}
+                  <span className="font-medium">Size:</span> {importResult.extracted.world.width} ×{' '}
+                  {importResult.extracted.world.height}
                 </div>
               )}
               {importResult.extracted.objects && importResult.extracted.objects.length > 0 && (
                 <div>
-                  <span className="font-medium">Objects:</span> {importResult.extracted.objects.length}
+                  <span className="font-medium">Objects:</span>{' '}
+                  {importResult.extracted.objects.length}
                 </div>
               )}
               {importResult.extracted.rewards && importResult.extracted.rewards.length > 0 && (
                 <div>
-                  <span className="font-medium">Rewards:</span> {importResult.extracted.rewards.length} rules
+                  <span className="font-medium">Rewards:</span>{' '}
+                  {importResult.extracted.rewards.length} rules
                 </div>
               )}
             </div>
-            
+
             <button
               onClick={handleGetRewardSuggestions}
               className="mt-3 px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
@@ -290,7 +287,8 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
                 <div key={idx} className="p-2 bg-white border border-gray-200 rounded text-sm">
                   <div className="font-medium">{suggestion.description}</div>
                   <div className="text-gray-600">
-                    Value: {suggestion.value > 0 ? '+' : ''}{suggestion.value}
+                    Value: {suggestion.value > 0 ? '+' : ''}
+                    {suggestion.value}
                   </div>
                   {suggestion.source && (
                     <div className="text-xs text-gray-500 mt-1">Source: {suggestion.source}</div>
@@ -332,4 +330,3 @@ export function EnhancedImportDialog({ onClose, onImport }: EnhancedImportDialog
     </div>
   )
 }
-

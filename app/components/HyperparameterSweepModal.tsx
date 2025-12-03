@@ -95,10 +95,7 @@ export function HyperparameterSweepModal({
       <div className="bg-background border border-border rounded-lg shadow-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto text-foreground">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Hyperparameter Sweep</h2>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             ✕
           </button>
         </div>
@@ -193,9 +190,7 @@ export function HyperparameterSweepModal({
               <input
                 type="number"
                 value={seed || ''}
-                onChange={(e) =>
-                  setSeed(e.target.value ? parseInt(e.target.value) : undefined)
-                }
+                onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : undefined)}
                 placeholder="Random"
                 className="w-full px-3 py-2 border border-border rounded bg-background"
               />
@@ -216,9 +211,7 @@ export function HyperparameterSweepModal({
                   <input
                     type="text"
                     value={value}
-                    onChange={(e) =>
-                      setSearchSpace((prev) => ({ ...prev, [key]: e.target.value }))
-                    }
+                    onChange={(e) => setSearchSpace((prev) => ({ ...prev, [key]: e.target.value }))}
                     placeholder="[1, 2, 3] or 1, 2, 3"
                     className="flex-1 px-3 py-2 border border-border rounded bg-background font-mono text-sm"
                   />
@@ -292,7 +285,10 @@ export function HyperparameterSweepModal({
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium">Trial</th>
                       {Object.keys(trials[0]).map((key) => (
-                        <th key={key} className="px-3 py-2 text-left text-xs font-medium capitalize">
+                        <th
+                          key={key}
+                          className="px-3 py-2 text-left text-xs font-medium capitalize"
+                        >
                           {key.replace(/_/g, ' ')}
                         </th>
                       ))}
@@ -324,4 +320,3 @@ export function HyperparameterSweepModal({
     </div>
   )
 }
-

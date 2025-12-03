@@ -18,13 +18,13 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <Link
-                to="/environments/new"
-                className="block w-full px-4 py-2 bg-blue-600 text-white rounded-md text-center hover:bg-blue-700 transition-colors"
-              >
-                Create Environment
-              </Link>
+          <div className="space-y-3">
+            <Link
+              to="/environments/new"
+              className="block w-full px-4 py-2 bg-blue-600 text-white rounded-md text-center hover:bg-blue-700 transition-colors"
+            >
+              Create Environment
+            </Link>
             <Link
               to="/environments"
               className="block w-full px-4 py-2 border border-border rounded-md text-center hover:bg-muted"
@@ -109,4 +109,3 @@ export function Dashboard() {
     </div>
   )
 }
-

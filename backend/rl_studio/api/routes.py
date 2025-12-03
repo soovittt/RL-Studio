@@ -14,11 +14,14 @@ from ..rollout.model_loader import load_model_for_inference, run_rollout_with_mo
 from ..rollout.simulator import run_rollout, validate_env_spec
 from ..training import get_job_status, launch_training_job, stop_job
 from ..utils.security import sanitize_env_spec, validate_env_spec_structure
+from ..utils.error_handler import handle_error
+from ..exceptions import RolloutError, ValidationError, TrainingError, NetworkError
 from .admin import router as admin_router
 from .analysis import router as analysis_router
 from .benchmarks import router as benchmarks_router
 from .codegen import router as codegen_router
 from .compile import router as compile_router
+from .email import router as email_router
 from .generation import router as generation_router
 from .infrastructure import router as infrastructure_router
 from .ingestion import router as ingestion_router
@@ -46,6 +49,7 @@ router = APIRouter()
 # NOTE: assets_router and scenes_router have been REMOVED - all operations now use GraphQL
 # GraphQL endpoint: POST /graphql
 router.include_router(analysis_router)
+router.include_router(email_router)
 router.include_router(
     training_router
 )  # Contains some deprecated endpoints - use GraphQL for core operations
@@ -193,11 +197,36 @@ async def run_rollout_http(request: RolloutRequest):
             success=True, result=result_dict, executionTime=execution_time
         )
 
-    except Exception as e:
-        logger.error(f"Rollout failed: {e}", exc_info=True)
+    except ValidationError as e:
+        # Validation errors are user errors, not system errors
+        logger.warning(f"Rollout validation failed: {e}", extra={"error_id": e.error_id})
         execution_time = asyncio.get_event_loop().time() - start_time
         return RolloutResponse(
-            success=False, error=str(e), executionTime=execution_time
+            success=False,
+            error=f"Validation error: {e.user_message}",
+            executionTime=execution_time,
+        )
+    except Exception as e:
+        # Convert to proper error type and handle
+        rl_error = handle_error(
+            e,
+            default_message="Rollout failed",
+            context={
+                "endpoint": "rollout",
+                "env_spec_provided": bool(request.envSpec),
+                "policy": request.policy,
+            },
+        )
+        execution_time = asyncio.get_event_loop().time() - start_time
+        logger.error(
+            f"Rollout failed: {rl_error.user_message} (ID: {rl_error.error_id})",
+            exc_info=rl_error.original_error,
+            extra={"error_id": rl_error.error_id, "context": rl_error.context},
+        )
+        return RolloutResponse(
+            success=False,
+            error=f"{rl_error.user_message} (Error ID: {rl_error.error_id})",
+            executionTime=execution_time,
         )
 
 
@@ -311,11 +340,29 @@ async def run_rollout_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
-        logger.error(f"WebSocket rollout failed: {e}", exc_info=True)
+        logger.error(
+            f"WebSocket rollout failed: {e}",
+            exc_info=True,
+            extra={"websocket": "rollout", "error_type": type(e).__name__},
+        )
+        # Always try to notify client, but log if that fails too
         try:
-            await websocket.send_json({"type": "error", "error": str(e)})
-        except:
-            pass
+            await websocket.send_json({
+                "type": "error",
+                "error": str(e),
+                "error_type": type(e).__name__,
+            })
+        except Exception as send_error:
+            logger.error(
+                f"Failed to send error to WebSocket client: {send_error}",
+                exc_info=True,
+                extra={"original_error": str(e), "original_error_type": type(e).__name__},
+            )
+            # Close connection if we can't send error
+            try:
+                await websocket.close(code=1011, reason="Internal server error")
+            except Exception:
+                pass  # Connection may already be closed
 
 
 # ============================================================================

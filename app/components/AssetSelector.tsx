@@ -20,14 +20,14 @@ function getCachedAssets(mode: string): Asset[] | null {
   try {
     const cached = localStorage.getItem(ASSETS_CACHE_KEY)
     if (!cached) return null
-    
+
     const parsed: CachedAssets = JSON.parse(cached)
-    
+
     // Check if cache is still valid and matches mode
     if (Date.now() - parsed.timestamp < ASSETS_CACHE_TTL && parsed.mode === mode) {
       return parsed.data
     }
-    
+
     // Cache expired or mode changed
     localStorage.removeItem(ASSETS_CACHE_KEY)
     return null
@@ -55,7 +55,7 @@ function setCachedAssets(mode: string, assets: Asset[]): void {
 function getAssetCategory(asset: Asset): string {
   const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
   const assetType = asset.assetTypeKey || ''
-  
+
   // Priority order for categories
   if (tags.includes('agent') || assetType === 'agent') return '1_Agents'
   if (tags.includes('tile') || assetType === 'tile') return '2_Tiles'
@@ -73,12 +73,12 @@ interface AssetSelectorProps {
   selectedAssetId?: string
 }
 
-export function AssetSelector({ 
-  onClose, 
-  onSelect, 
+export function AssetSelector({
+  onClose,
+  onSelect,
   mode = 'grid',
   projectId,
-  selectedAssetId 
+  selectedAssetId,
 }: AssetSelectorProps) {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,13 +92,13 @@ export function AssetSelector({
       try {
         setLoading(true)
         setError(null)
-        
+
         // Try to load from cache first
         const cached = getCachedAssets(mode)
         if (cached && cached.length > 0) {
           setAssets(cached)
           setLoading(false)
-          
+
           // Still fetch in background to update cache
           listAssets({ mode, projectId })
             .then((loadedAssets) => {
@@ -131,19 +131,19 @@ export function AssetSelector({
             })
           return
         }
-        
+
         // Load from backend
         const loadedAssets = await listAssets({ mode, projectId })
-        
+
         if (!loadedAssets || !Array.isArray(loadedAssets)) {
           console.warn('⚠️ AssetSelector: Invalid assets response:', loadedAssets)
           setAssets([])
           setLoading(false)
           return
         }
-        
+
         console.log(`📦 AssetSelector: Total assets loaded: ${loadedAssets.length}`)
-        
+
         // Filter assets based on mode
         const filteredAssets = loadedAssets
           .filter((asset) => {
@@ -151,15 +151,15 @@ export function AssetSelector({
               console.log('❌ AssetSelector: Skipping asset without meta:', asset?.name)
               return false
             }
-            
+
             const tags = Array.isArray(asset.meta.tags) ? asset.meta.tags : []
             const assetMode = asset.meta.mode || ''
-            
+
             // For grid mode, be lenient - include assets with grid tag or no mode restriction
             if (mode === 'grid') {
               return tags.includes('grid') || assetMode === 'grid' || !assetMode
             }
-            
+
             return tags.includes(mode) || assetMode === mode
           })
           .sort((a, b) => {
@@ -170,9 +170,11 @@ export function AssetSelector({
             }
             return a.name.localeCompare(b.name)
           })
-        
-        console.log(`✅ AssetSelector: Filtered to ${filteredAssets.length} assets for mode "${mode}"`)
-        
+
+        console.log(
+          `✅ AssetSelector: Filtered to ${filteredAssets.length} assets for mode "${mode}"`
+        )
+
         setCachedAssets(mode, filteredAssets)
         setAssets(filteredAssets)
       } catch (err) {
@@ -188,36 +190,43 @@ export function AssetSelector({
   }, [mode, projectId])
 
   // Get unique categories from assets
-  const categories = Array.from(
-    new Set(assets.map(asset => getAssetCategory(asset)))
-  ).sort()
+  const categories = Array.from(new Set(assets.map((asset) => getAssetCategory(asset)))).sort()
 
   // Filter assets by search query and category
   const filteredAssets = assets.filter((asset) => {
-    const matchesSearch = 
+    const matchesSearch =
       asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.meta?.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      asset.meta?.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
       asset.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesCategory = 
+
+    const matchesCategory =
       selectedCategory === null || getAssetCategory(asset) === selectedCategory
-    
+
     return matchesSearch && matchesCategory
   })
 
   // Group assets by category
-  const assetsByCategory = filteredAssets.reduce((acc, asset) => {
-    const category = getAssetCategory(asset)
-    if (!acc[category]) {
-      acc[category] = []
-    }
-    acc[category].push(asset)
-    return acc
-  }, {} as Record<string, Asset[]>)
+  const assetsByCategory = filteredAssets.reduce(
+    (acc, asset) => {
+      const category = getAssetCategory(asset)
+      if (!acc[category]) {
+        acc[category] = []
+      }
+      acc[category].push(asset)
+      return acc
+    },
+    {} as Record<string, Asset[]>
+  )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-      <div className="rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl" style={{ backgroundColor: '#ffffff', border: '1px solid #d1d5db' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+    >
+      <div
+        className="rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl"
+        style={{ backgroundColor: '#ffffff', border: '1px solid #d1d5db' }}
+      >
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Select Asset</h2>
@@ -293,10 +302,11 @@ export function AssetSelector({
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {categoryAssets.map((asset) => {
-                      const paletteColor = asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
+                      const paletteColor =
+                        asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
                       const isSelected = selectedAssetId === asset._id
                       const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
-                      
+
                       return (
                         <button
                           key={asset._id}
@@ -328,10 +338,7 @@ export function AssetSelector({
                           {tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {tags.slice(0, 3).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="text-xs px-1.5 py-0.5 bg-muted rounded"
-                                >
+                                <span key={tag} className="text-xs px-1.5 py-0.5 bg-muted rounded">
                                   {tag}
                                 </span>
                               ))}
@@ -362,4 +369,3 @@ export function AssetSelector({
     </div>
   )
 }
-

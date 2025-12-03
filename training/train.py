@@ -822,9 +822,78 @@ def update_run_status(run_id: str, status: str, convex_url: str):
         if response.ok:
             logger.info(f"Updated run {run_id} status to '{status}'")
         else:
-            logger.warning(f"Failed to update run status: {response.text}")
+            logger.error(
+                f"Failed to update run status: HTTP {response.status_code} - {response.text}",
+                extra={"run_id": run_id, "status": status, "response_status": response.status_code},
+            )
+            # Retry once for non-200 responses
+            try:
+                retry_response = requests.post(
+                    f"{CONVEX_URL}/update_run_status",
+                    json={
+                        "run_id": run_id,
+                        "status": status,
+                    },
+                    headers={"Content-Type": "application/json"},
+                    timeout=10,
+                )
+                if retry_response.ok:
+                    logger.info(f"Successfully updated run {run_id} status on retry")
+                else:
+                    logger.error(
+                        f"Retry also failed: HTTP {retry_response.status_code} - {retry_response.text}",
+                        extra={"run_id": run_id, "status": status},
+                    )
+            except Exception as retry_error:
+                logger.error(
+                    f"Retry attempt failed: {retry_error}",
+                    exc_info=True,
+                    extra={"run_id": run_id, "status": status},
+                )
+    except requests.exceptions.Timeout as e:
+        logger.error(
+            f"Timeout updating run status: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "status": status},
+        )
+        # Retry once on timeout
+        try:
+            retry_response = requests.post(
+                f"{CONVEX_URL}/update_run_status",
+                json={
+                    "run_id": run_id,
+                    "status": status,
+                },
+                headers={"Content-Type": "application/json"},
+                timeout=15,  # Longer timeout on retry
+            )
+            if retry_response.ok:
+                logger.info(f"Successfully updated run {run_id} status on timeout retry")
+            else:
+                logger.error(
+                    f"Timeout retry failed: HTTP {retry_response.status_code}",
+                    extra={"run_id": run_id, "status": status},
+                )
+        except Exception as retry_error:
+            logger.error(
+                f"Timeout retry attempt failed: {retry_error}",
+                exc_info=True,
+                extra={"run_id": run_id, "status": status},
+            )
+    except requests.exceptions.ConnectionError as e:
+        logger.error(
+            f"Connection error updating run status: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "status": status},
+        )
+        # Connection errors are critical - log but don't fail training
     except Exception as e:
-        logger.warning(f"Could not update run status: {e}")
+        logger.error(
+            f"Unexpected error updating run status: {e}",
+            exc_info=True,
+            extra={"run_id": run_id, "status": status},
+        )
+        # Log all errors with full context - don't silently fail
 
 
 def train(run_id: str):

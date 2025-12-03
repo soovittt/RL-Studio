@@ -61,10 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsInitialized(true)
   }, [])
 
-  const validatedUser = useQuery(
-    api.auth.validateToken,
-    token && token !== '' ? { token } : 'skip'
-  )
+  const validatedUser = useQuery(api.auth.validateToken, token && token !== '' ? { token } : 'skip')
 
   const user = useQuery(
     api.auth.getUserById,
@@ -79,7 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token, validatedUser, isInitialized])
 
-  const isLoading = !isInitialized || (token !== null && token !== '' && validatedUser === undefined && user === undefined)
+  const isLoading =
+    !isInitialized ||
+    (token !== null && token !== '' && validatedUser === undefined && user === undefined)
 
   const signOut = useCallback(async () => {
     if (token) {
@@ -129,7 +128,7 @@ export function setAuth(token: string, userId: string): void {
   setStoredAuth(token, userId)
   const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/dashboard'
   sessionStorage.removeItem('redirectAfterLogin')
-  
+
   // Force a synchronous write to localStorage and then redirect
   // Using requestAnimationFrame to ensure the write completes
   requestAnimationFrame(() => {

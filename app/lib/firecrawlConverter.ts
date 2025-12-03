@@ -3,13 +3,24 @@
  * Converts extracted environment data from Firecrawl into EnvSpec format
  */
 
-import { EnvSpec, createDefaultEnvSpec, ObjectSpec, AgentSpec, RewardRule, TerminationRule } from './envSpec'
+import {
+  EnvSpec,
+  createDefaultEnvSpec,
+  ObjectSpec,
+  AgentSpec,
+  RewardRule,
+  TerminationRule,
+} from './envSpec'
 import type { ExtractedEnvironment } from '../../convex/firecrawl'
 
 export function convertToEnvSpec(extracted: ExtractedEnvironment): EnvSpec {
-  const envType = extracted.envType === 'continuous' ? 'continuous2d' : 
-                  extracted.envType === 'custom' ? 'custom2d' : 'grid'
-  
+  const envType =
+    extracted.envType === 'continuous'
+      ? 'continuous2d'
+      : extracted.envType === 'custom'
+        ? 'custom2d'
+        : 'grid'
+
   const envSpec = createDefaultEnvSpec(envType, extracted.name)
 
   // Update world dimensions if provided
@@ -59,9 +70,10 @@ export function convertToEnvSpec(extracted: ExtractedEnvironment): EnvSpec {
         id: `agent_${idx}`,
         name: agent.name || `Agent ${idx + 1}`,
         position: agent.position || [0, 0],
-        dynamics: envType === 'grid' 
-          ? { type: 'grid-step' }
-          : { type: 'continuous-velocity', maxSpeed: 1.0 },
+        dynamics:
+          envType === 'grid'
+            ? { type: 'grid-step' }
+            : { type: 'continuous-velocity', maxSpeed: 1.0 },
         sensors: [],
       }
       return agentSpec
@@ -121,7 +133,7 @@ export function convertToEnvSpec(extracted: ExtractedEnvironment): EnvSpec {
 
 function parseRewardCondition(condition: string): any {
   const lower = condition.toLowerCase()
-  
+
   if (lower.includes('agent_at_object') || lower.includes('goal')) {
     // Find goal object
     return {
@@ -129,20 +141,20 @@ function parseRewardCondition(condition: string): any {
       objectId: 'goal',
     }
   }
-  
+
   if (lower.includes('timeout') || lower.includes('step')) {
     return {
       type: 'timeout',
       steps: 1,
     }
   }
-  
+
   if (lower.includes('collision')) {
     return {
       type: 'collision',
     }
   }
-  
+
   // Default custom condition
   return {
     type: 'custom',
@@ -152,7 +164,7 @@ function parseRewardCondition(condition: string): any {
 
 function parseTerminationCondition(condition: string): any {
   const lower = condition.toLowerCase()
-  
+
   if (lower.includes('timeout') || lower.includes('max_step')) {
     const stepMatch = condition.match(/(\d+)/)
     return {
@@ -160,24 +172,23 @@ function parseTerminationCondition(condition: string): any {
       steps: stepMatch ? parseInt(stepMatch[1]) : 100,
     }
   }
-  
+
   if (lower.includes('agent_at_object') || lower.includes('goal')) {
     return {
       type: 'agent_at_object',
       objectId: 'goal',
     }
   }
-  
+
   if (lower.includes('collision')) {
     return {
       type: 'collision',
     }
   }
-  
+
   // Default timeout
   return {
     type: 'timeout',
     steps: 100,
   }
 }
-

@@ -54,13 +54,15 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const [showValidation, setShowValidation] = useState(false)
   const [selectedObjectId, setSelectedObjectId] = useState<string | undefined>()
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>()
-  const [rolloutState, setRolloutState] = useState<{ agents: Array<{ id: string; position: Vec2 }> } | null>(null)
+  const [rolloutState, setRolloutState] = useState<{
+    agents: Array<{ id: string; position: Vec2 }>
+  } | null>(null)
 
   // Try to load from Scene Service first, fallback to old system
   const [sceneData, setSceneData] = useState<{ scene: any; activeVersion: any } | null>(null)
   const [sceneLoading, setSceneLoading] = useState(false)
   const [sceneError, setSceneError] = useState<string | null>(null)
-  
+
   // Load from Scene Service if id is provided
   useEffect(() => {
     if (id !== 'new' && user?._id) {
@@ -81,7 +83,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   }, [id, user?._id])
 
   // Old system fallback
-  const env = (id !== 'new' && !sceneData) ? useQuery(api.environments.get, { id: id as any }) : null
+  const env = id !== 'new' && !sceneData ? useQuery(api.environments.get, { id: id as any }) : null
   const isLoading = id !== 'new' && sceneLoading && !sceneData && env === undefined
 
   const createMutation = useMutation(api.environments.create)
@@ -103,7 +105,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
       }
       return createDefaultEnvSpec('grid', 'Untitled Environment')
     }
-    
+
     // Priority 1: Load from Scene Service (new system)
     if (sceneData?.activeVersion) {
       try {
@@ -118,23 +120,23 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         // Fall through to old system
       }
     }
-    
+
     // Priority 2: Load from old system (backward compatibility)
     if (env) {
-    const spec = loadEnvSpec(env)
-    // Always sync top-level name with envSpec.name
-    if (env && env.name && spec) {
-      spec.name = env.name
+      const spec = loadEnvSpec(env)
+      // Always sync top-level name with envSpec.name
+      if (env && env.name && spec) {
+        spec.name = env.name
+      }
+      return spec
     }
-    return spec
-    }
-    
+
     // Default fallback
     return createDefaultEnvSpec('grid', 'Untitled Environment')
   }, [id, env, sceneData])
 
   const [localEnvSpec, setLocalEnvSpec] = useState(envSpec)
-  
+
   // Track if we've manually set localEnvSpec (e.g., from template)
   // Only reset when id changes FROM something else TO 'new'
   const manuallySetRef = useRef(false)
@@ -216,7 +218,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
 
     // Update sceneGraph
     sceneGraphRef.current = new SceneGraphManager(newSpec)
-    
+
     if (id === 'new') {
       manuallySetRef.current = true // Mark as manually set
       setLocalEnvSpec(newSpec)
@@ -240,7 +242,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         // Update sceneGraph
         sceneGraphRef.current = new SceneGraphManager(previousSpec)
         setLocalEnvSpec(previousSpec)
-        
+
         if (id !== 'new') {
           updateMutation({
             id: id as any,
@@ -258,7 +260,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         // Update sceneGraph
         sceneGraphRef.current = new SceneGraphManager(nextSpec)
         setLocalEnvSpec(nextSpec)
-        
+
         if (id !== 'new') {
           updateMutation({
             id: id as any,
@@ -291,16 +293,21 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     } else {
       // Update both top-level name and envSpec.name to keep them in sync
       const updatedSpec = { ...envSpec, name }
-      await updateMutation({ 
-        id: id as any, 
+      await updateMutation({
+        id: id as any,
         name,
         envSpec: updatedSpec, // Also update envSpec.name
       })
     }
   }
 
-  const handleEnvTypeChange = (newType: 'grid' | 'continuous2d' | 'graph' | 'bandit' | 'custom') => {
-    const newSpec = createDefaultEnvSpec(newType === 'graph' || newType === 'bandit' || newType === 'custom' ? 'custom2d' : newType, envSpec.name)
+  const handleEnvTypeChange = (
+    newType: 'grid' | 'continuous2d' | 'graph' | 'bandit' | 'custom'
+  ) => {
+    const newSpec = createDefaultEnvSpec(
+      newType === 'graph' || newType === 'bandit' || newType === 'custom' ? 'custom2d' : newType,
+      envSpec.name
+    )
     handleSpecChange(newSpec)
   }
 
@@ -320,35 +327,37 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   }
 
   const handleExport = () => {
-    import('~/lib/universalExporter').then(({ exportProject }) => {
-      const files = exportProject({
-        envSpec: currentSpec,
-        algorithm: 'ppo',
-        hyperparams: {
-          learning_rate: 3e-4,
-          gamma: 0.99,
-          steps: 1000000,
-        },
-      })
+    import('~/lib/universalExporter')
+      .then(({ exportProject }) => {
+        const files = exportProject({
+          envSpec: currentSpec,
+          algorithm: 'ppo',
+          hyperparams: {
+            learning_rate: 3e-4,
+            gamma: 0.99,
+            steps: 1000000,
+          },
+        })
 
-      // Show code review panel
-      setExportedFiles(files)
-      setShowCodeReview(true)
+        // Show code review panel
+        setExportedFiles(files)
+        setShowCodeReview(true)
 
-      // Also download files
-      Object.entries(files).forEach(([filename, content]) => {
-        const blob = new Blob([content], { type: 'text/plain' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        a.click()
-        URL.revokeObjectURL(url)
+        // Also download files
+        Object.entries(files).forEach(([filename, content]) => {
+          const blob = new Blob([content], { type: 'text/plain' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = filename
+          a.click()
+          URL.revokeObjectURL(url)
+        })
       })
-    }).catch((error) => {
-      console.error('Export failed:', error)
-      alert('Export failed: ' + (error as Error).message)
-    })
+      .catch((error) => {
+        console.error('Export failed:', error)
+        alert('Export failed: ' + (error as Error).message)
+      })
   }
 
   const handleValidateCode = () => {
@@ -366,7 +375,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const handleTemplateSelect = (envSpec: EnvSpec) => {
     try {
       console.log('Template selected, navigating to new environment:', envSpec)
-      
+
       // If we're already on the new page, update state directly
       if (id === 'new') {
         console.log('Already on new page, updating state directly')
@@ -382,7 +391,9 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
       navigate({ to: '/environments/new' })
     } catch (err) {
       console.error('Error in handleTemplateSelect:', err)
-      alert(`Failed to create environment from template: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      alert(
+        `Failed to create environment from template: ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
     }
   }
 
@@ -435,11 +446,11 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         // Also save to old system for backward compatibility
         try {
           envId = await createMutation({
-        ownerId: user._id,
-        name: localEnvSpec.name || 'Untitled Environment',
+            ownerId: user._id,
+            name: localEnvSpec.name || 'Untitled Environment',
             envSpec: localEnvSpec,
           })
-          
+
           // Update scene with projectId
           await updateScene(sceneId, { projectId: envId })
         } catch (oldSystemError) {
@@ -450,7 +461,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
       } else {
         // Update existing scene
         sceneId = id
-        
+
         // Update scene metadata if name changed
         if (localEnvSpec.name && sceneData?.scene.name !== localEnvSpec.name) {
           await updateScene(sceneId, {
@@ -545,18 +556,12 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
 
       {/* Validate Code Panel */}
       {showValidation && (
-        <CodeValidationPanel
-          envSpec={currentSpec}
-          onClose={() => setShowValidation(false)}
-        />
+        <CodeValidationPanel envSpec={currentSpec} onClose={() => setShowValidation(false)} />
       )}
 
       {/* Template Selector */}
       {showTemplates && (
-        <TemplateSelector
-          onClose={() => setShowTemplates(false)}
-          onSelect={handleTemplateSelect}
-        />
+        <TemplateSelector onClose={() => setShowTemplates(false)} onSelect={handleTemplateSelect} />
       )}
 
       {/* Save Button for New Environments */}

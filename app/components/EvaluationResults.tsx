@@ -149,9 +149,8 @@ export function EvaluationResults({ runId }: EvaluationResultsProps) {
               Success rate:{' '}
               <span className="font-semibold text-foreground">
                 {(evaluation.successRate * 100).toFixed(1)}%
-              </span>
-              {' '}(reached goal in{' '}
-              {Math.round(evaluation.successRate * evaluation.numEpisodes)} out of{' '}
+              </span>{' '}
+              (reached goal in {Math.round(evaluation.successRate * evaluation.numEpisodes)} out of{' '}
               {evaluation.numEpisodes} episodes).
             </p>
           )}
@@ -167,4 +166,3 @@ export function EvaluationResults({ runId }: EvaluationResultsProps) {
     </div>
   )
 }
-

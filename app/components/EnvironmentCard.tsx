@@ -72,26 +72,26 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
   const handleSaveName = async () => {
     if (editName.trim() && editName !== env.name) {
       const newName = editName.trim()
-      
+
       // Update in old system (environments table)
       await updateMutation({
         id: env._id,
         name: newName,
       })
-      
+
       // Also update in Scene Service if this environment has been migrated
       try {
         const sceneData = await getScene(env._id)
         if (sceneData?.scene) {
           await updateScene(env._id, {
             name: newName,
-      })
+          })
         }
       } catch (err) {
         // Scene not found in new system - that's okay, just update old system
         console.log('Environment not in Scene Service, updating old system only')
       }
-      
+
       if (onUpdate) onUpdate()
     }
     setIsEditingName(false)
@@ -105,7 +105,7 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
         id: env._id,
         description: newDesc || undefined,
       })
-      
+
       // Also update in Scene Service if this environment has been migrated
       try {
         const sceneData = await getScene(env._id)
@@ -118,7 +118,7 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
         // Scene not found in new system - that's okay, just update old system
         console.log('Environment not in Scene Service, updating old system only')
       }
-      
+
       if (onUpdate) onUpdate()
     }
     setIsEditingDescription(false)
@@ -147,12 +147,7 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
           className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
           aria-label="Options"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -205,11 +200,7 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
       </div>
 
       {/* Card content - clickable link */}
-      <Link
-        to="/environments/$id"
-        params={{ id: env._id }}
-        className="block"
-      >
+      <Link to="/environments/$id" params={{ id: env._id }} className="block">
         {/* Title */}
         {isEditingName ? (
           <input
@@ -314,4 +305,3 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
     </div>
   )
 }
-

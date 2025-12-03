@@ -178,7 +178,7 @@ export class SceneGraphManager {
   // Migration helper: convert old format to new universal format
   static migrateFromLegacy(legacy: any): EnvSpec {
     const envType: EnvType = legacy.type === 'continuous' ? 'continuous2d' : 'grid'
-    
+
     const world: any = {
       coordinateSystem: envType === 'grid' ? 'grid' : 'cartesian',
       width: legacy.spec?.grid?.[0]?.length || legacy.stateSpace?.shape?.[0] || 10,
@@ -197,12 +197,17 @@ export class SceneGraphManager {
       grid.forEach((row: string[], r: number) => {
         row.forEach((cell: string, c: number) => {
           if (cell !== 'empty') {
-            const objectType: ObjectType = cell === 'wall' ? 'wall' :
-              cell === 'goal' ? 'goal' :
-              cell === 'trap' ? 'trap' :
-              cell === 'key' ? 'key' :
-              'obstacle'
-            
+            const objectType: ObjectType =
+              cell === 'wall'
+                ? 'wall'
+                : cell === 'goal'
+                  ? 'goal'
+                  : cell === 'trap'
+                    ? 'trap'
+                    : cell === 'key'
+                      ? 'key'
+                      : 'obstacle'
+
             objects.push({
               id: uuidv4(),
               type: objectType,
@@ -255,10 +260,11 @@ export class SceneGraphManager {
       },
       rules: {
         rewards,
-        terminations: legacy.episode?.termination?.map((t: any) => ({
-          id: uuidv4(),
-          condition: t,
-        })) || [],
+        terminations:
+          legacy.episode?.termination?.map((t: any) => ({
+            id: uuidv4(),
+            condition: t,
+          })) || [],
         events: [],
       },
       visuals: {
@@ -271,4 +277,3 @@ export class SceneGraphManager {
     }
   }
 }
-

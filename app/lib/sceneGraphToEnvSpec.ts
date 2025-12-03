@@ -92,16 +92,16 @@ export function sceneGraphToEnvSpec(
   // Determine world dimensions
   let worldWidth = 10
   let worldHeight = 10
-  
+
   if (gridConfig) {
     worldWidth = gridConfig.cols || 10
     worldHeight = gridConfig.rows || 10
   } else {
     // Calculate from entity positions for continuous mode
-    const positions = sceneGraph.entities.map(e => e.transform.position)
+    const positions = sceneGraph.entities.map((e) => e.transform.position)
     if (positions.length > 0) {
-      const xs = positions.map(p => p[0])
-      const ys = positions.map(p => p[1])
+      const xs = positions.map((p) => p[0])
+      const ys = positions.map((p) => p[1])
       worldWidth = Math.max(10, Math.ceil(Math.max(...xs) - Math.min(...xs)) + 2)
       worldHeight = Math.max(10, Math.ceil(Math.max(...ys) - Math.min(...ys)) + 2)
     }
@@ -112,13 +112,13 @@ export function sceneGraphToEnvSpec(
   const agentEntities = new Set<string>()
 
   // First, identify agent entities from RL config
-  rlConfig.agents.forEach(agent => {
+  rlConfig.agents.forEach((agent) => {
     agentEntities.add(agent.entityId)
   })
 
-  sceneGraph.entities.forEach(entity => {
+  sceneGraph.entities.forEach((entity) => {
     const isAgent = agentEntities.has(entity.id)
-    
+
     // Skip agent entities (they're handled separately)
     if (isAgent) return
 
@@ -173,7 +173,8 @@ export function sceneGraphToEnvSpec(
     // Add collision info from Collision2D component
     if (entity.components?.Collision2D) {
       object.collision = {
-        enabled: entity.components.Collision2D.isSolid || entity.components.Collision2D.isTrigger || false,
+        enabled:
+          entity.components.Collision2D.isSolid || entity.components.Collision2D.isTrigger || false,
         shape: 'rect',
         size: { type: 'rect', width: 1, height: 1 },
       }
@@ -205,8 +206,8 @@ export function sceneGraphToEnvSpec(
   })
 
   // Convert agents
-  const agents: AgentSpec[] = rlConfig.agents.map(agent => {
-    const entity = sceneGraph.entities.find(e => e.id === agent.entityId)
+  const agents: AgentSpec[] = rlConfig.agents.map((agent) => {
+    const entity = sceneGraph.entities.find((e) => e.id === agent.entityId)
     if (!entity) {
       throw new Error(`Agent entity ${agent.entityId} not found in scene graph`)
     }
@@ -234,7 +235,7 @@ export function sceneGraphToEnvSpec(
   })
 
   // Convert rewards
-  const rewards = rlConfig.rewards.map(reward => ({
+  const rewards = rlConfig.rewards.map((reward) => ({
     id: reward.id,
     condition: {
       type: reward.trigger.type,
@@ -248,7 +249,7 @@ export function sceneGraphToEnvSpec(
   }))
 
   // Convert termination conditions
-  const terminations = rlConfig.episode.terminationConditions.map(term => ({
+  const terminations = rlConfig.episode.terminationConditions.map((term) => ({
     type: term.type,
     condition: {
       entityId: term.entityId,
@@ -269,9 +270,16 @@ export function sceneGraphToEnvSpec(
       width: worldWidth,
       height: worldHeight,
       coordinateSystem: mode,
-      bounds: mode === 'grid' 
-        ? [[0, worldWidth - 1], [0, worldHeight - 1]]
-        : [[-worldWidth / 2, worldWidth / 2], [-worldHeight / 2, worldHeight / 2]],
+      bounds:
+        mode === 'grid'
+          ? [
+              [0, worldWidth - 1],
+              [0, worldHeight - 1],
+            ]
+          : [
+              [-worldWidth / 2, worldWidth / 2],
+              [-worldHeight / 2, worldHeight / 2],
+            ],
     },
     objects,
     agents,
@@ -335,4 +343,3 @@ function convertObservationSpace(obsSpace: RLConfigData['agents'][0]['observatio
     return obsSpace
   }
 }
-

@@ -23,7 +23,7 @@ const CATEGORIES = [
   { id: 'logic', label: 'Logic', icon: '⚙️', description: 'Triggers and invisible logic' },
 ] as const
 
-type CategoryId = typeof CATEGORIES[number]['id']
+type CategoryId = (typeof CATEGORIES)[number]['id']
 
 export function LayersPanel({
   envSpec,
@@ -63,7 +63,7 @@ export function LayersPanel({
         const { listAssets } = await import('~/lib/assetClient')
         const loadedAssets = await listAssets({ mode: 'grid' })
         console.log('📦 LayersPanel: Loaded assets from API:', loadedAssets)
-        
+
         if (Array.isArray(loadedAssets)) {
           // More lenient filtering - show all assets that might be useful for grid
           const gridAssets = loadedAssets.filter((asset) => {
@@ -76,9 +76,12 @@ export function LayersPanel({
             const tags = Array.isArray(asset.meta.tags) ? asset.meta.tags : []
             const assetMode = asset.meta.mode || ''
             // Very lenient: include if has grid tag, grid mode, OR no mode restriction
-            const result = tags.includes('grid') || assetMode === 'grid' || !assetMode || tags.length === 0
+            const result =
+              tags.includes('grid') || assetMode === 'grid' || !assetMode || tags.length === 0
             if (!result) {
-              console.log(`⏭️ LayersPanel: Skipping ${asset.name} - tags: ${tags.join(', ')}, mode: ${assetMode}`)
+              console.log(
+                `⏭️ LayersPanel: Skipping ${asset.name} - tags: ${tags.join(', ')}, mode: ${assetMode}`
+              )
             }
             return result
           })
@@ -101,20 +104,44 @@ export function LayersPanel({
     const assetTypeName = asset.assetType?.name?.toLowerCase() || ''
     const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
     const name = (asset.name || '').toLowerCase()
-    
-    if (tags.includes('agent') || name.includes('agent') || assetTypeName === 'agent' || assetTypeName === 'character') {
+
+    if (
+      tags.includes('agent') ||
+      name.includes('agent') ||
+      assetTypeName === 'agent' ||
+      assetTypeName === 'character'
+    ) {
       return 'agents'
     }
-    if (tags.includes('tile') || name.includes('tile') || name.includes('wall') || name.includes('floor') || assetTypeName === 'tile') {
+    if (
+      tags.includes('tile') ||
+      name.includes('tile') ||
+      name.includes('wall') ||
+      name.includes('floor') ||
+      assetTypeName === 'tile'
+    ) {
       return 'tiles'
     }
-    if (tags.includes('item') || name.includes('key') || name.includes('door') || name.includes('button') || name.includes('portal') || name.includes('pickup') || assetTypeName === 'item') {
+    if (
+      tags.includes('item') ||
+      name.includes('key') ||
+      name.includes('door') ||
+      name.includes('button') ||
+      name.includes('portal') ||
+      name.includes('pickup') ||
+      assetTypeName === 'item'
+    ) {
       return 'items'
     }
     if (tags.includes('npc') || assetTypeName === 'npc') {
       return 'npcs'
     }
-    if (tags.includes('logic') || name.includes('trigger') || name.includes('zone') || assetTypeName === 'logic') {
+    if (
+      tags.includes('logic') ||
+      name.includes('trigger') ||
+      name.includes('zone') ||
+      assetTypeName === 'logic'
+    ) {
       return 'logic'
     }
     if (tags.includes('prop') || assetTypeName === 'prop') {
@@ -138,7 +165,7 @@ export function LayersPanel({
     asset.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const selectedCategoryInfo = CATEGORIES.find(c => c.id === selectedCategory) || CATEGORIES[0]
+  const selectedCategoryInfo = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0]
 
   // Get scene objects with layer info
   const sceneObjects = (envSpec.objects || []).map((obj, index) => ({
@@ -187,7 +214,9 @@ export function LayersPanel({
               <span>{selectedCategoryInfo.icon}</span>
               <span className="font-medium">{selectedCategoryInfo.label}</span>
               {selectedCategoryInfo.description && (
-                <span className="text-xs text-muted-foreground">({categorizedAssets[selectedCategory]?.length || 0})</span>
+                <span className="text-xs text-muted-foreground">
+                  ({categorizedAssets[selectedCategory]?.length || 0})
+                </span>
               )}
             </div>
             <svg
@@ -196,44 +225,49 @@ export function LayersPanel({
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
-          
+
           {showCategoryDropdown && (
-            <div 
+            <div
               className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded shadow-lg z-[100] max-h-64 overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-                {CATEGORIES.map((category) => {
-                  const count = categorizedAssets[category.id]?.length || 0
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => {
-                        setSelectedCategory(category.id)
-                        setShowCategoryDropdown(false)
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
-                        selectedCategory === category.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 flex-1">
-                        <span>{category.icon}</span>
-                        <div className="flex-1">
-                          <div className="font-medium">{category.label}</div>
-                          {category.description && (
-                            <div className="text-xs opacity-70">{category.description}</div>
-                          )}
-                        </div>
+              {CATEGORIES.map((category) => {
+                const count = categorizedAssets[category.id]?.length || 0
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => {
+                      setSelectedCategory(category.id)
+                      setShowCategoryDropdown(false)
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                      selectedCategory === category.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <span>{category.icon}</span>
+                      <div className="flex-1">
+                        <div className="font-medium">{category.label}</div>
+                        {category.description && (
+                          <div className="text-xs opacity-70">{category.description}</div>
+                        )}
                       </div>
-                      <span className="text-xs opacity-70 ml-2">{count}</span>
-                    </button>
-                  )
-                })}
-              </div>
+                    </div>
+                    <span className="text-xs opacity-70 ml-2">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
           )}
         </div>
       </div>
@@ -269,7 +303,9 @@ export function LayersPanel({
           <div className="p-2">
             {filteredAssets.length === 0 ? (
               <div className="text-xs text-muted-foreground p-2 text-center">
-                {searchQuery ? 'No assets match your search' : `No ${selectedCategoryInfo.label.toLowerCase()} found`}
+                {searchQuery
+                  ? 'No assets match your search'
+                  : `No ${selectedCategoryInfo.label.toLowerCase()} found`}
               </div>
             ) : (
               <div className="space-y-1">
@@ -278,7 +314,7 @@ export function LayersPanel({
                   const color = asset.meta?.paletteColor || asset.visualProfile?.color || '#9ca3af'
                   const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
                   const assetType = asset.assetType?.name || 'Unknown'
-                  
+
                   return (
                     <button
                       key={asset._id}
@@ -300,9 +336,7 @@ export function LayersPanel({
                           <div className="text-xs opacity-60 truncate">{assetType}</div>
                         )}
                       </div>
-                      {isSelected && (
-                        <span className="text-xs opacity-70 flex-shrink-0">✓</span>
-                      )}
+                      {isSelected && <span className="text-xs opacity-70 flex-shrink-0">✓</span>}
                     </button>
                   )
                 })}
@@ -329,7 +363,9 @@ export function LayersPanel({
                     }`}
                     title={`Layer ${item.layer}: ${item.name} at (${item.position?.[0]?.toFixed(1)}, ${item.position?.[1]?.toFixed(1)})`}
                   >
-                    <span className="text-xs text-muted-foreground font-mono w-8 flex-shrink-0">L{item.layer}</span>
+                    <span className="text-xs text-muted-foreground font-mono w-8 flex-shrink-0">
+                      L{item.layer}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{item.name}</div>
                       <div className="text-xs opacity-60 truncate">{item.type}</div>
@@ -347,4 +383,3 @@ export function LayersPanel({
     </div>
   )
 }
-

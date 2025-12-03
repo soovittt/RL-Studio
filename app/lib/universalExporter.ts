@@ -51,9 +51,9 @@ function generateConditionCode(condition: ConditionSpec, envSpec: EnvSpec): stri
       const regionObj = objects.find((o) => o?.id === condition.regionId)
       if (regionObj?.size?.type === 'rect') {
         const { width, height } = regionObj.size
-        return `(${rx - width/2} <= self.agent_pos[0] <= ${rx + width/2} and ${ry - height/2} <= self.agent_pos[1] <= ${ry + height/2})`
+        return `(${rx - width / 2} <= self.agent_pos[0] <= ${rx + width / 2} and ${ry - height / 2} <= self.agent_pos[1] <= ${ry + height / 2})`
       }
-      const radius = regionObj?.size?.type === 'circle' ? (regionObj.size.radius || 5) : 5
+      const radius = regionObj?.size?.type === 'circle' ? regionObj.size.radius || 5 : 5
       return `np.linalg.norm(self.agent_pos - np.array([${rx}, ${ry}])) <= ${radius}`
     }
 
@@ -67,32 +67,38 @@ function generateConditionCode(condition: ConditionSpec, envSpec: EnvSpec): stri
 
 // Generate reward calculation code
 function generateRewardCode(envSpec: EnvSpec): string {
-  const rewards = (envSpec.rules?.rewards || [])
+  const rewards = envSpec.rules?.rewards || []
   if (rewards.length === 0) {
     return 'reward = 0.0'
   }
 
-  const rewardChecks = rewards.map((rule) => {
-    if (!rule || !rule.condition) return ''
-    const condition = generateConditionCode(rule.condition, envSpec)
-    return `if ${condition}:\n            reward += ${rule.reward || 0}  # ${rule.id || 'rule'}`
-  }).filter(Boolean).join('\n        ')
+  const rewardChecks = rewards
+    .map((rule) => {
+      if (!rule || !rule.condition) return ''
+      const condition = generateConditionCode(rule.condition, envSpec)
+      return `if ${condition}:\n            reward += ${rule.reward || 0}  # ${rule.id || 'rule'}`
+    })
+    .filter(Boolean)
+    .join('\n        ')
 
   return `reward = 0.0\n        ${rewardChecks}`
 }
 
-  // Generate termination check code
+// Generate termination check code
 function generateTerminationCode(envSpec: EnvSpec): string {
-  const terminations = (envSpec.rules?.terminations || [])
+  const terminations = envSpec.rules?.terminations || []
   if (terminations.length === 0) {
     return 'terminated = False'
   }
 
-  const terminationChecks = terminations.map((rule) => {
-    if (!rule || !rule.condition) return ''
-    const condition = generateConditionCode(rule.condition, envSpec)
-    return `if ${condition}:\n            terminated = True  # ${rule.id || 'rule'}`
-  }).filter(Boolean).join('\n        ')
+  const terminationChecks = terminations
+    .map((rule) => {
+      if (!rule || !rule.condition) return ''
+      const condition = generateConditionCode(rule.condition, envSpec)
+      return `if ${condition}:\n            terminated = True  # ${rule.id || 'rule'}`
+    })
+    .filter(Boolean)
+    .join('\n        ')
 
   return `terminated = False\n        ${terminationChecks}`.trim()
 }
@@ -103,7 +109,7 @@ export function exportEnvironmentCode(config: ExportConfig): string {
   if (!envSpec) {
     throw new Error('Environment specification is required')
   }
-  
+
   const envName = (envSpec.name || 'Untitled').replace(/\s+/g, '')
   const isGrid = envSpec.envType === 'grid'
   const isContinuous = envSpec.envType === 'continuous2d'
@@ -112,50 +118,62 @@ export function exportEnvironmentCode(config: ExportConfig): string {
   const objects = envSpec.objects || []
   const agents = envSpec.agents || []
   const world = envSpec.world || { width: 10, height: 10, coordinateSystem: 'grid' }
-  const actionSpace = envSpec.actionSpace || { type: 'discrete', actions: ['up', 'right', 'down', 'left'] }
+  const actionSpace = envSpec.actionSpace || {
+    type: 'discrete',
+    actions: ['up', 'right', 'down', 'left'],
+  }
   const stateSpace = envSpec.stateSpace || { type: 'vector', dimensions: [2] }
   const rules = envSpec.rules || { rewards: [], terminations: [] }
 
   // Build objects list
-  const objectsCode = objects.map((obj) => {
-    if (!obj || !obj.position) return ''
-    const [x, y] = obj.position || [0, 0]
-    const size = obj.size?.type === 'circle' 
-      ? `{'type': 'circle', 'radius': ${obj.size.radius || 1}}`
-      : obj.size?.type === 'rect'
-      ? `{'type': 'rect', 'width': ${obj.size.width || 1}, 'height': ${obj.size.height || 1}}`
-      : `{'type': 'point'}`
-    return `        {'id': '${obj.id || 'obj'}', 'type': '${obj.type || 'object'}', 'position': [${x}, ${y}], 'size': ${size}},`
-  }).filter(Boolean).join('\n')
+  const objectsCode = objects
+    .map((obj) => {
+      if (!obj || !obj.position) return ''
+      const [x, y] = obj.position || [0, 0]
+      const size =
+        obj.size?.type === 'circle'
+          ? `{'type': 'circle', 'radius': ${obj.size.radius || 1}}`
+          : obj.size?.type === 'rect'
+            ? `{'type': 'rect', 'width': ${obj.size.width || 1}, 'height': ${obj.size.height || 1}}`
+            : `{'type': 'point'}`
+      return `        {'id': '${obj.id || 'obj'}', 'type': '${obj.type || 'object'}', 'position': [${x}, ${y}], 'size': ${size}},`
+    })
+    .filter(Boolean)
+    .join('\n')
 
   // Build agents list
-  const agentsCode = agents.map((agent) => {
-    if (!agent || !agent.position) return ''
-    const [x, y] = agent.position || [0, 0]
-    return `        {'id': '${agent.id || 'agent'}', 'name': '${agent.name || 'Agent'}', 'position': [${x}, ${y}]},`
-  }).filter(Boolean).join('\n')
+  const agentsCode = agents
+    .map((agent) => {
+      if (!agent || !agent.position) return ''
+      const [x, y] = agent.position || [0, 0]
+      return `        {'id': '${agent.id || 'agent'}', 'name': '${agent.name || 'Agent'}', 'position': [${x}, ${y}]},`
+    })
+    .filter(Boolean)
+    .join('\n')
 
   // Action space
-  const actionSpaceCode = actionSpace.type === 'discrete'
-    ? `self.action_space = spaces.Discrete(${(actionSpace.actions || []).length || 4})`
-    : `self.action_space = spaces.Box(
+  const actionSpaceCode =
+    actionSpace.type === 'discrete'
+      ? `self.action_space = spaces.Discrete(${(actionSpace.actions || []).length || 4})`
+      : `self.action_space = spaces.Box(
             low=${(actionSpace.range || [-1, 1])[0]}, 
             high=${(actionSpace.range || [-1, 1])[1]}, 
-            shape=(${(actionSpace.dimensions || 2)},), 
+            shape=(${actionSpace.dimensions || 2},), 
             dtype=np.float32
         )`
 
   // Observation space
   const dimensions = stateSpace.dimensions || [2]
   const dimensionsStr = Array.isArray(dimensions) ? dimensions.join(', ') : String(dimensions)
-  const obsSpaceCode = stateSpace.type === 'vector'
-    ? `self.observation_space = spaces.Box(
+  const obsSpaceCode =
+    stateSpace.type === 'vector'
+      ? `self.observation_space = spaces.Box(
             low=-np.inf, 
             high=np.inf, 
             shape=(${dimensionsStr}), 
             dtype=np.float32
         )`
-    : `self.observation_space = spaces.Box(
+      : `self.observation_space = spaces.Box(
             low=0, 
             high=255, 
             shape=(${dimensionsStr}), 
@@ -165,7 +183,7 @@ export function exportEnvironmentCode(config: ExportConfig): string {
   // World bounds
   const bounds = isGrid
     ? `[0, ${world.width}], [0, ${world.height}]`
-    : `[-${world.width/2}, ${world.width/2}], [-${world.height/2}, ${world.height/2}]`
+    : `[-${world.width / 2}, ${world.width / 2}], [-${world.height / 2}, ${world.height / 2}]`
 
   // Action handling
   const isDiscrete = actionSpace.type === 'discrete'
@@ -197,7 +215,7 @@ from gymnasium import spaces
 import numpy as np
 
 class ${envName}Env(gym.Env):
-    """${(envSpec.metadata?.notes || envSpec.name || 'Custom RL environment')}"""
+    """${envSpec.metadata?.notes || envSpec.name || 'Custom RL environment'}"""
     
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
     
@@ -250,7 +268,10 @@ ${agentsCode}
         self.step += 1
         
         # Apply action
-        ${actionHandlingCode.split('\n').map(line => '        ' + line).join('\n')}
+        ${actionHandlingCode
+          .split('\n')
+          .map((line) => '        ' + line)
+          .join('\n')}
         
         # Check bounds
         bounds = self.world['bounds']
@@ -280,15 +301,25 @@ ${agentsCode}
             self.agent_pos = new_pos
         
         # Calculate reward
-${generateRewardCode(envSpec).split('\n').map(line => '        ' + line).join('\n')}
+${generateRewardCode(envSpec)
+  .split('\n')
+  .map((line) => '        ' + line)
+  .join('\n')}
         
         # Check termination
-${generateTerminationCode(envSpec).split('\n').map(line => '        ' + line).join('\n')}
+${generateTerminationCode(envSpec)
+  .split('\n')
+  .map((line) => '        ' + line)
+  .join('\n')}
         
         # Check max steps
         max_steps = ${(() => {
-          const timeoutRule = (rules.terminations || []).find((r: any) => r?.condition?.type === 'timeout')
-          return timeoutRule && timeoutRule.condition.type === 'timeout' ? timeoutRule.condition.steps : 100
+          const timeoutRule = (rules.terminations || []).find(
+            (r: any) => r?.condition?.type === 'timeout'
+          )
+          return timeoutRule && timeoutRule.condition.type === 'timeout'
+            ? timeoutRule.condition.steps
+            : 100
         })()}
         truncated = self.step >= max_steps
         
@@ -432,15 +463,15 @@ export function exportProject(config: ExportConfig): Record<string, string> {
   if (!envSpec) {
     throw new Error('Environment specification is required')
   }
-  
+
   const envName = (envSpec.name || 'untitled').replace(/\s+/g, '-').toLowerCase()
   const algorithm = config.algorithm || 'ppo'
-  
+
   // Safe access with defaults
-  const rewards = (envSpec.rules?.rewards || [])
-  const terminations = (envSpec.rules?.terminations || [])
-  const objects = (envSpec.objects || [])
-  const agents = (envSpec.agents || [])
+  const rewards = envSpec.rules?.rewards || []
+  const terminations = envSpec.rules?.terminations || []
+  const objects = envSpec.objects || []
+  const agents = envSpec.agents || []
   const world = envSpec.world || { width: 10, height: 10 }
   const metadata = envSpec.metadata || { tags: [] }
 
@@ -463,15 +494,24 @@ Agents: ${agents.length}
 
 ## Reward Rules
 
-${rewards.length > 0 
-  ? rewards.map((r) => `- ${r.condition?.type || 'unknown'}: ${(r.reward || 0) >= 0 ? '+' : ''}${r.reward || 0}${r.shaping ? ' (shaping)' : ''}`).join('\n')
-  : 'None'}
+${
+  rewards.length > 0
+    ? rewards
+        .map(
+          (r) =>
+            `- ${r.condition?.type || 'unknown'}: ${(r.reward || 0) >= 0 ? '+' : ''}${r.reward || 0}${r.shaping ? ' (shaping)' : ''}`
+        )
+        .join('\n')
+    : 'None'
+}
 
 ## Termination Conditions
 
-${terminations.length > 0
-  ? terminations.map((r) => `- ${r.condition?.type || 'unknown'}`).join('\n')
-  : 'None (max steps only)'}
+${
+  terminations.length > 0
+    ? terminations.map((r) => `- ${r.condition?.type || 'unknown'}`).join('\n')
+    : 'None (max steps only)'
+}
 
 ## Training
 
@@ -488,4 +528,3 @@ sky launch skypilot.yaml
     'env_spec.json': JSON.stringify(envSpec, null, 2),
   }
 }
-

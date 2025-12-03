@@ -4,11 +4,7 @@ import { v } from 'convex/values'
 export const listRecent = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
-      .query('runs')
-      .withIndex('by_status')
-      .order('desc')
-      .take(10)
+    return await ctx.db.query('runs').withIndex('by_status').order('desc').take(10)
   },
 })
 
@@ -122,7 +118,10 @@ export const updateSkyPilotMetadata = mutation({
 
     // Convert skyPilotDuration from string to number if needed
     const patchUpdates: any = { ...updates }
-    if (patchUpdates.skyPilotDuration !== undefined && typeof patchUpdates.skyPilotDuration === 'string') {
+    if (
+      patchUpdates.skyPilotDuration !== undefined &&
+      typeof patchUpdates.skyPilotDuration === 'string'
+    ) {
       const numValue = parseFloat(patchUpdates.skyPilotDuration)
       if (!isNaN(numValue)) {
         patchUpdates.skyPilotDuration = numValue

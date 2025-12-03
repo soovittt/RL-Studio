@@ -197,18 +197,20 @@ export const requestPasswordReset = action({
     if (!backendUrl) {
       throw new Error('BACKEND_URL or NGROK_URL must be configured in Convex environment variables')
     }
-    
+
     // Frontend URL - use from environment (set in Convex env vars)
     const frontendUrl = process.env.FRONTEND_URL
     if (!frontendUrl) {
       throw new Error('FRONTEND_URL not configured in Convex environment variables')
     }
-    
+
     // Validate frontend URL is not localhost in production
     if (frontendUrl.includes('localhost') && !process.env.NGROK_URL) {
-      throw new Error('FRONTEND_URL is set to localhost in production. Please set the production frontend URL in Convex environment variables.')
+      throw new Error(
+        'FRONTEND_URL is set to localhost in production. Please set the production frontend URL in Convex environment variables.'
+      )
     }
-    
+
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`
 
     const emailSubject = 'Reset Your Password - RL Studio'

@@ -10,8 +10,8 @@ export interface RolloutRequest {
   policy: 'random' | 'greedy' | 'trained_model'
   maxSteps: number
   stream?: boolean
-  runId?: string  // For trained_model policy
-  modelUrl?: string  // Alternative to runId
+  runId?: string // For trained_model policy
+  modelUrl?: string // Alternative to runId
 }
 
 export interface RolloutResponse {
@@ -89,18 +89,19 @@ export async function runRolloutHTTP(request: RolloutRequest): Promise<RolloutRe
     const result = data.runRollout
 
     // Parse JSON string fields from GraphQL response
-    const steps = result.steps?.map((step: any) => {
-      const state = step.state ? JSON.parse(step.state) : {}
-      const info = step.info ? JSON.parse(step.info) : {}
+    const steps =
+      result.steps?.map((step: any) => {
+        const state = step.state ? JSON.parse(step.state) : {}
+        const info = step.info ? JSON.parse(step.info) : {}
 
-      return {
-        state,
-        action: step.action,
-        reward: step.reward,
-        done: step.done,
-        info,
-      }
-    }) || []
+        return {
+          state,
+          action: step.action,
+          reward: step.reward,
+          done: step.done,
+          info,
+        }
+      }) || []
 
     return {
       success: result.success,
@@ -143,20 +144,22 @@ export function runRolloutWebSocket(
   const ws = new WebSocket(`${wsUrl}/ws/rollout`)
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({
-      envSpec: request.envSpec,
-      policy: request.policy,
-      maxSteps: request.maxSteps,
-      stream: true,
-      ...(request.runId && { runId: request.runId }),
-      ...(request.modelUrl && { modelUrl: request.modelUrl }),
-    }))
+    ws.send(
+      JSON.stringify({
+        envSpec: request.envSpec,
+        policy: request.policy,
+        maxSteps: request.maxSteps,
+        stream: true,
+        ...(request.runId && { runId: request.runId }),
+        ...(request.modelUrl && { modelUrl: request.modelUrl }),
+      })
+    )
   }
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
-      
+
       if (data.type === 'started') {
         console.log('Rollout started:', data)
       } else if (data.type === 'step') {
@@ -221,4 +224,3 @@ export async function checkRolloutServiceHealth(): Promise<boolean> {
     return false
   }
 }
-

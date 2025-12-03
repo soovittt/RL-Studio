@@ -13,7 +13,11 @@ interface InlineCodeReviewerProps {
   onReviewComplete?: (review: any) => void
 }
 
-export function InlineCodeReviewer({ script, scriptType, onReviewComplete }: InlineCodeReviewerProps) {
+export function InlineCodeReviewer({
+  script,
+  scriptType,
+  onReviewComplete,
+}: InlineCodeReviewerProps) {
   const [isReviewing, setIsReviewing] = useState(false)
   const [reviewResult, setReviewResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -65,9 +69,7 @@ export function InlineCodeReviewer({ script, scriptType, onReviewComplete }: Inl
             Reviewing...
           </>
         ) : (
-          <>
-            🔍 Review Script with CodeRabbit
-          </>
+          <>🔍 Review Script with CodeRabbit</>
         )}
       </button>
 
@@ -91,22 +93,28 @@ export function InlineCodeReviewer({ script, scriptType, onReviewComplete }: Inl
                     issue.severity === 'error'
                       ? 'bg-red-50 border-red-500'
                       : issue.severity === 'warning'
-                      ? 'bg-yellow-50 border-yellow-500'
-                      : 'bg-blue-50 border-blue-500'
+                        ? 'bg-yellow-50 border-yellow-500'
+                        : 'bg-blue-50 border-blue-500'
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    <span className={`text-xs font-medium ${
-                      issue.severity === 'error' ? 'text-red-700' :
-                      issue.severity === 'warning' ? 'text-yellow-700' :
-                      'text-blue-700'
-                    }`}>
+                    <span
+                      className={`text-xs font-medium ${
+                        issue.severity === 'error'
+                          ? 'text-red-700'
+                          : issue.severity === 'warning'
+                            ? 'text-yellow-700'
+                            : 'text-blue-700'
+                      }`}
+                    >
                       {issue.severity.toUpperCase()}
                     </span>
                     <div className="flex-1">
                       <div className="text-xs text-gray-900">{issue.message}</div>
                       {issue.suggestion && (
-                        <div className="text-xs text-gray-600 italic mt-1">💡 {issue.suggestion}</div>
+                        <div className="text-xs text-gray-600 italic mt-1">
+                          💡 {issue.suggestion}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -121,4 +129,3 @@ export function InlineCodeReviewer({ script, scriptType, onReviewComplete }: Inl
     </div>
   )
 }
-

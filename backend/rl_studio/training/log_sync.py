@@ -141,3 +141,6 @@ def sync_logs_to_convex(
     except Exception as e:
         logger.error(f"Failed to sync logs to Convex: {e}")
         return False
+
+
+

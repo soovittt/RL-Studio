@@ -3,7 +3,11 @@ import { useMutation, useQuery, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
 import { useAuth } from '~/lib/auth'
 import { useNavigate } from '@tanstack/react-router'
-import { launchTrainingJob, checkTrainingServiceHealth, type LaunchTrainingRequest } from '~/lib/trainingClient'
+import {
+  launchTrainingJob,
+  checkTrainingServiceHealth,
+  type LaunchTrainingRequest,
+} from '~/lib/trainingClient'
 import { EnvSpec } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { HyperparameterSweepModal } from './HyperparameterSweepModal'
@@ -20,16 +24,19 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
   const navigate = useNavigate()
   const { user } = useAuth()
   const [showSweepModal, setShowSweepModal] = useState(false)
-  
+
   // Fetch environment to get EnvSpec
-  const environment = useQuery(api.environments.get, envId !== 'new' ? { id: envId as any } : 'skip')
-  
+  const environment = useQuery(
+    api.environments.get,
+    envId !== 'new' ? { id: envId as any } : 'skip'
+  )
+
   // Fetch run to duplicate if duplicateFromRunId is provided
   const sourceRun = useQuery(
     api.runs.get,
     duplicateFromRunId ? { id: duplicateFromRunId as any } : 'skip'
   )
-  
+
   // Load EnvSpec from environment
   const envSpec = useMemo<EnvSpec | null>(() => {
     if (!environment) return null
@@ -42,10 +49,10 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
   // Calculate environment-adaptive defaults
   const adaptiveDefaults = useMemo(() => {
     if (!envSpec) return { learningRate: 3e-4, rolloutLength: 256, numEnvs: 8 }
-    
+
     const actionSpaceType = envSpec.actionSpace?.type || 'discrete'
     const worldSize = (envSpec.world?.width || 10) * (envSpec.world?.height || 10)
-    
+
     return {
       learningRate: actionSpaceType === 'discrete' ? 0.0005 : 0.0003,
       rolloutLength: worldSize > 400 ? 512 : 256,
@@ -56,9 +63,9 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
   // Get available algorithms based on action space
   const availableAlgorithms = useMemo(() => {
     if (!envSpec) return ['ppo', 'dqn', 'a2c', 'bc', 'random']
-    
+
     const actionSpaceType = envSpec.actionSpace?.type || 'discrete'
-    
+
     if (actionSpaceType === 'continuous') {
       return ['ppo', 'a2c', 'bc', 'random'] as AlgorithmType[]
     } else {
@@ -88,13 +95,13 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
       }
     }
     return {
-    learning_rate: adaptiveDefaults.learningRate,
-    gamma: 0.99,
-    steps: 1000000,
-    batch_size: 64,
-    rollout_length: adaptiveDefaults.rolloutLength,
-    update_epochs: 10,
-    entropy_coeff: 0.01,
+      learning_rate: adaptiveDefaults.learningRate,
+      gamma: 0.99,
+      steps: 1000000,
+      batch_size: 64,
+      rollout_length: adaptiveDefaults.rolloutLength,
+      update_epochs: 10,
+      entropy_coeff: 0.01,
     }
   }
 
@@ -116,17 +123,17 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
       }
     }
     return {
-    clip_range: 0.2,
-    value_loss_coeff: 0.5,
-    max_grad_norm: 0.5,
-    gae_lambda: 0.95,
-    mini_batch_size: 64,
-    replay_buffer_size: 100000,
-    target_update_freq: 1000,
-    epsilon_start: 1.0,
-    epsilon_end: 0.05,
-    expert_dataset_path: '',
-    mixture_coeff: 0.5,
+      clip_range: 0.2,
+      value_loss_coeff: 0.5,
+      max_grad_norm: 0.5,
+      gae_lambda: 0.95,
+      mini_batch_size: 64,
+      replay_buffer_size: 100000,
+      target_update_freq: 1000,
+      epsilon_start: 1.0,
+      epsilon_end: 0.05,
+      expert_dataset_path: '',
+      mixture_coeff: 0.5,
     }
   }
 
@@ -144,13 +151,13 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
       }
     }
     return {
-    accelerator: 'A10:1',
-    metrics_interval: 100,
-    seed: 42,
-    num_envs: adaptiveDefaults.numEnvs,
-    checkpoint_interval: 10000,
-    early_stopping: false,
-    early_stopping_patience: 10,
+      accelerator: 'A10:1',
+      metrics_interval: 100,
+      seed: 42,
+      num_envs: adaptiveDefaults.numEnvs,
+      checkpoint_interval: 10000,
+      early_stopping: false,
+      early_stopping_patience: 10,
     }
   }
 
@@ -181,12 +188,12 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
   // Update defaults when envSpec changes
   useEffect(() => {
     if (envSpec && adaptiveDefaults) {
-      setHyperparams(prev => ({
+      setHyperparams((prev) => ({
         ...prev,
         learning_rate: adaptiveDefaults.learningRate,
         rollout_length: adaptiveDefaults.rolloutLength,
       }))
-      setTrainingConfig(prev => ({
+      setTrainingConfig((prev) => ({
         ...prev,
         num_envs: adaptiveDefaults.numEnvs,
       }))
@@ -196,7 +203,7 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
   // Auto-show multi-agent mode if >1 agent
   useEffect(() => {
     if (envSpec && envSpec.agents && envSpec.agents.length > 1) {
-      setConcepts(prev => ({ ...prev, multiAgentMode: true }))
+      setConcepts((prev) => ({ ...prev, multiAgentMode: true }))
     }
   }, [envSpec])
 
@@ -206,7 +213,9 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
       .then((available) => {
         setServiceAvailable(available)
         if (!available) {
-          setServiceError('Training service is not available. Please ensure the backend is running.')
+          setServiceError(
+            'Training service is not available. Please ensure the backend is running.'
+          )
         }
       })
       .catch((error) => {
@@ -261,10 +270,10 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
         }
 
         const launchResponse = await launchTrainingJob(launchRequest)
-        
+
         if (launchResponse.success && launchResponse.jobId) {
-          await updateStatusMutation({ 
-            id: runId, 
+          await updateStatusMutation({
+            id: runId,
             status: 'running',
             skyPilotJobId: launchResponse.jobId,
           })
@@ -337,7 +346,8 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
           {duplicateFromRunId && (
             <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
-                This run is pre-filled with settings from the previous run. Modify any values before submitting.
+                This run is pre-filled with settings from the previous run. Modify any values before
+                submitting.
               </p>
             </div>
           )}
@@ -360,9 +370,11 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
               className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             >
               {algorithmOptions
-                .filter(opt => availableAlgorithms.includes(opt.value as AlgorithmType))
-                .map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                .filter((opt) => availableAlgorithms.includes(opt.value as AlgorithmType))
+                .map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
             </select>
             {availableAlgorithms.length < algorithmOptions.length && (
@@ -387,9 +399,7 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                     <input
                       type="checkbox"
                       checked={value}
-                      onChange={(e) =>
-                        setConcepts({ ...concepts, [key]: e.target.checked })
-                      }
+                      onChange={(e) => setConcepts({ ...concepts, [key]: e.target.checked })}
                       className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer bg-background"
                     />
                     <span className="text-sm group-hover:text-primary transition-colors">
@@ -418,7 +428,7 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                     if (result.success && result.recommendations) {
                       setHyperparamSuggestions(result.recommendations)
                       // Apply suggestions
-                      setHyperparams(prev => ({
+                      setHyperparams((prev) => ({
                         ...prev,
                         learning_rate: result.recommendations.learning_rate,
                         gamma: result.recommendations.gamma,
@@ -442,9 +452,7 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                     Getting Suggestions...
                   </>
                 ) : (
-                  <>
-                    💡 Get CodeRabbit Suggestions
-                  </>
+                  <>💡 Get CodeRabbit Suggestions</>
                 )}
               </button>
             </div>
@@ -452,10 +460,19 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
               <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
                 <div className="font-medium text-gray-900 mb-1">Recommended by CodeRabbit:</div>
                 <div className="text-gray-700 space-y-1">
-                  <div>• Learning Rate: {hyperparamSuggestions.learning_rate} ({hyperparamSuggestions.justification.split(';')[0]})</div>
-                  <div>• Gamma: {hyperparamSuggestions.gamma} ({hyperparamSuggestions.justification.split(';')[1]})</div>
+                  <div>
+                    • Learning Rate: {hyperparamSuggestions.learning_rate} (
+                    {hyperparamSuggestions.justification.split(';')[0]})
+                  </div>
+                  <div>
+                    • Gamma: {hyperparamSuggestions.gamma} (
+                    {hyperparamSuggestions.justification.split(';')[1]})
+                  </div>
                   {hyperparamSuggestions.entropy_coef && (
-                    <div>• Entropy: {hyperparamSuggestions.entropy_coef} ({hyperparamSuggestions.justification.split(';')[2]})</div>
+                    <div>
+                      • Entropy: {hyperparamSuggestions.entropy_coef} (
+                      {hyperparamSuggestions.justification.split(';')[2]})
+                    </div>
                   )}
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
@@ -466,68 +483,96 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
             <div className="space-y-3 pl-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1.5 font-medium">Learning Rate</label>
+                  <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                    Learning Rate
+                  </label>
                   <input
                     type="number"
                     step="1e-5"
                     value={hyperparams.learning_rate}
-                    onChange={(e) => setHyperparams({ ...hyperparams, learning_rate: parseFloat(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, learning_rate: parseFloat(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Gamma</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Gamma
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     value={hyperparams.gamma}
-                    onChange={(e) => setHyperparams({ ...hyperparams, gamma: parseFloat(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, gamma: parseFloat(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Total Steps</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Total Steps
+                  </label>
                   <input
                     type="number"
                     value={hyperparams.steps}
-                    onChange={(e) => setHyperparams({ ...hyperparams, steps: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, steps: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Batch Size</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Batch Size
+                  </label>
                   <input
                     type="number"
                     value={hyperparams.batch_size}
-                    onChange={(e) => setHyperparams({ ...hyperparams, batch_size: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, batch_size: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Rollout Length</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Rollout Length
+                  </label>
                   <input
                     type="number"
                     value={hyperparams.rollout_length}
-                    onChange={(e) => setHyperparams({ ...hyperparams, rollout_length: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, rollout_length: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Update Epochs</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Update Epochs
+                  </label>
                   <input
                     type="number"
                     value={hyperparams.update_epochs}
-                    onChange={(e) => setHyperparams({ ...hyperparams, update_epochs: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, update_epochs: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Entropy Coefficient</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Entropy Coefficient
+                  </label>
                   <input
                     type="number"
                     step="0.001"
                     value={hyperparams.entropy_coeff}
-                    onChange={(e) => setHyperparams({ ...hyperparams, entropy_coeff: parseFloat(e.target.value) })}
+                    onChange={(e) =>
+                      setHyperparams({ ...hyperparams, entropy_coeff: parseFloat(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
@@ -535,12 +580,14 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
             </div>
             {duplicateFromRunId && (
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <div className="text-sm font-medium text-yellow-900 mb-2">Quick Edit Suggestions:</div>
+                <div className="text-sm font-medium text-yellow-900 mb-2">
+                  Quick Edit Suggestions:
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      setHyperparams(prev => ({
+                      setHyperparams((prev) => ({
                         ...prev,
                         learning_rate: prev.learning_rate * 0.5,
                       }))
@@ -552,7 +599,7 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                   <button
                     type="button"
                     onClick={() => {
-                      setHyperparams(prev => ({
+                      setHyperparams((prev) => ({
                         ...prev,
                         learning_rate: prev.learning_rate * 2,
                       }))
@@ -572,7 +619,14 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                         setAlgorithm('a2c')
                       }
                     }}
-                    disabled={!((algorithm === 'ppo' && (availableAlgorithms.includes('dqn') || availableAlgorithms.includes('a2c'))) || (algorithm === 'dqn' && availableAlgorithms.includes('ppo')))}
+                    disabled={
+                      !(
+                        (algorithm === 'ppo' &&
+                          (availableAlgorithms.includes('dqn') ||
+                            availableAlgorithms.includes('a2c'))) ||
+                        (algorithm === 'dqn' && availableAlgorithms.includes('ppo'))
+                      )
+                    }
                     className="px-3 py-1 text-xs bg-background border border-yellow-300/50 rounded hover:bg-yellow-100/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Try Different Algorithm
@@ -580,7 +634,7 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                   <button
                     type="button"
                     onClick={() => {
-                      setHyperparams(prev => ({
+                      setHyperparams((prev) => ({
                         ...prev,
                         steps: Math.round(prev.steps * 1.5),
                       }))
@@ -600,10 +654,14 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
             <div className="space-y-3 pl-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">GPU Accelerator</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    GPU Accelerator
+                  </label>
                   <select
                     value={trainingConfig.accelerator}
-                    onChange={(e) => setTrainingConfig({ ...trainingConfig, accelerator: e.target.value })}
+                    onChange={(e) =>
+                      setTrainingConfig({ ...trainingConfig, accelerator: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   >
                     <option value="A10:1">A10 (1 GPU)</option>
@@ -615,43 +673,65 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Rollout Interval (steps)</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Rollout Interval (steps)
+                  </label>
                   <input
                     type="number"
                     min="10"
                     max="10000"
                     value={trainingConfig.metrics_interval}
-                    onChange={(e) => setTrainingConfig({ ...trainingConfig, metrics_interval: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setTrainingConfig({
+                        ...trainingConfig,
+                        metrics_interval: parseInt(e.target.value),
+                      })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                   <p className="text-xs text-muted-foreground mt-1">How often to send metrics</p>
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Seed</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Seed
+                  </label>
                   <input
                     type="number"
                     value={trainingConfig.seed}
-                    onChange={(e) => setTrainingConfig({ ...trainingConfig, seed: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setTrainingConfig({ ...trainingConfig, seed: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Parallel Environments</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Parallel Environments
+                  </label>
                   <input
                     type="number"
                     min="1"
                     max="32"
                     value={trainingConfig.num_envs}
-                    onChange={(e) => setTrainingConfig({ ...trainingConfig, num_envs: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setTrainingConfig({ ...trainingConfig, num_envs: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Checkpoint Interval (steps)</label>
+                  <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                    Checkpoint Interval (steps)
+                  </label>
                   <input
                     type="number"
                     value={trainingConfig.checkpoint_interval}
-                    onChange={(e) => setTrainingConfig({ ...trainingConfig, checkpoint_interval: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setTrainingConfig({
+                        ...trainingConfig,
+                        checkpoint_interval: parseInt(e.target.value),
+                      })
+                    }
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
                 </div>
@@ -660,17 +740,26 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                     <input
                       type="checkbox"
                       checked={trainingConfig.early_stopping}
-                      onChange={(e) => setTrainingConfig({ ...trainingConfig, early_stopping: e.target.checked })}
+                      onChange={(e) =>
+                        setTrainingConfig({ ...trainingConfig, early_stopping: e.target.checked })
+                      }
                       className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary"
                     />
-                    <span className="text-xs text-muted-foreground font-medium">Early Stopping</span>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Early Stopping
+                    </span>
                   </label>
                   {trainingConfig.early_stopping && (
                     <input
                       type="number"
                       placeholder="Patience (iterations)"
                       value={trainingConfig.early_stopping_patience}
-                      onChange={(e) => setTrainingConfig({ ...trainingConfig, early_stopping_patience: parseInt(e.target.value) })}
+                      onChange={(e) =>
+                        setTrainingConfig({
+                          ...trainingConfig,
+                          early_stopping_patience: parseInt(e.target.value),
+                        })
+                      }
                       className="w-full mt-2 px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   )}
@@ -694,7 +783,9 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                 </div>
                 <div>
                   <span className="text-muted-foreground">Agents:</span>
-                  <span className="ml-2 font-medium">{envSpec.agents?.length || 0} agent{envSpec.agents?.length !== 1 ? 's' : ''}</span>
+                  <span className="ml-2 font-medium">
+                    {envSpec.agents?.length || 0} agent{envSpec.agents?.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Action Space:</span>
@@ -710,7 +801,9 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                 </div>
                 <div>
                   <span className="text-muted-foreground">Termination Rules:</span>
-                  <span className="ml-2 font-medium">{envSpec.rules?.terminations?.length || 0}</span>
+                  <span className="ml-2 font-medium">
+                    {envSpec.rules?.terminations?.length || 0}
+                  </span>
                 </div>
               </div>
             </div>
@@ -719,7 +812,9 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
           {/* 6. Observation & Action Settings (Read-only) */}
           {envSpec && (
             <div className="space-y-2 bg-muted/50 p-4 rounded-md border border-border">
-              <label className="block text-sm font-semibold">Action & Observation Space (Read-only)</label>
+              <label className="block text-sm font-semibold">
+                Action & Observation Space (Read-only)
+              </label>
               <div className="space-y-3 text-sm">
                 <div>
                   <span className="text-muted-foreground font-medium">Action Space:</span>
@@ -752,54 +847,91 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                 {/* PPO-specific */}
                 {(algorithm === 'ppo' || algorithm === 'a2c') && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">PPO/A2C Settings</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                      PPO/A2C Settings
+                    </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Clip Range</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Clip Range
+                        </label>
                         <input
                           type="number"
                           step="0.01"
                           value={advancedHyperparams.clip_range}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, clip_range: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              clip_range: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Value Loss Coeff</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Value Loss Coeff
+                        </label>
                         <input
                           type="number"
                           step="0.1"
                           value={advancedHyperparams.value_loss_coeff}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, value_loss_coeff: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              value_loss_coeff: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Max Grad Norm</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Max Grad Norm
+                        </label>
                         <input
                           type="number"
                           step="0.1"
                           value={advancedHyperparams.max_grad_norm}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, max_grad_norm: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              max_grad_norm: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">GAE Lambda</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          GAE Lambda
+                        </label>
                         <input
                           type="number"
                           step="0.01"
                           value={advancedHyperparams.gae_lambda}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, gae_lambda: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              gae_lambda: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Mini-batch Size</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Mini-batch Size
+                        </label>
                         <input
                           type="number"
                           value={advancedHyperparams.mini_batch_size}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, mini_batch_size: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              mini_batch_size: parseInt(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
@@ -810,43 +942,73 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                 {/* DQN-specific */}
                 {algorithm === 'dqn' && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">DQN Settings</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                      DQN Settings
+                    </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Replay Buffer Size</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Replay Buffer Size
+                        </label>
                         <input
                           type="number"
                           value={advancedHyperparams.replay_buffer_size}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, replay_buffer_size: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              replay_buffer_size: parseInt(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Target Update Freq</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Target Update Freq
+                        </label>
                         <input
                           type="number"
                           value={advancedHyperparams.target_update_freq}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, target_update_freq: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              target_update_freq: parseInt(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Epsilon Start</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Epsilon Start
+                        </label>
                         <input
                           type="number"
                           step="0.1"
                           value={advancedHyperparams.epsilon_start}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, epsilon_start: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              epsilon_start: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Epsilon End</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Epsilon End
+                        </label>
                         <input
                           type="number"
                           step="0.01"
                           value={advancedHyperparams.epsilon_end}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, epsilon_end: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              epsilon_end: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
@@ -857,25 +1019,41 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
                 {/* Imitation-specific */}
                 {concepts.imitation && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">Imitation Learning Settings</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                      Imitation Learning Settings
+                    </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Expert Dataset Path</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Expert Dataset Path
+                        </label>
                         <input
                           type="text"
                           value={advancedHyperparams.expert_dataset_path}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, expert_dataset_path: e.target.value })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              expert_dataset_path: e.target.value,
+                            })
+                          }
                           placeholder="/path/to/expert/data"
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Mixture Coefficient</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">
+                          Mixture Coefficient
+                        </label>
                         <input
                           type="number"
                           step="0.1"
                           value={advancedHyperparams.mixture_coeff}
-                          onChange={(e) => setAdvancedHyperparams({ ...advancedHyperparams, mixture_coeff: parseFloat(e.target.value) })}
+                          onChange={(e) =>
+                            setAdvancedHyperparams({
+                              ...advancedHyperparams,
+                              mixture_coeff: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
                         />
                       </div>
@@ -897,7 +1075,10 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
           {serviceAvailable === false && !serviceError && (
             <div className="bg-yellow-50/20 border border-yellow-200/50 rounded-md p-3.5 text-sm text-yellow-600 flex items-start gap-2">
               <span className="text-lg leading-none">⚠️</span>
-              <span>Training service is not available. The run will be created but the job may not launch.</span>
+              <span>
+                Training service is not available. The run will be created but the job may not
+                launch.
+              </span>
             </div>
           )}
 
@@ -943,7 +1124,9 @@ export function CreateRun({ envId, onClose, duplicateFromRunId }: CreateRunProps
             onLaunchSweep={async (trials) => {
               // Launch multiple training runs for each trial
               // This is a simplified version - in production, you'd want to batch these
-              alert(`Would launch ${trials.length} training runs. This feature requires backend support for batch job creation.`)
+              alert(
+                `Would launch ${trials.length} training runs. This feature requires backend support for batch job creation.`
+              )
               setShowSweepModal(false)
             }}
           />

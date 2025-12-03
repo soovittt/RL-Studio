@@ -42,4 +42,3 @@ export const renderSphere: RendererFunction = (
 
   return mesh
 }
-

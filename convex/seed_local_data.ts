@@ -1,12 +1,12 @@
 /**
  * Local Development Data Seeding
- * 
+ *
  * For open-source users: Seeds local Convex database with sample data
  * so they can develop without needing access to production database.
- * 
+ *
  * Usage:
  *   npx convex run seed_local_data:seedAll
- * 
+ *
  * This creates:
  *   - Sample environments
  *   - Sample runs
@@ -14,13 +14,14 @@
  *   - Sample templates
  */
 
-import { mutation, query } from './_generated/server'
+import { mutation, query, internalMutation } from './_generated/server'
 import { v } from 'convex/values'
+import { internal } from './_generated/api'
 
 /**
  * Seed sample environments for local development
  */
-export const seedEnvironments = mutation({
+export const seedEnvironments = internalMutation({
   args: {},
   handler: async (ctx) => {
     const sampleEnvironments = [
@@ -166,8 +167,8 @@ export const seedEnvironments = mutation({
     for (const env of sampleEnvironments) {
       const id = await ctx.db.insert('environments', {
         name: env.name,
-        mode: env.mode as any,
         envSpec: env.envSpec as any,
+        envType: (env.envSpec as any)?.envType || 'grid',
         createdAt: env.createdAt,
         updatedAt: env.updatedAt,
         ownerId: (await ctx.auth.getUserIdentity())?._id as any,
@@ -186,7 +187,7 @@ export const seedEnvironments = mutation({
 /**
  * Seed sample runs for local development
  */
-export const seedRuns = mutation({
+export const seedRuns = internalMutation({
   args: {
     envId: v.optional(v.id('environments')),
   },
@@ -273,7 +274,7 @@ export const seedRuns = mutation({
 /**
  * Seed sample evaluations for completed runs
  */
-export const seedEvaluations = mutation({
+export const seedEvaluations = internalMutation({
   args: {},
   handler: async (ctx) => {
     const completedRuns = await ctx.db
@@ -320,21 +321,21 @@ export const seedAll = mutation({
     }
 
     try {
-      const envResult = await ctx.runMutation(seedEnvironments, {})
+      const envResult = await ctx.runMutation(internal.seed_local_data.seedEnvironments, {})
       results.environments = envResult
     } catch (e: any) {
       console.error('Failed to seed environments:', e)
     }
 
     try {
-      const runsResult = await ctx.runMutation(seedRuns, {})
+      const runsResult = await ctx.runMutation(internal.seed_local_data.seedRuns, {})
       results.runs = runsResult
     } catch (e: any) {
       console.error('Failed to seed runs:', e)
     }
 
     try {
-      const evalResult = await ctx.runMutation(seedEvaluations, {})
+      const evalResult = await ctx.runMutation(internal.seed_local_data.seedEvaluations, {})
       results.evaluations = evalResult
     } catch (e: any) {
       console.error('Failed to seed evaluations:', e)
@@ -362,8 +363,8 @@ export const clearSeededData = mutation({
 
     // Delete all evaluations
     const evaluations = await ctx.db.query('evaluations').collect()
-    for (const eval of evaluations) {
-      await ctx.db.delete(eval._id)
+    for (const evaluation of evaluations) {
+      await ctx.db.delete(evaluation._id)
     }
 
     // Delete all environments (be careful - only delete seeded ones)
@@ -381,4 +382,3 @@ export const clearSeededData = mutation({
     }
   },
 })
-

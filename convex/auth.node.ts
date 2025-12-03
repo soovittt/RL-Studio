@@ -1,4 +1,4 @@
-"use node"
+'use node'
 
 import { action } from './_generated/server'
 import { v } from 'convex/values'
@@ -21,7 +21,7 @@ export const signUp = action({
   },
   handler: async (ctx, args) => {
     const crypto = require('crypto')
-    
+
     if (args.password.length < 8) {
       throw new Error('Password must be at least 8 characters')
     }
@@ -62,7 +62,7 @@ export const signIn = action({
   },
   handler: async (ctx, args) => {
     const crypto = require('crypto')
-    
+
     const user = await ctx.runQuery(authInternal.findUserByEmail, {
       email: args.email.toLowerCase(),
     })
@@ -76,7 +76,7 @@ export const signIn = action({
       throw new Error('Invalid email or password')
     }
     const verifyHash = crypto.pbkdf2Sync(args.password, salt, 1000, 64, 'sha512').toString('hex')
-    
+
     if (hash !== verifyHash) {
       throw new Error('Invalid email or password')
     }
@@ -98,7 +98,7 @@ export const refreshToken = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const crypto = require('crypto')
-    
+
     const session = await ctx.runQuery(authInternal.getSessionByToken, {
       token: args.token,
     })
@@ -128,4 +128,3 @@ export const refreshToken = action({
     return { token: newToken, expiresAt }
   },
 })
-

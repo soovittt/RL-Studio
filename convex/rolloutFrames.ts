@@ -9,7 +9,7 @@ export const getLatest = query({
       .withIndex('by_run', (q) => q.eq('runId', args.runId))
       .order('desc')
       .take(1)
-    
+
     return frames[0] || null
   },
 })
@@ -24,4 +24,3 @@ export const list = query({
       .take(args.limit || 10)
   },
 })
-

@@ -5,6 +5,7 @@
 
 import { action } from './_generated/server'
 import { v } from 'convex/values'
+import { api } from './_generated/api'
 
 // CodeRabbit API types
 interface CodeRabbitReviewRequest {
@@ -63,7 +64,10 @@ class CodeRabbitService {
     this.apiKey = apiKey
   }
 
-  async reviewCode(files: Array<{ path: string; content: string }>, context?: string): Promise<CodeRabbitReviewResponse> {
+  async reviewCode(
+    files: Array<{ path: string; content: string }>,
+    context?: string
+  ): Promise<CodeRabbitReviewResponse> {
     // CodeRabbit API integration
     // Note: This is a placeholder - actual CodeRabbit API may differ
     const response = await fetch(`${this.baseUrl}/review`, {
@@ -86,7 +90,10 @@ class CodeRabbitService {
     return await response.json()
   }
 
-  async suggestHyperparameters(envSpec: any, algorithm: string): Promise<CodeRabbitHyperparameterResponse> {
+  async suggestHyperparameters(
+    envSpec: any,
+    algorithm: string
+  ): Promise<CodeRabbitHyperparameterResponse> {
     // Analyze environment and suggest hyperparameters
     const response = await fetch(`${this.baseUrl}/suggest-hyperparameters`, {
       method: 'POST',
@@ -107,7 +114,10 @@ class CodeRabbitService {
     return await response.json()
   }
 
-  async reviewScript(script: string, scriptType: 'reward' | 'termination' | 'custom'): Promise<CodeRabbitReviewResponse> {
+  async reviewScript(
+    script: string,
+    scriptType: 'reward' | 'termination' | 'custom'
+  ): Promise<CodeRabbitReviewResponse> {
     const response = await fetch(`${this.baseUrl}/review-script`, {
       method: 'POST',
       headers: {
@@ -296,12 +306,16 @@ class LocalCodeAnalyzer {
     }
   }
 
-  suggestHyperparameters(envSpec: any, algorithm: string): CodeRabbitHyperparameterResponse['recommendations'] {
+  suggestHyperparameters(
+    envSpec: any,
+    algorithm: string
+  ): CodeRabbitHyperparameterResponse['recommendations'] {
     const isGrid = envSpec.envType === 'grid'
     const isContinuous = envSpec.envType === 'continuous2d'
     const worldSize = envSpec.world?.width * (envSpec.world?.height || 1) || 100
-    const hasSparseReward = (envSpec.rules?.rewards || []).length === 0 || 
-                            (envSpec.rules?.rewards || []).every((r: { value?: number }) => r.value === 0 || !r.value)
+    const hasSparseReward =
+      (envSpec.rules?.rewards || []).length === 0 ||
+      (envSpec.rules?.rewards || []).every((r: { value?: number }) => r.value === 0 || !r.value)
 
     let learningRate = 3e-4
     let gamma = 0.99
@@ -367,10 +381,12 @@ class LocalCodeAnalyzer {
 // Convex Actions
 export const reviewExportedCode = action({
   args: {
-    files: v.array(v.object({
-      path: v.string(),
-      content: v.string(),
-    })),
+    files: v.array(
+      v.object({
+        path: v.string(),
+        content: v.string(),
+      })
+    ),
     context: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -391,14 +407,16 @@ export const reviewExportedCode = action({
     }
 
     // Fallback to local analyzer
-    const reviews = args.files.map(file => ({
+    const reviews = args.files.map((file) => ({
       file: file.path,
       review: analyzer.analyzePythonCode(file.content),
     }))
 
     // Combine reviews
-    const allIssues = reviews.flatMap(r => r.review.issues.map((i: any) => ({ ...i, file: r.file })))
-    const allSuggestions = reviews.flatMap(r => r.review.suggestions)
+    const allIssues = reviews.flatMap((r) =>
+      r.review.issues.map((i: any) => ({ ...i, file: r.file }))
+    )
+    const allSuggestions = reviews.flatMap((r) => r.review.suggestions)
     const avgScore = reviews.reduce((sum, r) => sum + r.review.score, 0) / reviews.length
 
     return {
@@ -438,8 +456,10 @@ export const validateEnvironmentCode = action({
     }))
 
     // Combine reviews
-    const allIssues = reviews.flatMap(r => r.review.issues.map((i: any) => ({ ...i, file: r.file })))
-    const allSuggestions = reviews.flatMap(r => r.review.suggestions)
+    const allIssues = reviews.flatMap((r) =>
+      r.review.issues.map((i: any) => ({ ...i, file: r.file }))
+    )
+    const allSuggestions = reviews.flatMap((r) => r.review.suggestions)
     const avgScore = reviews.reduce((sum, r) => sum + r.review.score, 0) / reviews.length
 
     return {
@@ -506,9 +526,18 @@ export const analyzeFailure = action({
 
     // Analyze patterns
     const analysis: {
-      issues: Array<{ type: string; severity: 'high' | 'medium' | 'low'; message: string; suggestion: string }>
+      issues: Array<{
+        type: string
+        severity: 'high' | 'medium' | 'low'
+        message: string
+        suggestion: string
+      }>
       summary: string
-      recommendations: Array<{ action: string; description: string; priority: 'high' | 'medium' | 'low' }>
+      recommendations: Array<{
+        action: string
+        description: string
+        priority: 'high' | 'medium' | 'low'
+      }>
     } = {
       issues: [],
       summary: '',
@@ -528,11 +557,13 @@ export const analyzeFailure = action({
           type: 'low_reward',
           severity: 'high',
           message: `Mean reward is negative (${meanReward.toFixed(2)}). The agent is performing worse than random.`,
-          suggestion: 'Check reward function - rewards may be misaligned or too sparse. Consider reward shaping.',
+          suggestion:
+            'Check reward function - rewards may be misaligned or too sparse. Consider reward shaping.',
         })
         analysis.recommendations.push({
           action: 'adjust_reward',
-          description: 'Review and adjust reward function. Consider adding intermediate rewards for progress.',
+          description:
+            'Review and adjust reward function. Consider adding intermediate rewards for progress.',
           priority: 'high',
         })
       } else if (meanReward < 10 && successRate < 0.1) {
@@ -540,7 +571,8 @@ export const analyzeFailure = action({
           type: 'poor_performance',
           severity: 'high',
           message: `Low mean reward (${meanReward.toFixed(2)}) and success rate (${(successRate * 100).toFixed(1)}%).`,
-          suggestion: 'Agent is not learning effectively. Try lower learning rate or different algorithm.',
+          suggestion:
+            'Agent is not learning effectively. Try lower learning rate or different algorithm.',
         })
         analysis.recommendations.push({
           action: 'lower_learning_rate',
@@ -555,11 +587,13 @@ export const analyzeFailure = action({
           type: 'high_variance',
           severity: 'medium',
           message: `High variance in rewards (std: ${stdReward.toFixed(2)} vs mean: ${meanReward.toFixed(2)}).`,
-          suggestion: 'High variance suggests exploration issues. Try increasing entropy coefficient or using curriculum learning.',
+          suggestion:
+            'High variance suggests exploration issues. Try increasing entropy coefficient or using curriculum learning.',
         })
         analysis.recommendations.push({
           action: 'increase_exploration',
-          description: 'Increase entropy coefficient or add exploration bonus to improve stability.',
+          description:
+            'Increase entropy coefficient or add exploration bonus to improve stability.',
           priority: 'medium',
         })
       }
@@ -570,11 +604,13 @@ export const analyzeFailure = action({
           type: 'low_success_rate',
           severity: 'medium',
           message: `Low success rate (${(successRate * 100).toFixed(1)}%) despite positive rewards.`,
-          suggestion: 'Reward function may not align with goal. Consider adding large terminal reward for success.',
+          suggestion:
+            'Reward function may not align with goal. Consider adding large terminal reward for success.',
         })
         analysis.recommendations.push({
           action: 'adjust_reward',
-          description: 'Add large terminal reward (e.g., +100) when goal is reached to align rewards with success.',
+          description:
+            'Add large terminal reward (e.g., +100) when goal is reached to align rewards with success.',
           priority: 'medium',
         })
       }
@@ -589,7 +625,8 @@ export const analyzeFailure = action({
         })
         analysis.recommendations.push({
           action: 'review_termination',
-          description: 'Review termination conditions. Consider making environment easier or increasing max steps.',
+          description:
+            'Review termination conditions. Consider making environment easier or increasing max steps.',
           priority: 'medium',
         })
       } else if (meanLength > 1000) {
@@ -597,29 +634,39 @@ export const analyzeFailure = action({
           type: 'long_episodes',
           severity: 'low',
           message: `Episodes are very long (avg: ${meanLength.toFixed(1)} steps).`,
-          suggestion: 'Agent may be stuck or environment too large. Consider reducing world size or adding time limits.',
+          suggestion:
+            'Agent may be stuck or environment too large. Consider reducing world size or adding time limits.',
         })
       }
     }
 
     // Analyze training metrics
     if (metrics && metrics.length > 0) {
-      const rewards = metrics.map((m) => m.reward || 0).filter((r) => r !== undefined)
+      const rewards = metrics.map((m: any) => m.reward || 0).filter((r: any) => r !== undefined)
       if (rewards.length > 10) {
-        const earlyReward = rewards.slice(0, Math.floor(rewards.length / 3)).reduce((a, b) => a + b, 0) / Math.floor(rewards.length / 3)
-        const lateReward = rewards.slice(-Math.floor(rewards.length / 3)).reduce((a, b) => a + b, 0) / Math.floor(rewards.length / 3)
+        const earlyReward =
+          rewards
+            .slice(0, Math.floor(rewards.length / 3))
+            .reduce((a: number, b: number) => a + b, 0) / Math.floor(rewards.length / 3)
+        const lateReward =
+          rewards
+            .slice(-Math.floor(rewards.length / 3))
+            .reduce((a: number, b: number) => a + b, 0) / Math.floor(rewards.length / 3)
 
         // No convergence analysis
         if (lateReward <= earlyReward * 1.1) {
           analysis.issues.push({
             type: 'no_convergence',
             severity: 'high',
-            message: 'Training shows no improvement. Reward did not increase significantly during training.',
-            suggestion: 'Learning rate may be too high or too low. Try different hyperparameters or algorithm.',
+            message:
+              'Training shows no improvement. Reward did not increase significantly during training.',
+            suggestion:
+              'Learning rate may be too high or too low. Try different hyperparameters or algorithm.',
           })
           analysis.recommendations.push({
             action: 'try_different_hyperparams',
-            description: 'Try different learning rate or switch algorithm (e.g., PPO to DQN or vice versa).',
+            description:
+              'Try different learning rate or switch algorithm (e.g., PPO to DQN or vice versa).',
             priority: 'high',
           })
         }
@@ -656,9 +703,7 @@ export const suggestRewardFunction = action({
       }
     }
 
-    const evaluation = await ctx.runQuery(
-      ctx.db.query('evaluations').withIndex('by_run', (q) => q.eq('runId', args.runId)).first
-    )
+    const evaluation = await ctx.runQuery(api.evaluations.get, { runId: args.runId })
 
     const suggestions: Array<{ type: string; description: string; example: string }> = []
 
@@ -670,7 +715,8 @@ export const suggestRewardFunction = action({
       if (successRate < 0.3) {
         suggestions.push({
           type: 'terminal_reward',
-          description: 'Add large terminal reward when goal is reached to align rewards with success.',
+          description:
+            'Add large terminal reward when goal is reached to align rewards with success.',
           example: 'if goal_reached: reward += 100.0',
         })
       }
@@ -679,7 +725,8 @@ export const suggestRewardFunction = action({
       if (meanReward < 0) {
         suggestions.push({
           type: 'reward_shaping',
-          description: 'Add intermediate rewards for progress (e.g., distance to goal, steps taken).',
+          description:
+            'Add intermediate rewards for progress (e.g., distance to goal, steps taken).',
           example: 'reward += -0.1 * distance_to_goal  # Closer = better',
         })
       }
@@ -761,7 +808,10 @@ export const reviewCustomScript = action({
 
     if (args.scriptType === 'termination') {
       // Check for termination-specific issues
-      if (!args.script.includes('return') || (!args.script.includes('True') && !args.script.includes('False'))) {
+      if (
+        !args.script.includes('return') ||
+        (!args.script.includes('True') && !args.script.includes('False'))
+      ) {
         scriptIssues.push({
           severity: 'error',
           file: 'termination_script.py',
@@ -782,4 +832,3 @@ export const reviewCustomScript = action({
     }
   },
 })
-

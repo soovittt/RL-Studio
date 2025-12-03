@@ -225,4 +225,3 @@ sky launch skypilot.yaml
 `,
   }
 }
-

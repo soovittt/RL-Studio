@@ -6,20 +6,20 @@
 // Get backend API URL with proper local vs production handling
 const getBackendUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL
-  
+
   // If explicitly set, use it
   if (envUrl) {
     return envUrl
   }
-  
+
   // In production, warn if not set (should be set)
   if (import.meta.env.MODE === 'production') {
     console.warn(
       '⚠️ VITE_API_URL is not set in production. Defaulting to localhost:8000. ' +
-      'Please set your production backend URL in environment variables.'
+        'Please set your production backend URL in environment variables.'
     )
   }
-  
+
   // Default to localhost for local development
   return 'http://localhost:8000'
 }
@@ -183,4 +183,3 @@ export async function saveCode(request: SaveCodeRequest): Promise<SaveCodeRespon
     throw error
   }
 }
-

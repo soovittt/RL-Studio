@@ -1,5 +1,13 @@
 // Universal Simulator - Works with EnvSpec for all environment types
-import { EnvSpec, ConditionSpec, RewardRule, TerminationRule, Vec2, ObjectSpec, AgentSpec } from './envSpec'
+import {
+  EnvSpec,
+  ConditionSpec,
+  RewardRule,
+  TerminationRule,
+  Vec2,
+  ObjectSpec,
+  AgentSpec,
+} from './envSpec'
 
 export interface SimulatorState {
   agents: Array<{ id: string; position: Vec2; rotation?: number }>
@@ -61,10 +69,12 @@ function evaluateCondition(
     }
 
     case 'collision': {
-      const a = state.agents.find((ag) => ag.id === condition.a) || 
-                state.objects.find((o) => o.id === condition.a)
-      const b = state.agents.find((ag) => ag.id === condition.b) || 
-                state.objects.find((o) => o.id === condition.b)
+      const a =
+        state.agents.find((ag) => ag.id === condition.a) ||
+        state.objects.find((o) => o.id === condition.a)
+      const b =
+        state.agents.find((ag) => ag.id === condition.b) ||
+        state.objects.find((o) => o.id === condition.b)
       if (!a || !b) return false
       const [ax, ay] = a.position
       const [bx, by] = b.position
@@ -119,7 +129,7 @@ function calculateReward(
   envSpec: EnvSpec
 ): Array<{ ruleId: string; value: number; reason: string }> {
   const rewards: Array<{ ruleId: string; value: number; reason: string }> = []
-  
+
   // Only evaluate explicit reward rules - no hardcoded defaults
   for (const rule of envSpec.rules.rewards) {
     if (evaluateCondition(rule.condition, state, envSpec)) {
@@ -146,24 +156,25 @@ function checkTermination(
       return { terminated: true, reason: rule.condition.type }
     }
   }
-  
+
   // Auto-detect goal reaching: if agent is at any goal object, terminate
   if (state.agents.length > 0 && state.objects.length > 0) {
     const agent = state.agents[0]
     const [ax, ay] = agent.position
-    
+
     // Check all goal objects from envSpec
     const goals = envSpec.objects.filter((obj) => obj.type === 'goal')
-    
+
     for (const goal of goals) {
       const [gx, gy] = goal.position
       const distance = Math.sqrt((ax - gx) ** 2 + (ay - gy) ** 2)
-      if (distance <= 0.5) {  // Within 0.5 units
+      if (distance <= 0.5) {
+        // Within 0.5 units
         return { terminated: true, reason: 'goal_reached' }
       }
     }
   }
-  
+
   return { terminated: false }
 }
 
@@ -190,7 +201,7 @@ function applyAction(
     for (const agent of newState.agents) {
       const agentAction = action[agent.id]
       if (!agentAction) continue
-      
+
       if (typeof agentAction === 'string') {
         applyDiscreteActionToAgent(agent, agentAction, newState, envSpec)
       } else if (Array.isArray(agentAction)) {
@@ -232,14 +243,20 @@ function applyAction(
     }
 
     // Check bounds
-    const bounds = envSpec.world.coordinateSystem === 'grid'
-      ? [[0, envSpec.world.width], [0, envSpec.world.height]]
-      : [[-envSpec.world.width / 2, envSpec.world.width / 2], 
-         [-envSpec.world.height / 2, envSpec.world.height / 2]]
+    const bounds =
+      envSpec.world.coordinateSystem === 'grid'
+        ? [
+            [0, envSpec.world.width],
+            [0, envSpec.world.height],
+          ]
+        : [
+            [-envSpec.world.width / 2, envSpec.world.width / 2],
+            [-envSpec.world.height / 2, envSpec.world.height / 2],
+          ]
 
     newX = Math.max(bounds[0][0], Math.min(bounds[0][1], newX))
     newY = Math.max(bounds[1][0], Math.min(bounds[1][1], newY))
-    
+
     // Snap to grid cells for grid environments (ensures agent stays visible)
     if (envSpec.world.coordinateSystem === 'grid') {
       newX = Math.round(newX)
@@ -255,7 +272,7 @@ function applyAction(
 
       const [ox, oy] = obj.position
       const dist = Math.sqrt((newX - ox) ** 2 + (newY - oy) ** 2)
-      
+
       if (objSpec.size.type === 'circle') {
         if (dist < objSpec.size.radius + 0.5) {
           hitObstacle = true
@@ -293,13 +310,17 @@ function applyAction(
     const newY = y + dy * maxSpeed
 
     // Check bounds and collisions (similar to discrete)
-    const bounds = [[-envSpec.world.width / 2, envSpec.world.width / 2], 
-                    [-envSpec.world.height / 2, envSpec.world.height / 2]]
+    const bounds = [
+      [-envSpec.world.width / 2, envSpec.world.width / 2],
+      [-envSpec.world.height / 2, envSpec.world.height / 2],
+    ]
     agent.position = [
       Math.max(bounds[0][0], Math.min(bounds[0][1], newX)),
       Math.max(bounds[1][0], Math.min(bounds[1][1], newY)),
     ]
-    newState.info.events.push(`Moved to (${agent.position[0].toFixed(1)}, ${agent.position[1].toFixed(1)})`)
+    newState.info.events.push(
+      `Moved to (${agent.position[0].toFixed(1)}, ${agent.position[1].toFixed(1)})`
+    )
   }
 
   return newState
@@ -313,7 +334,7 @@ function selectAction(
 ): string | number[] | Record<string, string | number[]> {
   if (envSpec.actionSpace.type === 'discrete') {
     const actions = envSpec.actionSpace.actions || ['up', 'down', 'left', 'right']
-    
+
     // Multi-agent support: return actions for all agents
     if (state.agents.length > 1) {
       const agentActions: Record<string, string> = {}
@@ -326,7 +347,7 @@ function selectAction(
       }
       return agentActions
     }
-    
+
     // Single agent (backward compatibility)
     if (policy === 'random') {
       return actions[Math.floor(Math.random() * actions.length)]
@@ -337,7 +358,7 @@ function selectAction(
 
       // Find goals from envSpec (source of truth)
       const goalSpecs = envSpec.objects.filter((obj) => obj.type === 'goal')
-      
+
       if (goalSpecs.length === 0) {
         // No goals defined, use random
         return actions[Math.floor(Math.random() * actions.length)]
@@ -359,26 +380,37 @@ function selectAction(
 
       const [gx, gy] = nearestGoal.position
       const dx = gx - ax
-      const dy = envSpec.world.coordinateSystem === 'grid' ? (ay - gy) : (gy - ay)
+      const dy = envSpec.world.coordinateSystem === 'grid' ? ay - gy : gy - ay
 
       // Helper to check if a position would hit an obstacle
       const wouldHitObstacle = (newX: number, newY: number): boolean => {
         // Check bounds first
-        const bounds = envSpec.world.coordinateSystem === 'grid'
-          ? [[0, envSpec.world.width], [0, envSpec.world.height]]
-          : [[-envSpec.world.width / 2, envSpec.world.width / 2], 
-             [-envSpec.world.height / 2, envSpec.world.height / 2]]
-        if (newX < bounds[0][0] || newX >= bounds[0][1] || newY < bounds[1][0] || newY >= bounds[1][1]) {
+        const bounds =
+          envSpec.world.coordinateSystem === 'grid'
+            ? [
+                [0, envSpec.world.width],
+                [0, envSpec.world.height],
+              ]
+            : [
+                [-envSpec.world.width / 2, envSpec.world.width / 2],
+                [-envSpec.world.height / 2, envSpec.world.height / 2],
+              ]
+        if (
+          newX < bounds[0][0] ||
+          newX >= bounds[0][1] ||
+          newY < bounds[1][0] ||
+          newY >= bounds[1][1]
+        ) {
           return true
         }
-        
+
         // Check obstacles
         for (const obj of state.objects) {
           const objSpec = envSpec.objects.find((o) => o.id === obj.id)
           if (!objSpec || (objSpec.type !== 'wall' && objSpec.type !== 'obstacle')) continue
-          
+
           const [ox, oy] = obj.position
-          
+
           // For grid, check if same cell
           if (envSpec.world.coordinateSystem === 'grid') {
             if (Math.abs(newX - ox) < 0.5 && Math.abs(newY - oy) < 0.5) {
@@ -428,7 +460,7 @@ function selectAction(
       let newX = ax
       let newY = ay
       const stepSize = envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
-      
+
       if (preferredAction === 'up') {
         newY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
       } else if (preferredAction === 'down') {
@@ -440,13 +472,19 @@ function selectAction(
       }
 
       // Check bounds
-      const bounds = envSpec.world.coordinateSystem === 'grid'
-        ? [[0, envSpec.world.width], [0, envSpec.world.height]]
-        : [[-envSpec.world.width / 2, envSpec.world.width / 2], 
-           [-envSpec.world.height / 2, envSpec.world.height / 2]]
+      const bounds =
+        envSpec.world.coordinateSystem === 'grid'
+          ? [
+              [0, envSpec.world.width],
+              [0, envSpec.world.height],
+            ]
+          : [
+              [-envSpec.world.width / 2, envSpec.world.width / 2],
+              [-envSpec.world.height / 2, envSpec.world.height / 2],
+            ]
       newX = Math.max(bounds[0][0], Math.min(bounds[0][1], newX))
       newY = Math.max(bounds[1][0], Math.min(bounds[1][1], newY))
-      
+
       if (envSpec.world.coordinateSystem === 'grid') {
         newX = Math.round(newX)
         newY = Math.round(newY)
@@ -488,7 +526,7 @@ function selectAction(
       for (const altAction of alternatives) {
         newX = ax
         newY = ay
-        
+
         if (altAction === 'up') {
           newY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
         } else if (altAction === 'down') {
@@ -501,7 +539,7 @@ function selectAction(
 
         newX = Math.max(bounds[0][0], Math.min(bounds[0][1], newX))
         newY = Math.max(bounds[1][0], Math.min(bounds[1][1], newY))
-        
+
         if (envSpec.world.coordinateSystem === 'grid') {
           newX = Math.round(newX)
           newY = Math.round(newY)
@@ -509,9 +547,9 @@ function selectAction(
 
         // Avoid oscillating - don't go to position we just visited
         if (recentPositions.length > 0) {
-          const justVisited = recentPositions.slice(-2).some(([px, py]) => 
-            Math.abs(newX - px) < 0.1 && Math.abs(newY - py) < 0.1
-          )
+          const justVisited = recentPositions
+            .slice(-2)
+            .some(([px, py]) => Math.abs(newX - px) < 0.1 && Math.abs(newY - py) < 0.1)
           if (justVisited) {
             continue
           }
@@ -526,7 +564,7 @@ function selectAction(
       for (const action of actions) {
         newX = ax
         newY = ay
-        
+
         if (action === 'up') {
           newY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
         } else if (action === 'down') {
@@ -539,7 +577,7 @@ function selectAction(
 
         newX = Math.max(bounds[0][0], Math.min(bounds[0][1], newX))
         newY = Math.max(bounds[1][0], Math.min(bounds[1][1], newY))
-        
+
         if (envSpec.world.coordinateSystem === 'grid') {
           newX = Math.round(newX)
           newY = Math.round(newY)
@@ -547,9 +585,9 @@ function selectAction(
 
         // Avoid oscillating
         if (recentPositions.length > 0) {
-          const justVisited = recentPositions.slice(-2).some(([px, py]) => 
-            Math.abs(newX - px) < 0.1 && Math.abs(newY - py) < 0.1
-          )
+          const justVisited = recentPositions
+            .slice(-2)
+            .some(([px, py]) => Math.abs(newX - px) < 0.1 && Math.abs(newY - py) < 0.1)
           if (justVisited) {
             continue
           }
@@ -577,7 +615,7 @@ function selectAction(
       }
       return agentActions
     }
-    
+
     // Single agent (backward compatibility)
     if (policy === 'random') {
       return [Math.random() * 2 - 1, Math.random() * 2 - 1]
@@ -613,7 +651,7 @@ function selectGreedyActionForAgent(
 ): string {
   // Find goals from envSpec (source of truth)
   const goalSpecs = envSpec.objects.filter((obj) => obj.type === 'goal')
-  
+
   if (goalSpecs.length === 0) {
     return actions[Math.floor(Math.random() * actions.length)]
   }
@@ -634,26 +672,37 @@ function selectGreedyActionForAgent(
 
   const [gx, gy] = nearestGoal.position
   const dx = gx - ax
-  const dy = envSpec.world.coordinateSystem === 'grid' ? (ay - gy) : (gy - ay)
+  const dy = envSpec.world.coordinateSystem === 'grid' ? ay - gy : gy - ay
 
   // Helper to check if a position would hit an obstacle
   const wouldHitObstacle = (newX: number, newY: number): boolean => {
     // Check bounds first
-    const bounds = envSpec.world.coordinateSystem === 'grid'
-      ? [[0, envSpec.world.width], [0, envSpec.world.height]]
-      : [[-envSpec.world.width / 2, envSpec.world.width / 2], 
-         [-envSpec.world.height / 2, envSpec.world.height / 2]]
-    if (newX < bounds[0][0] || newX >= bounds[0][1] || newY < bounds[1][0] || newY >= bounds[1][1]) {
+    const bounds =
+      envSpec.world.coordinateSystem === 'grid'
+        ? [
+            [0, envSpec.world.width],
+            [0, envSpec.world.height],
+          ]
+        : [
+            [-envSpec.world.width / 2, envSpec.world.width / 2],
+            [-envSpec.world.height / 2, envSpec.world.height / 2],
+          ]
+    if (
+      newX < bounds[0][0] ||
+      newX >= bounds[0][1] ||
+      newY < bounds[1][0] ||
+      newY >= bounds[1][1]
+    ) {
       return true
     }
-    
+
     // Check obstacles and other agents
     for (const obj of state.objects) {
       const objSpec = envSpec.objects.find((o) => o.id === obj.id)
       if (!objSpec || (objSpec.type !== 'wall' && objSpec.type !== 'obstacle')) continue
-      
+
       const [ox, oy] = obj.position
-      
+
       if (envSpec.world.coordinateSystem === 'grid') {
         if (Math.abs(newX - ox) < 0.5 && Math.abs(newY - oy) < 0.5) {
           return true
@@ -677,7 +726,7 @@ function selectGreedyActionForAgent(
         }
       }
     }
-    
+
     // Check other agents (avoid collisions)
     for (const otherAgent of state.agents) {
       if (otherAgent.id === agent.id) continue
@@ -685,23 +734,23 @@ function selectGreedyActionForAgent(
       const dist = Math.sqrt((newX - ox) ** 2 + (newY - oy) ** 2)
       if (dist < 0.5) return true
     }
-    
+
     return false
   }
 
   // Calculate preferred direction
   let preferredAction: string
   if (Math.abs(dx) >= Math.abs(dy)) {
-    preferredAction = Math.abs(dx) < 0.1 ? (dy > 0 ? 'up' : 'down') : (dx > 0 ? 'right' : 'left')
+    preferredAction = Math.abs(dx) < 0.1 ? (dy > 0 ? 'up' : 'down') : dx > 0 ? 'right' : 'left'
   } else {
-    preferredAction = Math.abs(dy) < 0.1 ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'up' : 'down')
+    preferredAction = Math.abs(dy) < 0.1 ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'up' : 'down'
   }
 
   // Check if preferred action would hit obstacle
   let newX = ax
   let newY = ay
   const stepSize = envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
-  
+
   if (preferredAction === 'up') {
     newY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
   } else if (preferredAction === 'down') {
@@ -713,13 +762,19 @@ function selectGreedyActionForAgent(
   }
 
   // Check bounds
-  const bounds = envSpec.world.coordinateSystem === 'grid'
-    ? [[0, envSpec.world.width], [0, envSpec.world.height]]
-    : [[-envSpec.world.width / 2, envSpec.world.width / 2], 
-       [-envSpec.world.height / 2, envSpec.world.height / 2]]
+  const bounds =
+    envSpec.world.coordinateSystem === 'grid'
+      ? [
+          [0, envSpec.world.width],
+          [0, envSpec.world.height],
+        ]
+      : [
+          [-envSpec.world.width / 2, envSpec.world.width / 2],
+          [-envSpec.world.height / 2, envSpec.world.height / 2],
+        ]
   newX = Math.max(bounds[0][0], Math.min(bounds[0][1], newX))
   newY = Math.max(bounds[1][0], Math.min(bounds[1][1], newY))
-  
+
   if (envSpec.world.coordinateSystem === 'grid') {
     newX = Math.round(newX)
     newY = Math.round(newY)
@@ -730,9 +785,10 @@ function selectGreedyActionForAgent(
   }
 
   // Try alternatives
-  const alternatives = preferredAction in ['up', 'down'] 
-    ? [dx > 0 ? 'right' : 'left', dx > 0 ? 'left' : 'right']
-    : [dy > 0 ? 'up' : 'down', dy > 0 ? 'down' : 'up']
+  const alternatives =
+    preferredAction in ['up', 'down']
+      ? [dx > 0 ? 'right' : 'left', dx > 0 ? 'left' : 'right']
+      : [dy > 0 ? 'up' : 'down', dy > 0 ? 'down' : 'up']
 
   for (const altAction of alternatives) {
     let altX = ax
@@ -741,14 +797,14 @@ function selectGreedyActionForAgent(
     else if (altAction === 'down') altY -= envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
     else if (altAction === 'left') altX -= envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
     else if (altAction === 'right') altX += envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
-    
+
     altX = Math.max(bounds[0][0], Math.min(bounds[0][1], altX))
     altY = Math.max(bounds[1][0], Math.min(bounds[1][1], altY))
     if (envSpec.world.coordinateSystem === 'grid') {
       altX = Math.round(altX)
       altY = Math.round(altY)
     }
-    
+
     if (!wouldHitObstacle(altX, altY)) {
       return altAction
     }
@@ -762,14 +818,14 @@ function selectGreedyActionForAgent(
     else if (action === 'down') testY -= envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
     else if (action === 'left') testX -= envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
     else if (action === 'right') testX += envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
-    
+
     testX = Math.max(bounds[0][0], Math.min(bounds[0][1], testX))
     testY = Math.max(bounds[1][0], Math.min(bounds[1][1], testY))
     if (envSpec.world.coordinateSystem === 'grid') {
       testX = Math.round(testX)
       testY = Math.round(testY)
     }
-    
+
     if (!wouldHitObstacle(testX, testY)) {
       return action
     }
@@ -786,7 +842,7 @@ function selectGreedyContinuousActionForAgent(
 ): number[] {
   const [ax, ay] = agent.position
   const goals = envSpec.objects.filter((obj) => obj.type === 'goal')
-  
+
   if (goals.length === 0) {
     return [0, 0]
   }
@@ -836,12 +892,12 @@ export function createInitialState(envSpec: EnvSpec): SimulatorState {
   return {
     agents: (envSpec.agents || []).map((a) => ({
       id: a.id,
-      position: Array.isArray(a.position) ? [...a.position] as Vec2 : [0, 0] as Vec2,
+      position: Array.isArray(a.position) ? ([...a.position] as Vec2) : ([0, 0] as Vec2),
       rotation: a.rotation || 0,
     })),
     objects: (envSpec.objects || []).map((o) => ({
       id: o.id,
-      position: Array.isArray(o.position) ? [...o.position] as Vec2 : [0, 0] as Vec2,
+      position: Array.isArray(o.position) ? ([...o.position] as Vec2) : ([0, 0] as Vec2),
       rotation: o.rotation || 0,
       type: o.type,
     })),
@@ -901,12 +957,12 @@ export function validateEnvSpec(envSpec: EnvSpec): { valid: boolean; error?: str
   }
 
   if (envSpec.world.width <= 0 || envSpec.world.height <= 0) {
-    return { valid: false, error: "World width and height must be positive" }
+    return { valid: false, error: 'World width and height must be positive' }
   }
 
   // Check agents
   if (!Array.isArray(envSpec.agents) || envSpec.agents.length === 0) {
-    return { valid: false, error: "Environment must have at least one agent" }
+    return { valid: false, error: 'Environment must have at least one agent' }
   }
 
   // Validate each agent
@@ -928,7 +984,7 @@ export function validateEnvSpec(envSpec: EnvSpec): { valid: boolean; error?: str
 
   // Check action space
   if (!envSpec.actionSpace) {
-    return { valid: false, error: "Action space is required" }
+    return { valid: false, error: 'Action space is required' }
   }
 
   if (envSpec.actionSpace.type === 'discrete') {
@@ -947,9 +1003,16 @@ export function validateEnvSpec(envSpec: EnvSpec): { valid: boolean; error?: str
           if (envSpec.world.coordinateSystem === 'grid') {
             if (x < 0 || x >= envSpec.world.width || y < 0 || y >= envSpec.world.height) {
               // Objects can be slightly out of bounds, but warn if way out
-              if (x < -envSpec.world.width || x > envSpec.world.width * 2 ||
-                  y < -envSpec.world.height || y > envSpec.world.height * 2) {
-                return { valid: false, error: `Object ${i} position (${x}, ${y}) is way out of bounds` }
+              if (
+                x < -envSpec.world.width ||
+                x > envSpec.world.width * 2 ||
+                y < -envSpec.world.height ||
+                y > envSpec.world.height * 2
+              ) {
+                return {
+                  valid: false,
+                  error: `Object ${i} position (${x}, ${y}) is way out of bounds`,
+                }
               }
             }
           }
@@ -959,18 +1022,28 @@ export function validateEnvSpec(envSpec: EnvSpec): { valid: boolean; error?: str
   }
 
   // Validate reward rules - must be defined
-  if (!envSpec.rules || !Array.isArray(envSpec.rules.rewards) || envSpec.rules.rewards.length === 0) {
-    return { 
-      valid: false, 
-      error: "No reward rules defined. Please add reward rules in the Rules panel (right sidebar → Rewards tab)" 
+  if (
+    !envSpec.rules ||
+    !Array.isArray(envSpec.rules.rewards) ||
+    envSpec.rules.rewards.length === 0
+  ) {
+    return {
+      valid: false,
+      error:
+        'No reward rules defined. Please add reward rules in the Rules panel (right sidebar → Rewards tab)',
     }
   }
 
   // Validate termination rules - must be defined
-  if (!envSpec.rules || !Array.isArray(envSpec.rules.terminations) || envSpec.rules.terminations.length === 0) {
-    return { 
-      valid: false, 
-      error: "No termination rules defined. Please add termination rules in the Rules panel (right sidebar → Terminations tab)" 
+  if (
+    !envSpec.rules ||
+    !Array.isArray(envSpec.rules.terminations) ||
+    envSpec.rules.terminations.length === 0
+  ) {
+    return {
+      valid: false,
+      error:
+        'No termination rules defined. Please add termination rules in the Rules panel (right sidebar → Terminations tab)',
     }
   }
 
@@ -1013,13 +1086,13 @@ export function runUniversalRollout(
     steps.push({
       state: {
         ...state,
-        agents: state.agents.map((a) => ({ 
-          ...a, 
-          position: Array.isArray(a.position) ? [...a.position] as Vec2 : [0, 0] as Vec2 
+        agents: state.agents.map((a) => ({
+          ...a,
+          position: Array.isArray(a.position) ? ([...a.position] as Vec2) : ([0, 0] as Vec2),
         })),
-        objects: state.objects.map((o) => ({ 
-          ...o, 
-          position: Array.isArray(o.position) ? [...o.position] as Vec2 : [0, 0] as Vec2 
+        objects: state.objects.map((o) => ({
+          ...o,
+          position: Array.isArray(o.position) ? ([...o.position] as Vec2) : ([0, 0] as Vec2),
         })),
         info: {
           ...state.info,
@@ -1038,23 +1111,24 @@ export function runUniversalRollout(
   if (state.agents.length > 0) {
     const agent = state.agents[0]
     const [ax, ay] = agent.position
-    
+
     // Check if agent is at any goal
     const goals = envSpec.objects.filter((obj) => obj.type === 'goal')
     for (const goal of goals) {
       const [gx, gy] = goal.position
       const distance = Math.sqrt((ax - gx) ** 2 + (ay - gy) ** 2)
-      if (distance < 0.5) {  // Within 0.5 units of goal
+      if (distance < 0.5) {
+        // Within 0.5 units of goal
         success = true
         break
       }
     }
   }
-  
+
   // Also check events for goal-related messages
   if (!success) {
-    success = state.info.events.some((e) => 
-      e.includes('goal') || e.includes('Goal') || e.includes('reached goal')
+    success = state.info.events.some(
+      (e) => e.includes('goal') || e.includes('Goal') || e.includes('reached goal')
     )
   }
 
@@ -1066,4 +1140,3 @@ export function runUniversalRollout(
     terminationReason: state.info.events[state.info.events.length - 1],
   }
 }
-

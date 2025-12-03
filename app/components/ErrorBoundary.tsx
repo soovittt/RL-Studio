@@ -38,12 +38,12 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error
     console.error('ErrorBoundary caught an error:', error, errorInfo)
-    
+
     // Call optional error handler
     if (this.props.onError) {
       this.props.onError(error, errorInfo)
     }
-    
+
     // Update state with error info
     this.setState({
       error,
@@ -86,9 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Something went wrong
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
             </div>
 
             <p className="text-gray-600 mb-4">
@@ -143,4 +141,3 @@ export function useErrorHandler() {
     // Could send to error tracking service here
   }
 }
-

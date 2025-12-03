@@ -53,7 +53,10 @@ export function ModelVersioning({ runId }: ModelVersioningProps) {
         checkpoint_name: selectedCheckpoint,
         version_name: versionName || undefined,
         tags: versionTags
-          ? versionTags.split(',').map((t) => t.trim()).filter(Boolean)
+          ? versionTags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
           : undefined,
         description: versionDescription || undefined,
       }
@@ -197,18 +200,12 @@ export function ModelVersioning({ runId }: ModelVersioningProps) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Checkpoint
-                </label>
-                <div className="px-3 py-2 bg-muted rounded text-sm">
-                  {selectedCheckpoint}
-                </div>
+                <label className="block text-sm font-semibold mb-2">Checkpoint</label>
+                <div className="px-3 py-2 bg-muted rounded text-sm">{selectedCheckpoint}</div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Version Name (optional)
-                </label>
+                <label className="block text-sm font-semibold mb-2">Version Name (optional)</label>
                 <input
                   type="text"
                   value={versionName}
@@ -219,9 +216,7 @@ export function ModelVersioning({ runId }: ModelVersioningProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Tags (comma-separated)
-                </label>
+                <label className="block text-sm font-semibold mb-2">Tags (comma-separated)</label>
                 <input
                   type="text"
                   value={versionTags}
@@ -232,9 +227,7 @@ export function ModelVersioning({ runId }: ModelVersioningProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Description (optional)
-                </label>
+                <label className="block text-sm font-semibold mb-2">Description (optional)</label>
                 <textarea
                   value={versionDescription}
                   onChange={(e) => setVersionDescription(e.target.value)}
@@ -269,4 +262,3 @@ export function ModelVersioning({ runId }: ModelVersioningProps) {
     </div>
   )
 }
-

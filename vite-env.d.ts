@@ -10,6 +10,7 @@ declare module 'vite/client' {
     readonly VITE_ROLLOUT_SERVICE_URL?: string
     readonly VITE_TRAINING_SERVICE_URL?: string
     readonly VITE_CONVEX_URL?: string
+    readonly VITE_CONVEX_DEV_URL?: string
     readonly VITE_SENTRY_DSN?: string
   }
 
@@ -17,4 +18,3 @@ declare module 'vite/client' {
     readonly env: ImportMetaEnv
   }
 }
-

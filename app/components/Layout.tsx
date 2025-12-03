@@ -15,11 +15,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <Link to="/" className="flex items-center gap-3 px-2 py-4 text-xl font-semibold">
-                <img 
-                  src="/images/logo.png" 
-                  alt="RL Studio Logo" 
-                  className="h-8 w-8"
-                />
+                <img src="/images/logo.png" alt="RL Studio Logo" className="h-8 w-8" />
                 RL Studio
               </Link>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -78,4 +74,3 @@ export function Layout({ children }: LayoutProps) {
     </div>
   )
 }
-

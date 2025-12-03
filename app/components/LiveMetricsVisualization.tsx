@@ -169,9 +169,21 @@ export function LiveMetricsVisualization({
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="loss" stroke="#82ca9d" strokeWidth={2} name="Policy Loss" />
+              <Line
+                type="monotone"
+                dataKey="loss"
+                stroke="#82ca9d"
+                strokeWidth={2}
+                name="Policy Loss"
+              />
               {chartData.some((d) => d.valueLoss && d.valueLoss > 0) && (
-                <Line type="monotone" dataKey="valueLoss" stroke="#ffc658" strokeWidth={2} name="Value Loss" />
+                <Line
+                  type="monotone"
+                  dataKey="valueLoss"
+                  stroke="#ffc658"
+                  strokeWidth={2}
+                  name="Value Loss"
+                />
               )}
             </LineChart>
           </ResponsiveContainer>
@@ -205,4 +217,3 @@ export function LiveMetricsVisualization({
     </div>
   )
 }
-

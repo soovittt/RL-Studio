@@ -19,9 +19,7 @@ export function StudioLayout({
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Top Bar */}
-      <div className="border-b border-border bg-card flex-shrink-0">
-        {topBar}
-      </div>
+      <div className="border-b border-border bg-card flex-shrink-0">{topBar}</div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
@@ -33,17 +31,13 @@ export function StudioLayout({
           maxSize={500}
           storageKey="rl-studio-left-sidebar-width"
         >
-          <div className="h-full border-r border-border bg-card overflow-y-auto">
-            {leftSidebar}
-          </div>
+          <div className="h-full border-r border-border bg-card overflow-y-auto">{leftSidebar}</div>
         </ResizablePanel>
 
         {/* Center Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 overflow-auto bg-muted/20 p-4 min-h-0">
-            {centerCanvas}
-          </div>
-          
+          <div className="flex-1 overflow-auto bg-muted/20 p-4 min-h-0">{centerCanvas}</div>
+
           {/* Bottom Panel - Resizable */}
           <ResizablePanel
             direction="vertical"
@@ -68,12 +62,9 @@ export function StudioLayout({
           storageKey="rl-studio-right-panel-width"
           resizeFrom="start"
         >
-          <div className="h-full border-l border-border bg-card overflow-y-auto">
-            {rightPanel}
-          </div>
+          <div className="h-full border-l border-border bg-card overflow-y-auto">{rightPanel}</div>
         </ResizablePanel>
       </div>
     </div>
   )
 }
-

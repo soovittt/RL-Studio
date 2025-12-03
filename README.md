@@ -134,6 +134,7 @@ RL Studio is a comprehensive platform that brings together environment design, t
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: [TanStack Start](https://tanstack.com/start) (React SSR)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
@@ -142,6 +143,7 @@ RL Studio is a comprehensive platform that brings together environment design, t
 - **Charts**: Recharts
 
 ### Backend
+
 - **API**: FastAPI (Python) with GraphQL support
 - **GraphQL**: Strawberry GraphQL (type-safe, efficient queries)
 - **Database**: Convex (realtime DB)
@@ -150,6 +152,7 @@ RL Studio is a comprehensive platform that brings together environment design, t
 - **Analysis**: NumPy, SciPy, scikit-learn
 
 ### Infrastructure
+
 - **Frontend Hosting**: Netlify
 - **Backend Hosting**: Google Cloud Run / AWS ECS / Railway
 - **Database**: Convex Cloud
@@ -212,8 +215,9 @@ npm run dev  # Terminal 2
 ```
 
 The setup script automatically:
+
 - ✅ Installs all dependencies
-- ✅ Creates virtual environments  
+- ✅ Creates virtual environments
 - ✅ Sets up infrastructure
 - ✅ Creates .env templates
 
@@ -254,6 +258,7 @@ npx convex dev
 ```
 
 This will:
+
 - Create a Convex account if needed (free tier available)
 - Set up your local development environment
 - Generate YOUR deployment URL (e.g., https://your-deployment.convex.cloud)
@@ -274,6 +279,7 @@ This creates sample data so you can develop without needing production data.
 RL Studio supports multiple cloud providers and local development:
 
 **Quick Start (Local Only - No Cloud Required):**
+
 ```bash
 # Everything runs locally - no cloud setup needed!
 # Just set your Convex URL from step 3
@@ -284,6 +290,7 @@ export CONVEX_URL=https://your-deployment.convex.cloud
 See `INFRASTRUCTURE_SETUP.md` for detailed instructions. It's very easy - just set environment variables!
 
 **Quick Example (AWS S3):**
+
 ```bash
 export STORAGE_PROVIDER=s3
 export S3_BUCKET_NAME=rl-studio-models
@@ -383,6 +390,14 @@ AWS_DEFAULT_REGION=us-east-1
 CONVEX_URL=https://your-deployment-name.convex.cloud
 
 # ============================================
+# RESEND EMAIL SERVICE (OPTIONAL - For Email Sending)
+# ============================================
+# Get your API key from: https://resend.com/api-keys
+# Required for sending OTP verification emails and notifications
+RESEND_API_KEY=re_your-api-key-here
+RESEND_FROM_EMAIL=onboarding@resend.dev  # Or your verified domain email
+
+# ============================================
 # SERVER CONFIGURATION (OPTIONAL)
 # ============================================
 # These have sensible defaults, only change if needed
@@ -406,15 +421,15 @@ npx convex env set CODERABBIT_API_KEY your-coderabbit-key
 
 #### 📋 Environment Variables Quick Reference
 
-| Variable | Location | Required | Description |
-|----------|----------|-----------|-------------|
-| `VITE_CONVEX_URL` | Root `.env` | ✅ Yes | Your Convex deployment URL |
-| `OPENAI_API_KEY` | Root `.env` & `backend/.env` | ❌ No | For AI code generation |
-| `FIRECRAWL_API_KEY` | Root `.env` & Convex | ❌ No | For paper import feature |
-| `AWS_ACCESS_KEY_ID` | `backend/.env` | ❌ No | For GPU training jobs |
-| `AWS_SECRET_ACCESS_KEY` | `backend/.env` | ❌ No | For GPU training jobs |
-| `VITE_ROLLOUT_SERVICE_URL` | Root `.env` | ❌ No | Backend URL (defaults to localhost) |
-| `VITE_API_URL` | Root `.env` | ❌ No | Backend API URL (defaults to localhost) |
+| Variable                   | Location                     | Required | Description                             |
+| -------------------------- | ---------------------------- | -------- | --------------------------------------- |
+| `VITE_CONVEX_URL`          | Root `.env`                  | ✅ Yes   | Your Convex deployment URL              |
+| `OPENAI_API_KEY`           | Root `.env` & `backend/.env` | ❌ No    | For AI code generation                  |
+| `FIRECRAWL_API_KEY`        | Root `.env` & Convex         | ❌ No    | For paper import feature                |
+| `AWS_ACCESS_KEY_ID`        | `backend/.env`               | ❌ No    | For GPU training jobs                   |
+| `AWS_SECRET_ACCESS_KEY`    | `backend/.env`               | ❌ No    | For GPU training jobs                   |
+| `VITE_ROLLOUT_SERVICE_URL` | Root `.env`                  | ❌ No    | Backend URL (defaults to localhost)     |
+| `VITE_API_URL`             | Root `.env`                  | ❌ No    | Backend API URL (defaults to localhost) |
 
 #### 🔒 Security Notes
 
@@ -449,10 +464,12 @@ npx convex env set CODERABBIT_API_KEY your-coderabbit-key
 ### What Gets Seeded
 
 **8 Templates:**
+
 - Basic Gridworld, Cliff Walking, Key & Door, Maze, Multi-Agent Grid
 - 2D Continuous Navigation, 3D Navigation, Driving Simulator
 
 **25+ Assets:**
+
 - Grid tiles: Agent, Goal, Wall, Key, Door, Trap, Checkpoint, etc.
 - Vehicles: Car, Truck
 - 3D assets: 3D Agent, 3D Obstacle, Platform
@@ -466,23 +483,27 @@ npx convex env set CODERABBIT_API_KEY your-coderabbit-key
 ### Getting Your User ID
 
 **Method 1: Browser Console**
+
 ```javascript
 // Open browser console (F12) and run:
 localStorage.getItem('rl_studio_user_id')
 ```
 
 **Method 2: Convex Dashboard**
+
 - Go to https://dashboard.convex.dev
 - Select your project → "Data" → "users" table
 - Copy any user's `_id`
 
 **Method 3: From Existing Environment**
+
 - Open any environment in the app
 - Check its `ownerId` in Convex dashboard
 
 ### Alternative Seeding Methods
 
 **Using Python:**
+
 ```bash
 cd backend
 source venv/bin/activate
@@ -490,6 +511,7 @@ python -m rl_studio.api.seed_database <user_id> [project_id]
 ```
 
 **Using API:**
+
 ```bash
 # Seed everything
 curl -X POST http://localhost:8000/api/admin/seed/all \
@@ -498,6 +520,7 @@ curl -X POST http://localhost:8000/api/admin/seed/all \
 ```
 
 **Verify setup:**
+
 ```bash
 python -m rl_studio.api.verify_setup <user_id> <project_id>
 ```
@@ -547,11 +570,13 @@ npx convex dev
 ```
 
 This will output a URL like:
+
 ```
 https://your-deployment-name.convex.cloud
 ```
 
 **Add this to your root `.env` file:**
+
 ```bash
 VITE_CONVEX_URL=https://your-deployment-name.convex.cloud
 ```
@@ -564,11 +589,13 @@ If you want to use AI-powered code generation:
 2. Add to both `.env` files:
 
 **Root `.env`:**
+
 ```bash
 OPENAI_API_KEY=sk-proj-...your-key-here
 ```
 
 **`backend/.env`:**
+
 ```bash
 OPENAI_API_KEY=sk-proj-...your-key-here
 ```
@@ -579,10 +606,13 @@ If you want to import environments from research papers:
 
 1. Get an API key from [Firecrawl](https://firecrawl.dev)
 2. Add to root `.env`:
+
 ```bash
 FIRECRAWL_API_KEY=fc-...your-key-here
 ```
+
 3. Also set in Convex:
+
 ```bash
 npx convex env set FIRECRAWL_API_KEY fc-...your-key-here
 ```
@@ -594,6 +624,7 @@ If you want to launch GPU training jobs:
 1. Create an AWS account
 2. Create an IAM user with programmatic access
 3. Add credentials to `backend/.env`:
+
 ```bash
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
@@ -697,12 +728,12 @@ npm run dev
 
 ### 🆘 Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| `VITE_CONVEX_URL is not set` | Run `npx convex dev` and add the URL to `.env` |
-| `Backend connection failed` | Make sure backend is running on port 8000 |
-| `OpenAI API key invalid` | Check that your key starts with `sk-` |
-| `AWS credentials not found` | Only needed for GPU training, can be skipped for local dev |
+| Issue                        | Solution                                                   |
+| ---------------------------- | ---------------------------------------------------------- |
+| `VITE_CONVEX_URL is not set` | Run `npx convex dev` and add the URL to `.env`             |
+| `Backend connection failed`  | Make sure backend is running on port 8000                  |
+| `OpenAI API key invalid`     | Check that your key starts with `sk-`                      |
+| `AWS credentials not found`  | Only needed for GPU training, can be skipped for local dev |
 
 ### 🔐 Security Best Practices
 
@@ -751,6 +782,7 @@ npm run dev
 #### RL Analysis
 
 After running rollouts, use the **"RL Analysis"** tab to:
+
 - **Reward Decomposition**: See which rules contribute most to rewards
 - **Trajectory Visualization**: View agent paths and detect attractors
 - **Policy Entropy**: Measure exploration vs exploitation
@@ -781,6 +813,7 @@ RL Studio uses **GraphQL as the primary API** for all core operations. The Graph
 #### Example Queries
 
 **List Assets:**
+
 ```graphql
 query {
   assets(filter: { mode: "grid" }) {
@@ -794,6 +827,7 @@ query {
 ```
 
 **Get Single Asset:**
+
 ```graphql
 query {
   asset(id: "asset_id_here") {
@@ -808,13 +842,12 @@ query {
 ```
 
 **Create Asset:**
+
 ```graphql
 mutation {
-  createAsset(input: {
-    name: "My Asset"
-    assetTypeKey: "tile"
-    visualProfile: "{\"color\": \"#FF0000\"}"
-  }) {
+  createAsset(
+    input: { name: "My Asset", assetTypeKey: "tile", visualProfile: "{\"color\": \"#FF0000\"}" }
+  ) {
     id
     name
   }
@@ -822,6 +855,7 @@ mutation {
 ```
 
 **List Scenes:**
+
 ```graphql
 query {
   scenes(filter: { search: "gridworld" }) {
@@ -834,13 +868,16 @@ query {
 ```
 
 **Run Rollout:**
+
 ```graphql
 mutation {
-  runRollout(input: {
-    envSpec: "{\"world\": {\"width\": 10, \"height\": 10}}"
-    policy: "random"
-    maxSteps: 100
-  }) {
+  runRollout(
+    input: {
+      envSpec: "{\"world\": {\"width\": 10, \"height\": 10}}"
+      policy: "random"
+      maxSteps: 100
+    }
+  ) {
     success
     totalReward
     episodeLength
@@ -854,14 +891,17 @@ mutation {
 ```
 
 **Launch Training:**
+
 ```graphql
 mutation {
-  launchTraining(input: {
-    runId: "run_123"
-    envSpec: "{\"world\": {\"width\": 10}}"
-    config: "{\"algorithm\": \"ppo\"}"
-    useManagedJobs: true
-  }) {
+  launchTraining(
+    input: {
+      runId: "run_123"
+      envSpec: "{\"world\": {\"width\": 10}}"
+      config: "{\"algorithm\": \"ppo\"}"
+      useManagedJobs: true
+    }
+  ) {
     id
     status {
       status
@@ -872,6 +912,7 @@ mutation {
 ```
 
 **Training Status:**
+
 ```graphql
 query {
   trainingStatus(jobId: "job_123") {
@@ -884,17 +925,20 @@ query {
 ```
 
 **Research Operations:**
+
 ```graphql
 # Hyperparameter Sweep
 mutation {
-  generateHyperparameterSweep(input: {
-    algorithm: "ppo"
-    envSpec: "{...}"
-    baseConfig: "{...}"
-    searchSpace: "{...}"
-    searchType: "grid"
-    nTrials: 10
-  }) {
+  generateHyperparameterSweep(
+    input: {
+      algorithm: "ppo"
+      envSpec: "{...}"
+      baseConfig: "{...}"
+      searchSpace: "{...}"
+      searchType: "grid"
+      nTrials: 10
+    }
+  ) {
     success
     nTrials
     trials {
@@ -906,11 +950,7 @@ mutation {
 
 # Compare Runs
 mutation {
-  compareRuns(input: {
-    runResults: "[{...}]"
-    metric: "mean_reward"
-    alpha: 0.05
-  }) {
+  compareRuns(input: { runResults: "[{...}]", metric: "mean_reward", alpha: 0.05 }) {
     success
     comparison {
       metric
@@ -928,7 +968,7 @@ query {
     path
     createdAt
   }
-  
+
   listModelVersions(runId: "run_123") {
     versionName
     checkpointName
@@ -939,12 +979,11 @@ query {
 ```
 
 **W&B Integration:**
+
 ```graphql
 # Test Connection
 mutation {
-  testWandbConnection(input: {
-    apiKey: "your-api-key"
-  }) {
+  testWandbConnection(input: { apiKey: "your-api-key" }) {
     success
     message
     wandbAuthenticated
@@ -988,6 +1027,7 @@ Some operations still use REST endpoints (not yet migrated to GraphQL):
 - `/api/ingestion/*` - Data ingestion
 
 **API Documentation**:
+
 - **GraphQL Playground**: http://localhost:8000/graphql (interactive query explorer with auto-completion)
 - **Swagger UI**: http://localhost:8000/docs (for REST endpoints)
 - **ReDoc**: http://localhost:8000/redoc
@@ -1078,6 +1118,7 @@ The system uses a flexible schema stored in Convex:
 ### API Services
 
 **GraphQL (Primary API):**
+
 - **Assets**: `assets`, `asset`, `createAsset`, `updateAsset`, `deleteAsset` mutations/queries
 - **Scenes**: `scenes`, `scene`, `createScene`, `updateScene`, `createSceneVersion` mutations/queries
 - **Training**: `launchTraining`, `stopTraining`, `trainingStatus` mutations/queries
@@ -1085,6 +1126,7 @@ The system uses a flexible schema stored in Convex:
 - **Research**: `generateHyperparameterSweep`, `compareRuns`, `calculateConfidenceInterval`, `calculateEffectSize`, model versioning, W&B/MLflow operations
 
 **Additional Services (REST):**
+
 - **Template Service** (`/api/templates`): Template management
 - **Compile Service** (`/api/compile`): Scene compilation
 - **WebSocket** (`/ws/rollout`): Real-time rollout streaming
@@ -1101,10 +1143,12 @@ The system uses a flexible schema stored in Convex:
 The system comes with pre-built assets and templates:
 
 **Assets:**
+
 - Grid tiles: Wall, Agent, Goal, Key, Door, Trap, Checkpoint, Moving Obstacle, Floor, Spawn Point
 - All assets include visual profiles (colors, sizes), physics profiles (colliders, mass), and behavior profiles
 
 **Templates:**
+
 - Basic Gridworld: Simple 10×10 grid with agent and goal
 - Cliff Walking: Agent must avoid cliff cells
 - Key & Door Grid: Sequential task requiring key collection
@@ -1151,6 +1195,7 @@ template = await create_template(
 ### Asset Management
 
 Assets can be:
+
 - **Created**: Define new reusable assets with visual, physics, and behavior profiles
 - **Cloned**: Copy global assets to project scope or duplicate within same scope
 - **Updated**: Modify asset properties while maintaining references
@@ -1160,12 +1205,14 @@ Assets can be:
 ### Template Management
 
 Templates can be:
+
 - **Created**: Save any scene version as a reusable template
 - **Listed**: Filter by mode, category, or public/private status
 - **Instantiated**: Clone templates into new scenes with copied scene graphs and RL configs
 - **Shared**: Mark templates as public for team-wide access
 
 For more details, see the API documentation and code in:
+
 - **GraphQL API** (Primary): `backend/rl_studio/api/graphql/` - Complete GraphQL implementation
   - Types: `backend/rl_studio/api/graphql/types/` - GraphQL type definitions
   - Resolvers: `backend/rl_studio/api/graphql/resolvers/` - Query/mutation resolvers

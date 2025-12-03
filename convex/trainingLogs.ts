@@ -16,7 +16,12 @@ export const get = query({
 export const append = mutation({
   args: {
     runId: v.id('runs'),
-    logLevel: v.union(v.literal('info'), v.literal('warning'), v.literal('error'), v.literal('debug')),
+    logLevel: v.union(
+      v.literal('info'),
+      v.literal('warning'),
+      v.literal('error'),
+      v.literal('debug')
+    ),
     message: v.string(),
     metadata: v.optional(v.any()),
   },
@@ -35,17 +40,11 @@ export const clear = mutation({
       .query('trainingLogs')
       .withIndex('by_run', (q) => q.eq('runId', args.runId))
       .collect()
-    
+
     for (const log of logs) {
       await ctx.db.delete(log._id)
     }
-    
+
     return { deleted: logs.length }
   },
 })
-
-
-
-
-
-

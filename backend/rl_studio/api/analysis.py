@@ -95,8 +95,17 @@ async def analyze_reward_streaming(websocket: WebSocket):
         logger.error(f"Reward analysis streaming failed: {e}", exc_info=True)
         try:
             await websocket.send_json({"type": "error", "error": str(e)})
-        except:
-            pass
+        except Exception as send_error:
+            logger.error(
+                f"Failed to send error to WebSocket client: {send_error}",
+                exc_info=True,
+                extra={"original_error": str(e), "original_error_type": type(e).__name__},
+            )
+            # Close connection if we can't send error
+            try:
+                await websocket.close(code=1011, reason="Internal server error")
+            except Exception:
+                pass  # Connection may already be closed
 
 
 @router.post("/reward/multiple")
@@ -168,8 +177,17 @@ async def analyze_trajectory_streaming(websocket: WebSocket):
         logger.error(f"Trajectory analysis streaming failed: {e}", exc_info=True)
         try:
             await websocket.send_json({"type": "error", "error": str(e)})
-        except:
-            pass
+        except Exception as send_error:
+            logger.error(
+                f"Failed to send error to WebSocket client: {send_error}",
+                exc_info=True,
+                extra={"original_error": str(e), "original_error_type": type(e).__name__},
+            )
+            # Close connection if we can't send error
+            try:
+                await websocket.close(code=1011, reason="Internal server error")
+            except Exception:
+                pass  # Connection may already be closed
 
 
 @router.post("/trajectory/multiple")
@@ -260,8 +278,17 @@ async def analyze_multiple_terminations_streaming(websocket: WebSocket):
         logger.error(f"Termination analysis streaming failed: {e}", exc_info=True)
         try:
             await websocket.send_json({"type": "error", "error": str(e)})
-        except:
-            pass
+        except Exception as send_error:
+            logger.error(
+                f"Failed to send error to WebSocket client: {send_error}",
+                exc_info=True,
+                extra={"original_error": str(e), "original_error_type": type(e).__name__},
+            )
+            # Close connection if we can't send error
+            try:
+                await websocket.close(code=1011, reason="Internal server error")
+            except Exception:
+                pass  # Connection may already be closed
 
 
 @router.post("/diagnostics")

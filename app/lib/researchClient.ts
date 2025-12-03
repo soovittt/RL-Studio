@@ -58,7 +58,7 @@ export async function generateHyperparameterSweep(
 
   try {
     const data = await mutate<{ generateHyperparameterSweep: any }>(gqlMutation, variables)
-    
+
     if (!data?.generateHyperparameterSweep) {
       throw new Error('Failed to generate hyperparameter sweep')
     }
@@ -66,10 +66,11 @@ export async function generateHyperparameterSweep(
     const result = data.generateHyperparameterSweep
 
     // Convert GraphQL response to expected format
-    const trials = result.trials?.map((trial: any) => ({
-      ...JSON.parse(trial.hyperparameters),
-      expected_reward: trial.expectedReward,
-    })) || []
+    const trials =
+      result.trials?.map((trial: any) => ({
+        ...JSON.parse(trial.hyperparameters),
+        expected_reward: trial.expectedReward,
+      })) || []
 
     return {
       success: result.success,
@@ -124,9 +125,7 @@ export interface CompareRunsResponse {
   error?: string
 }
 
-export async function compareRuns(
-  request: CompareRunsRequest
-): Promise<CompareRunsResponse> {
+export async function compareRuns(request: CompareRunsRequest): Promise<CompareRunsResponse> {
   const gqlMutation = `
     mutation CompareRuns($input: CompareRunsInput!) {
       compareRuns(input: $input) {
@@ -157,7 +156,7 @@ export async function compareRuns(
 
   try {
     const data = await mutate<{ compareRuns: any }>(gqlMutation, variables)
-    
+
     if (!data?.compareRuns) {
       throw new Error('Failed to compare runs')
     }
@@ -235,7 +234,7 @@ export async function calculateConfidenceInterval(
 
   try {
     const data = await mutate<{ calculateConfidenceInterval: any }>(gqlMutation, variables)
-    
+
     if (!data?.calculateConfidenceInterval) {
       throw new Error('Failed to calculate confidence interval')
     }
@@ -268,9 +267,7 @@ export interface EffectSizeResponse {
   error?: string
 }
 
-export async function calculateEffectSize(
-  request: EffectSizeRequest
-): Promise<EffectSizeResponse> {
+export async function calculateEffectSize(request: EffectSizeRequest): Promise<EffectSizeResponse> {
   const gqlMutation = `
     mutation CalculateEffectSize($input: EffectSizeInput!) {
       calculateEffectSize(input: $input) {
@@ -294,7 +291,7 @@ export async function calculateEffectSize(
 
   try {
     const data = await mutate<{ calculateEffectSize: any }>(gqlMutation, variables)
-    
+
     if (!data?.calculateEffectSize) {
       throw new Error('Failed to calculate effect size')
     }
@@ -355,7 +352,7 @@ export async function listCheckpoints(runId: string): Promise<Checkpoint[]> {
 
   try {
     const data = await query<{ listCheckpoints: any[] }>(gqlQuery, { runId })
-    
+
     if (!data?.listCheckpoints) {
       return []
     }
@@ -391,7 +388,7 @@ export async function listModelVersions(runId: string): Promise<ModelVersion[]> 
 
   try {
     const data = await query<{ listModelVersions: any[] }>(gqlQuery, { runId })
-    
+
     if (!data?.listModelVersions) {
       return []
     }
@@ -458,7 +455,7 @@ export async function createModelVersion(
 
   try {
     const data = await mutate<{ createModelVersion: any }>(gqlMutation, variables)
-    
+
     if (!data?.createModelVersion) {
       throw new Error('Failed to create model version')
     }
@@ -520,9 +517,7 @@ export function getExperimentTrackingSettings(): ExperimentTrackingSettings {
   return { backend: 'local' }
 }
 
-export function saveExperimentTrackingSettings(
-  settings: ExperimentTrackingSettings
-): void {
+export function saveExperimentTrackingSettings(settings: ExperimentTrackingSettings): void {
   if (typeof window === 'undefined') return
 
   // Don't store API keys in plain text in production - this is a demo
@@ -530,7 +525,9 @@ export function saveExperimentTrackingSettings(
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
 }
 
-export async function testWandbConnection(apiKey: string): Promise<{ success: boolean; message?: string }> {
+export async function testWandbConnection(
+  apiKey: string
+): Promise<{ success: boolean; message?: string }> {
   const gqlMutation = `
     mutation TestWandbConnection($input: TestWandbConnectionInput!) {
       testWandbConnection(input: $input) {
@@ -549,7 +546,7 @@ export async function testWandbConnection(apiKey: string): Promise<{ success: bo
 
   try {
     const data = await mutate<{ testWandbConnection: any }>(gqlMutation, variables)
-    
+
     if (!data?.testWandbConnection) {
       throw new Error('Failed to test W&B connection')
     }
@@ -564,7 +561,7 @@ export async function testWandbConnection(apiKey: string): Promise<{ success: bo
       settings.wandbApiKey = apiKey // Store the key
       saveExperimentTrackingSettings(settings)
     }
-    
+
     return { success: result.success === true, message: result.message }
   } catch (error) {
     console.error('Failed to test W&B connection:', error)
@@ -572,7 +569,9 @@ export async function testWandbConnection(apiKey: string): Promise<{ success: bo
   }
 }
 
-export async function testMlflowConnection(trackingUri?: string): Promise<{ success: boolean; message?: string }> {
+export async function testMlflowConnection(
+  trackingUri?: string
+): Promise<{ success: boolean; message?: string }> {
   const gqlMutation = `
     mutation TestMlflowConnection($input: TestMlflowConnectionInput!) {
       testMlflowConnection(input: $input) {
@@ -590,7 +589,7 @@ export async function testMlflowConnection(trackingUri?: string): Promise<{ succ
 
   try {
     const data = await mutate<{ testMlflowConnection: any }>(gqlMutation, variables)
-    
+
     if (!data?.testMlflowConnection) {
       throw new Error('Failed to test MLflow connection')
     }
@@ -605,7 +604,7 @@ export async function testMlflowConnection(trackingUri?: string): Promise<{ succ
       settings.mlflowTrackingUri = trackingUri
       saveExperimentTrackingSettings(settings)
     }
-    
+
     return { success: result.success === true, message: result.message }
   } catch (error) {
     console.error('Failed to test MLflow connection:', error)
@@ -637,7 +636,11 @@ export interface WandbMetrics {
   url: string
 }
 
-export async function fetchWandbRun(runId: string, project?: string, apiKey?: string): Promise<WandbMetrics | null> {
+export async function fetchWandbRun(
+  runId: string,
+  project?: string,
+  apiKey?: string
+): Promise<WandbMetrics | null> {
   try {
     const settings = getExperimentTrackingSettings()
     const effectiveApiKey = apiKey || settings.wandbApiKey
@@ -736,4 +739,3 @@ export async function listWandbRuns(projectName?: string): Promise<WandbRun[]> {
     return []
   }
 }
-

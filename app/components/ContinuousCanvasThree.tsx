@@ -25,7 +25,7 @@ const OBJECT_COLORS: Record<ObjectType, [number, number, number]> = {
   region: [0.99, 0.94, 0.54],
   checkpoint: [0.66, 0.33, 0.96],
   trap: [0.94, 0.27, 0.27],
-  key: [0.92, 0.70, 0.02],
+  key: [0.92, 0.7, 0.02],
   door: [0.97, 0.45, 0.09],
   custom: [0.61, 0.64, 0.64],
 }
@@ -44,11 +44,11 @@ const OBJECT_EMISSIVE: Record<ObjectType, [number, number, number]> = {
 }
 
 // Object Component
-function ObjectMesh({ 
-  object, 
+function ObjectMesh({
+  object,
   isSelected,
   onClick,
-  onRightClick 
+  onRightClick,
 }: {
   object: ObjectSpec
   isSelected: boolean
@@ -58,8 +58,12 @@ function ObjectMesh({
   const color = OBJECT_COLORS[object.type]
   const emissive = OBJECT_EMISSIVE[object.type]
   const [x, y] = object.position
-  const radius = object.size.type === 'circle' ? object.size.radius : 
-                 object.size.type === 'rect' ? Math.max(object.size.width, object.size.height) / 2 : 0.5
+  const radius =
+    object.size.type === 'circle'
+      ? object.size.radius
+      : object.size.type === 'rect'
+        ? Math.max(object.size.width, object.size.height) / 2
+        : 0.5
 
   return (
     <group position={[x, 0, y]}>
@@ -103,11 +107,7 @@ function ObjectMesh({
       {(object.type === 'goal' || object.type === 'agent') && (
         <mesh position={[0, 0.3, 0]}>
           <sphereGeometry args={[radius * 0.3, 16, 16]} />
-          <meshStandardMaterial
-            color={color}
-            emissive={emissive}
-            emissiveIntensity={1.5}
-          />
+          <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={1.5} />
         </mesh>
       )}
     </group>
@@ -115,11 +115,11 @@ function ObjectMesh({
 }
 
 // Agent Component
-function AgentMesh({ 
-  agent, 
+function AgentMesh({
+  agent,
   isSelected,
   onClick,
-  onRightClick 
+  onRightClick,
 }: {
   agent: { id: string; position: Vec2 }
   isSelected: boolean
@@ -165,26 +165,22 @@ function AgentMesh({
       )}
       <mesh position={[0, 0.5, 0]}>
         <sphereGeometry args={[0.2, 16, 16]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={emissive}
-          emissiveIntensity={1.2}
-        />
+        <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={1.2} />
       </mesh>
     </group>
   )
 }
 
 // Scene Content
-function SceneContent({ 
-  envSpec, 
+function SceneContent({
+  envSpec,
   rolloutState,
   onObjectClick,
   onObjectRightClick,
   onAgentClick,
   onAgentRightClick,
   selectedObjectId,
-  selectedAgentId 
+  selectedAgentId,
 }: {
   envSpec: EnvSpec
   rolloutState?: { agents: Array<{ id: string; position: Vec2 }> }
@@ -196,11 +192,22 @@ function SceneContent({
   selectedAgentId?: string
 }) {
   const world = envSpec.world
-  const bounds = world.coordinateSystem === 'cartesian' 
-    ? [[-world.width/2, world.width/2], [-world.height/2, world.height/2]]
-    : [[0, world.width], [0, world.height]]
+  const bounds =
+    world.coordinateSystem === 'cartesian'
+      ? [
+          [-world.width / 2, world.width / 2],
+          [-world.height / 2, world.height / 2],
+        ]
+      : [
+          [0, world.width],
+          [0, world.height],
+        ]
 
-  const agents = rolloutState?.agents || (Array.isArray(envSpec.agents) ? envSpec.agents.map(a => ({ id: a.id, position: a.position })) : [])
+  const agents =
+    rolloutState?.agents ||
+    (Array.isArray(envSpec.agents)
+      ? envSpec.agents.map((a) => ({ id: a.id, position: a.position }))
+      : [])
 
   return (
     <>
@@ -224,26 +231,28 @@ function SceneContent({
       />
 
       {/* Objects */}
-      {Array.isArray(envSpec.objects) && envSpec.objects.map((obj) => (
-        <ObjectMesh
-          key={obj.id}
-          object={obj}
-          isSelected={selectedObjectId === obj.id}
-          onClick={() => onObjectClick(obj)}
-          onRightClick={(e) => onObjectRightClick(e, obj)}
-        />
-      ))}
+      {Array.isArray(envSpec.objects) &&
+        envSpec.objects.map((obj) => (
+          <ObjectMesh
+            key={obj.id}
+            object={obj}
+            isSelected={selectedObjectId === obj.id}
+            onClick={() => onObjectClick(obj)}
+            onRightClick={(e) => onObjectRightClick(e, obj)}
+          />
+        ))}
 
       {/* Agents */}
-      {Array.isArray(agents) && agents.map((agent) => (
-        <AgentMesh
-          key={agent.id}
-          agent={agent}
-          isSelected={selectedAgentId === agent.id}
-          onClick={() => onAgentClick(agent.id)}
-          onRightClick={(e) => onAgentRightClick(e, agent.id)}
-        />
-      ))}
+      {Array.isArray(agents) &&
+        agents.map((agent) => (
+          <AgentMesh
+            key={agent.id}
+            agent={agent}
+            isSelected={selectedAgentId === agent.id}
+            onClick={() => onAgentClick(agent.id)}
+            onRightClick={(e) => onAgentRightClick(e, agent.id)}
+          />
+        ))}
 
       {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
@@ -254,7 +263,12 @@ function SceneContent({
   )
 }
 
-export function ContinuousCanvasThree({ envSpec, sceneGraph, onSpecChange, rolloutState }: ContinuousCanvasThreeProps) {
+export function ContinuousCanvasThree({
+  envSpec,
+  sceneGraph,
+  onSpecChange,
+  rolloutState,
+}: ContinuousCanvasThreeProps) {
   const { selection, selectObject, selectAgent } = useSelection()
   const [selectedTool, setSelectedTool] = useState<ObjectType>('agent')
 
@@ -336,7 +350,7 @@ export function ContinuousCanvasThree({ envSpec, sceneGraph, onSpecChange, rollo
             position={[maxDim * 0.8, maxDim * 0.8, maxDim * 0.8]}
             fov={50}
           />
-          
+
           <SceneContent
             envSpec={envSpec}
             rolloutState={rolloutState}
@@ -366,9 +380,9 @@ export function ContinuousCanvasThree({ envSpec, sceneGraph, onSpecChange, rollo
 
       {/* Info */}
       <div className="p-2 text-sm text-muted-foreground border-t border-border bg-card">
-        World: {world.width} × {world.height} | Objects: {envSpec.objects.length} | Agents: {envSpec.agents.length}
+        World: {world.width} × {world.height} | Objects: {envSpec.objects.length} | Agents:{' '}
+        {envSpec.agents.length}
       </div>
     </div>
   )
 }
-

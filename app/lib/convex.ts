@@ -1,28 +1,47 @@
 import { ConvexReactClient } from 'convex/react'
 
-// Get Convex URL with proper validation
+// Get Convex URL with proper validation and dev/prod detection
 const getConvexUrl = (): string => {
-  const url = import.meta.env.VITE_CONVEX_URL || ''
-  
-  // In development, warn if missing
-  if (import.meta.env.MODE === 'development' && !url) {
-    console.warn(
-      '⚠️ VITE_CONVEX_URL is not set. Please run "npx convex dev" and add the URL to your .env file.'
-    )
+  const isDev = import.meta.env.MODE === 'development'
+
+  // In development, prefer VITE_CONVEX_DEV_URL if set, otherwise use VITE_CONVEX_URL
+  // This allows you to have separate dev and prod Convex deployments
+  const devUrl = import.meta.env.VITE_CONVEX_DEV_URL
+  const prodUrl = import.meta.env.VITE_CONVEX_URL
+
+  let url = ''
+
+  if (isDev) {
+    // Development mode: prefer dev URL, fallback to prod URL
+    url = devUrl || prodUrl || ''
+
+    if (!url) {
+      console.warn(
+        '⚠️ VITE_CONVEX_URL or VITE_CONVEX_DEV_URL is not set. Please run "npx convex dev" and add the URL to your .env file.'
+      )
+    } else if (devUrl) {
+      console.log('🔧 Using Convex DEV URL:', devUrl)
+    } else if (prodUrl) {
+      console.warn('⚠️ Using PRODUCTION Convex URL in development mode:', prodUrl)
+      console.warn('   Consider setting VITE_CONVEX_DEV_URL for local development')
+    }
+  } else {
+    // Production mode: use VITE_CONVEX_URL
+    url = prodUrl || ''
+
+    if (!url) {
+      throw new Error(
+        'VITE_CONVEX_URL is required in production. Please set it in your environment variables.'
+      )
+    }
+    console.log('🚀 Using Convex PRODUCTION URL:', url)
   }
-  
-  // In production, throw error if missing (required)
-  if (import.meta.env.MODE === 'production' && !url) {
-    throw new Error(
-      'VITE_CONVEX_URL is required in production. Please set it in your environment variables.'
-    )
-  }
-  
+
   // Validate URL format
   if (url && !url.startsWith('https://') && !url.startsWith('http://')) {
-    console.warn('⚠️ VITE_CONVEX_URL should be a valid URL starting with https://')
+    console.warn('⚠️ Convex URL should be a valid URL starting with https://')
   }
-  
+
   return url
 }
 
@@ -55,7 +74,11 @@ export const api = {
   createRun: async (data: any) => {
     return httpClient.mutation('runs:create', data)
   },
-  updateRunStatus: async (id: string, status: 'queued' | 'running' | 'completed' | 'error', skyPilotJobId?: string) => {
+  updateRunStatus: async (
+    id: string,
+    status: 'queued' | 'running' | 'completed' | 'error',
+    skyPilotJobId?: string
+  ) => {
     return httpClient.mutation('runs:updateStatus', { id, status, skyPilotJobId })
   },
   getRunMetrics: async (runId: string) => {
@@ -65,4 +88,3 @@ export const api = {
     return httpClient.action('import:fromPaper', { url })
   },
 }
-

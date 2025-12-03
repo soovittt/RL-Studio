@@ -13,11 +13,7 @@ export const Route = createFileRoute('/runs/compare')({
 
 function CompareRuns() {
   const search = useSearch({ from: '/runs/compare' })
-  const runIds = search.runs
-    ? Array.isArray(search.runs)
-      ? search.runs
-      : [search.runs]
-    : []
+  const runIds = search.runs ? (Array.isArray(search.runs) ? search.runs : [search.runs]) : []
 
   if (runIds.length === 0) {
     return (

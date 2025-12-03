@@ -82,8 +82,11 @@ export async function listAssets(params?: {
   }
 
   try {
-    const data = await query<{ assets: any[] }>(gqlQuery, Object.keys(variables).length > 0 ? variables : undefined)
-    
+    const data = await query<{ assets: any[] }>(
+      gqlQuery,
+      Object.keys(variables).length > 0 ? variables : undefined
+    )
+
     if (!data?.assets || !Array.isArray(data.assets)) {
       return []
     }
@@ -140,7 +143,7 @@ export async function getAsset(assetId: string): Promise<Asset> {
 
   try {
     const data = await query<{ asset: any }>(gqlQuery, { id: assetId })
-    
+
     if (!data?.asset) {
       throw new Error('Asset not found')
     }
@@ -176,7 +179,9 @@ export async function getAsset(assetId: string): Promise<Asset> {
 /**
  * Create a new asset via GraphQL
  */
-export async function createAsset(request: CreateAssetRequest): Promise<{ id: string; name: string }> {
+export async function createAsset(
+  request: CreateAssetRequest
+): Promise<{ id: string; name: string }> {
   const gqlMutation = `
     mutation CreateAsset($input: AssetInput!) {
       createAsset(input: $input) {
@@ -204,7 +209,7 @@ export async function createAsset(request: CreateAssetRequest): Promise<{ id: st
 
   try {
     const data = await mutate<{ createAsset: { id: string; name: string } }>(gqlMutation, variables)
-    
+
     if (!data?.createAsset) {
       throw new Error('Failed to create asset')
     }
@@ -218,4 +223,3 @@ export async function createAsset(request: CreateAssetRequest): Promise<{ id: st
     throw error
   }
 }
-

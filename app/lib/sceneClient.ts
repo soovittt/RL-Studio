@@ -74,7 +74,9 @@ export interface UpdateSceneRequest {
  * Get scene with active version via GraphQL
  * Note: GraphQL only returns scene data, activeVersion is still fetched via REST
  */
-export async function getScene(sceneId: string): Promise<{ scene: Scene; activeVersion: SceneVersion | null }> {
+export async function getScene(
+  sceneId: string
+): Promise<{ scene: Scene; activeVersion: SceneVersion | null }> {
   const gqlQuery = `
     query GetScene($id: String!) {
       scene(id: $id) {
@@ -90,7 +92,7 @@ export async function getScene(sceneId: string): Promise<{ scene: Scene; activeV
 
   try {
     const data = await query<{ scene: any }>(gqlQuery, { id: sceneId })
-    
+
     if (!data?.scene) {
       throw new Error('Scene not found')
     }
@@ -140,7 +142,9 @@ export async function getScene(sceneId: string): Promise<{ scene: Scene; activeV
 /**
  * Create a new scene via GraphQL
  */
-export async function createScene(request: CreateSceneRequest): Promise<{ id: string; name: string }> {
+export async function createScene(
+  request: CreateSceneRequest
+): Promise<{ id: string; name: string }> {
   const gqlMutation = `
     mutation CreateScene($input: CreateSceneInput!) {
       createScene(input: $input) {
@@ -156,14 +160,16 @@ export async function createScene(request: CreateSceneRequest): Promise<{ id: st
       name: request.name,
       description: request.description,
       mode: request.mode,
-      environmentSettings: request.environmentSettings ? JSON.stringify(request.environmentSettings) : null,
+      environmentSettings: request.environmentSettings
+        ? JSON.stringify(request.environmentSettings)
+        : null,
       createdBy: request.createdBy,
     },
   }
 
   try {
     const data = await mutate<{ createScene: { id: string; name: string } }>(gqlMutation, variables)
-    
+
     if (!data?.createScene) {
       throw new Error('Failed to create scene')
     }
@@ -181,7 +187,10 @@ export async function createScene(request: CreateSceneRequest): Promise<{ id: st
 /**
  * Update scene metadata via GraphQL
  */
-export async function updateScene(sceneId: string, request: UpdateSceneRequest): Promise<{ success: boolean }> {
+export async function updateScene(
+  sceneId: string,
+  request: UpdateSceneRequest
+): Promise<{ success: boolean }> {
   const gqlMutation = `
     mutation UpdateScene($id: String!, $input: UpdateSceneInput!) {
       updateScene(id: $id, input: $input) {
@@ -197,7 +206,9 @@ export async function updateScene(sceneId: string, request: UpdateSceneRequest):
       name: request.name,
       description: request.description,
       mode: request.mode,
-      environmentSettings: request.environmentSettings ? JSON.stringify(request.environmentSettings) : null,
+      environmentSettings: request.environmentSettings
+        ? JSON.stringify(request.environmentSettings)
+        : null,
       projectId: request.projectId,
     },
   }
@@ -237,8 +248,11 @@ export async function createSceneVersion(
   }
 
   try {
-    const data = await mutate<{ createSceneVersion: { id: string; sceneId: string } }>(gqlMutation, variables)
-    
+    const data = await mutate<{ createSceneVersion: { id: string; sceneId: string } }>(
+      gqlMutation,
+      variables
+    )
+
     if (!data?.createSceneVersion) {
       throw new Error('Failed to create scene version')
     }
@@ -271,7 +285,7 @@ export async function getSceneVersion(
       sceneId,
       versionNumber,
     })
-    
+
     if (!data?.sceneVersion) {
       throw new Error('Scene version not found')
     }
@@ -306,7 +320,7 @@ export async function listSceneVersions(sceneId: string): Promise<{ versions: Sc
 
   try {
     const data = await query<{ sceneVersions: any[] }>(gqlQuery, { sceneId })
-    
+
     if (!data?.sceneVersions) {
       return { versions: [] }
     }
@@ -328,4 +342,3 @@ export async function listSceneVersions(sceneId: string): Promise<{ versions: Sc
     throw error
   }
 }
-

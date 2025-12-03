@@ -33,6 +33,7 @@ python benchmarks/benchmark_training.py
 ## Results
 
 Results are saved as JSON files:
+
 - `benchmark_results.json` - Simulation performance
 - `api_benchmark_results.json` - API response times
 - `training_benchmark_results.json` - Training setup times
@@ -45,4 +46,3 @@ Add to CI/CD pipeline to track performance regressions:
 - name: Run Benchmarks
   run: ./scripts/benchmark.sh
 ```
-

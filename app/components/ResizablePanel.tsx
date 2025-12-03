@@ -39,30 +39,34 @@ export function ResizablePanel({
   const startPosRef = useRef(0)
   const startSizeRef = useRef(0)
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-    startPosRef.current = direction === 'horizontal' ? e.clientX : e.clientY
-    startSizeRef.current = size
-    document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize'
-    document.body.style.userSelect = 'none'
-  }, [direction, size])
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsDragging(true)
+      startPosRef.current = direction === 'horizontal' ? e.clientX : e.clientY
+      startSizeRef.current = size
+      document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize'
+      document.body.style.userSelect = 'none'
+    },
+    [direction, size]
+  )
 
   useEffect(() => {
     if (!isDragging) return
 
     const handleMouseMove = (e: MouseEvent) => {
-      const delta = direction === 'horizontal' 
-        ? e.clientX - startPosRef.current
-        : e.clientY - startPosRef.current
-      
+      const delta =
+        direction === 'horizontal'
+          ? e.clientX - startPosRef.current
+          : e.clientY - startPosRef.current
+
       // If resizing from start (left/top), invert the delta
       const adjustedDelta = resizeFrom === 'start' ? -delta : delta
       let newSize = startSizeRef.current + adjustedDelta
-      
+
       if (newSize < minSize) newSize = minSize
       if (maxSize && newSize > maxSize) newSize = maxSize
-      
+
       setSize(newSize)
       if (onResize) onResize(newSize)
     }
@@ -71,7 +75,7 @@ export function ResizablePanel({
       setIsDragging(false)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      
+
       if (storageKey && typeof window !== 'undefined') {
         localStorage.setItem(storageKey, size.toString())
       }
@@ -92,9 +96,14 @@ export function ResizablePanel({
     position: 'relative',
   }
 
-  const handlePosition = resizeFrom === 'start' 
-    ? (direction === 'horizontal' ? 'left' : 'top')
-    : (direction === 'horizontal' ? 'right' : 'bottom')
+  const handlePosition =
+    resizeFrom === 'start'
+      ? direction === 'horizontal'
+        ? 'left'
+        : 'top'
+      : direction === 'horizontal'
+        ? 'right'
+        : 'bottom'
 
   return (
     <div ref={panelRef} style={style} className="relative">
@@ -129,4 +138,3 @@ export function ResizablePanel({
     </div>
   )
 }
-

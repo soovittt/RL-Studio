@@ -20,14 +20,14 @@ function getCachedAssets(mode: string): Asset[] | null {
   try {
     const cached = localStorage.getItem(ASSETS_CACHE_KEY)
     if (!cached) return null
-    
+
     const parsed: CachedAssets = JSON.parse(cached)
-    
+
     // Check if cache is still valid and matches mode
     if (Date.now() - parsed.timestamp < ASSETS_CACHE_TTL && parsed.mode === mode) {
       return parsed.data
     }
-    
+
     // Cache expired or mode changed
     localStorage.removeItem(ASSETS_CACHE_KEY)
     return null
@@ -73,13 +73,13 @@ export function AssetPalette({
       try {
         setLoading(true)
         setError(null)
-        
+
         // Try to load from cache first
         const cached = getCachedAssets(mode)
         if (cached && cached.length > 0) {
           setAssets(cached)
           setLoading(false)
-          
+
           // Still fetch in background to update cache
           listAssets({ mode, projectId })
             .then((loadedAssets) => {
@@ -108,24 +108,24 @@ export function AssetPalette({
             })
           return
         }
-        
+
         // Load from backend
         const loadedAssets = await listAssets({
           mode,
           projectId,
         })
-        
+
         console.log('🔍 AssetPalette: Loaded assets from backend:', loadedAssets)
-        
+
         // Check if loadedAssets is valid array
         if (!loadedAssets || !Array.isArray(loadedAssets)) {
           console.warn('⚠️ AssetPalette: Invalid assets response:', loadedAssets)
           setAssets([])
           return
         }
-        
+
         console.log(`📦 AssetPalette: Total assets loaded: ${loadedAssets.length}`)
-        
+
         // Filter assets by mode - be more lenient for grid mode
         const filteredAssets = loadedAssets
           .filter((asset) => {
@@ -135,7 +135,7 @@ export function AssetPalette({
             }
             const tags = Array.isArray(asset.meta.tags) ? asset.meta.tags : []
             const assetMode = asset.meta.mode || ''
-            
+
             // For grid mode, be very lenient - show anything with "grid" tag OR no mode restriction
             if (mode === 'grid') {
               const hasGridTag = tags.includes('grid')
@@ -147,7 +147,7 @@ export function AssetPalette({
               }
               return result
             }
-            
+
             // For other modes, be strict
             return tags.includes(mode) || assetMode === mode
           })
@@ -160,17 +160,22 @@ export function AssetPalette({
             }
             return a.name.localeCompare(b.name)
           })
-        
-        console.log(`✅ AssetPalette: Filtered to ${filteredAssets.length} assets for mode "${mode}"`)
-        console.log('📋 AssetPalette: Assets:', filteredAssets.map(a => a.name))
-        
+
+        console.log(
+          `✅ AssetPalette: Filtered to ${filteredAssets.length} assets for mode "${mode}"`
+        )
+        console.log(
+          '📋 AssetPalette: Assets:',
+          filteredAssets.map((a) => a.name)
+        )
+
         // Cache the results
         setCachedAssets(mode, filteredAssets)
         setAssets(filteredAssets)
       } catch (err) {
         console.error('Failed to load assets:', err)
         setError(err instanceof Error ? err.message : 'Failed to load assets')
-        
+
         // Try to use cached assets even if expired
         const cached = getCachedAssets(mode)
         if (cached && cached.length > 0) {
@@ -240,9 +245,7 @@ export function AssetPalette({
                 className="inline-block w-3 h-3 rounded mr-2"
                 style={{ backgroundColor: paletteColor }}
               />
-              <span style={{ color: isSelected ? undefined : labelColor }}>
-                {asset.name}
-              </span>
+              <span style={{ color: isSelected ? undefined : labelColor }}>{asset.name}</span>
             </button>
           )
         })}
@@ -257,10 +260,18 @@ export function AssetPalette({
 function getAssetCategory(asset: Asset): string {
   const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
   const name = (asset.name || '').toLowerCase()
-  
+
   if (tags.includes('agent') || name.includes('agent')) return '0_agents'
   if (tags.includes('tile') || name.includes('tile')) return '1_tiles'
-  if (tags.includes('item') || name.includes('key') || name.includes('door') || name.includes('button') || name.includes('portal') || name.includes('pickup')) return '2_items'
+  if (
+    tags.includes('item') ||
+    name.includes('key') ||
+    name.includes('door') ||
+    name.includes('button') ||
+    name.includes('portal') ||
+    name.includes('pickup')
+  )
+    return '2_items'
   if (tags.includes('npc')) return '3_npcs'
   if (tags.includes('logic')) return '4_logic'
   return '5_other'
@@ -279,11 +290,11 @@ export function getAssetColor(asset: Asset | null, fallback: string): string {
  */
 export function assetToObjectType(asset: Asset | null): string | null {
   if (!asset) return null
-  
+
   // Try to infer from asset name or meta tags
   const name = (asset.name || '').toLowerCase()
   const tags = Array.isArray(asset.meta?.tags) ? asset.meta.tags : []
-  
+
   // Common mappings
   if (name.includes('wall') || tags.includes('wall')) return 'wall'
   if (name.includes('agent') || tags.includes('agent')) return 'agent'
@@ -293,7 +304,6 @@ export function assetToObjectType(asset: Asset | null): string | null {
   if (name.includes('key') || tags.includes('key')) return 'key'
   if (name.includes('door') || tags.includes('door')) return 'door'
   if (name.includes('checkpoint') || tags.includes('checkpoint')) return 'checkpoint'
-  
+
   return 'custom'
 }
-

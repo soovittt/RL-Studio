@@ -120,7 +120,9 @@ export const RunList = memo(function RunList() {
                       {run._id.slice(0, 8)}...
                     </Link>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{run.algorithm.toUpperCase()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {run.algorithm.toUpperCase()}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs rounded ${getStatusColor(run.status)}`}>
                       {run.status}
@@ -151,4 +153,3 @@ export const RunList = memo(function RunList() {
     </div>
   )
 })
-

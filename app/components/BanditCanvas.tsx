@@ -171,4 +171,3 @@ export function BanditCanvas({ envSpec, onSpecChange }: BanditCanvasProps) {
     </div>
   )
 }
-

@@ -6,20 +6,20 @@
 // Get backend service URL with proper local vs production handling
 const getBackendUrl = (): string => {
   const envUrl = import.meta.env.VITE_TRAINING_SERVICE_URL
-  
+
   // If explicitly set, use it
   if (envUrl) {
     return envUrl
   }
-  
+
   // In production, warn if not set (should be set)
   if (import.meta.env.MODE === 'production') {
     console.warn(
       '⚠️ VITE_TRAINING_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
-      'Please set your production backend URL in environment variables.'
+        'Please set your production backend URL in environment variables.'
     )
   }
-  
+
   // Default to localhost for local development
   return 'http://localhost:8000'
 }
@@ -38,15 +38,18 @@ export interface AnalyzeRolloutRequest {
 }
 
 export interface RewardAnalysis {
-  per_rule_stats: Record<string, {
-    total: number
-    mean: number
-    std: number
-    min: number
-    max: number
-    fire_count: number
-    fire_rate: number
-  }>
+  per_rule_stats: Record<
+    string,
+    {
+      total: number
+      mean: number
+      std: number
+      min: number
+      max: number
+      fire_count: number
+      fire_rate: number
+    }
+  >
   most_active_rules: Array<[string, number]>
   cumulative_contributions: Record<string, number[]>
   heatmap_data: Array<{
@@ -143,7 +146,9 @@ export async function analyzeReward(request: AnalyzeRolloutRequest): Promise<Rew
     return data.analysis
   } catch (error) {
     console.error('❌ Reward analysis failed - Backend required:', error)
-    throw new Error(`Backend unavailable. Real Python calculations required. ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Backend unavailable. Real Python calculations required. ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 }
 
@@ -156,11 +161,11 @@ export function analyzeRewardStreaming(
   }
 ): () => void {
   const ws = new WebSocket(`${WS_URL}/api/analysis/ws/reward`)
-  
+
   ws.onopen = () => {
     ws.send(JSON.stringify(request))
   }
-  
+
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
@@ -180,11 +185,11 @@ export function analyzeRewardStreaming(
       ws.close()
     }
   }
-  
+
   ws.onerror = () => {
     callbacks.onError?.(new Error('WebSocket connection failed. Backend required.'))
   }
-  
+
   return () => {
     if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
       ws.close()
@@ -192,7 +197,9 @@ export function analyzeRewardStreaming(
   }
 }
 
-export async function analyzeTrajectory(request: AnalyzeRolloutRequest): Promise<TrajectoryAnalysis> {
+export async function analyzeTrajectory(
+  request: AnalyzeRolloutRequest
+): Promise<TrajectoryAnalysis> {
   try {
     const response = await fetch(`${ANALYSIS_SERVICE_URL}/api/analysis/trajectory`, {
       method: 'POST',
@@ -210,7 +217,9 @@ export async function analyzeTrajectory(request: AnalyzeRolloutRequest): Promise
     return data.analysis
   } catch (error) {
     console.error('❌ Trajectory analysis failed - Backend required:', error)
-    throw new Error(`Backend unavailable. Real Python calculations required. ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Backend unavailable. Real Python calculations required. ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 }
 
@@ -223,11 +232,11 @@ export function analyzeTrajectoryStreaming(
   }
 ): () => void {
   const ws = new WebSocket(`${WS_URL}/api/analysis/ws/trajectory`)
-  
+
   ws.onopen = () => {
     ws.send(JSON.stringify(request))
   }
-  
+
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
@@ -247,11 +256,11 @@ export function analyzeTrajectoryStreaming(
       ws.close()
     }
   }
-  
+
   ws.onerror = () => {
     callbacks.onError?.(new Error('WebSocket connection failed. Backend required.'))
   }
-  
+
   return () => {
     if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
       ws.close()
@@ -259,7 +268,9 @@ export function analyzeTrajectoryStreaming(
   }
 }
 
-export async function analyzeTermination(request: AnalyzeRolloutRequest): Promise<TerminationAnalysis> {
+export async function analyzeTermination(
+  request: AnalyzeRolloutRequest
+): Promise<TerminationAnalysis> {
   try {
     const response = await fetch(`${ANALYSIS_SERVICE_URL}/api/analysis/termination`, {
       method: 'POST',
@@ -296,7 +307,9 @@ export async function analyzeMultipleTerminations(
     return data.analysis
   } catch (error) {
     console.error('❌ Termination analysis failed - Backend required:', error)
-    throw new Error(`Backend unavailable. Real Python calculations required. ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Backend unavailable. Real Python calculations required. ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 }
 
@@ -310,11 +323,11 @@ export function analyzeMultipleTerminationsStreaming(
   }
 ): () => void {
   const ws = new WebSocket(`${WS_URL}/api/analysis/ws/termination/multiple`)
-  
+
   ws.onopen = () => {
     ws.send(JSON.stringify({ rollouts, env_spec }))
   }
-  
+
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
@@ -334,15 +347,14 @@ export function analyzeMultipleTerminationsStreaming(
       ws.close()
     }
   }
-  
+
   ws.onerror = () => {
     callbacks.onError?.(new Error('WebSocket connection failed. Backend required.'))
   }
-  
+
   return () => {
     if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
       ws.close()
     }
   }
 }
-

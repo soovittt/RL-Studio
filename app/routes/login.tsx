@@ -34,7 +34,6 @@ function Login() {
     )
   }
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -184,9 +183,7 @@ function Login() {
               </button>
             </div>
             {isSignUp && (
-              <p className="mt-1 text-xs text-gray-500">
-                Password must be at least 8 characters
-              </p>
+              <p className="mt-1 text-xs text-gray-500">Password must be at least 8 characters</p>
             )}
           </div>
 

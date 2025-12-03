@@ -78,13 +78,10 @@ export function StudioTopBar({
   return (
     <div className="px-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        <Link
-          to="/environments"
-          className="text-muted-foreground hover:text-foreground"
-        >
+        <Link to="/environments" className="text-muted-foreground hover:text-foreground">
           ← Back
         </Link>
-        
+
         {isEditingName ? (
           <input
             type="text"
@@ -176,10 +173,16 @@ export function StudioTopBar({
           ⚙️ Settings
           {/* Authentication Status Indicator */}
           {trackingSettings.backend === 'wandb' && trackingSettings.wandbAuthenticated && (
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-background" title="W&B Authenticated" />
+            <span
+              className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-background"
+              title="W&B Authenticated"
+            />
           )}
           {trackingSettings.backend === 'mlflow' && trackingSettings.mlflowAuthenticated && (
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border-2 border-background" title="MLflow Authenticated" />
+            <span
+              className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border-2 border-background"
+              title="MLflow Authenticated"
+            />
           )}
         </button>
         <button
@@ -199,9 +202,12 @@ export function StudioTopBar({
           title="Toggle theme"
         >
           {(() => {
-            const effectiveTheme = theme === 'system' 
-              ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-              : theme
+            const effectiveTheme =
+              theme === 'system'
+                ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                  ? 'dark'
+                  : 'light'
+                : theme
             return effectiveTheme === 'dark' ? '☀️' : '🌙'
           })()}
         </button>
@@ -213,4 +219,3 @@ export function StudioTopBar({
     </div>
   )
 }
-
