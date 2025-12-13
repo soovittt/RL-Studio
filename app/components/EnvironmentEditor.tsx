@@ -141,6 +141,8 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   // Only reset when id changes FROM something else TO 'new'
   const manuallySetRef = useRef(false)
   const prevIdRef = useRef(id)
+  // Track if we're currently updating the name to prevent sync from overwriting
+  const isUpdatingNameRef = useRef(false)
   useEffect(() => {
     // Only reset if we just navigated TO 'new' from a different page
     if (id === 'new' && prevIdRef.current !== 'new') {
@@ -194,8 +196,13 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   }, [])
 
   // Sync localEnvSpec when envSpec changes (e.g., template loaded or name updated from database)
-  // BUT: Don't overwrite if we just set it manually (e.g., from template selection)
+  // BUT: Don't overwrite if we just set it manually (e.g., from template selection or name change)
   useEffect(() => {
+    // Skip sync if we're in the middle of updating the name
+    if (isUpdatingNameRef.current) {
+      return
+    }
+    
     if (id === 'new') {
       // Only sync on initial mount, not after manual changes
       if (!manuallySetRef.current) {
@@ -203,12 +210,20 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
       }
     } else {
       // For existing environments, update local state when envSpec changes from query
-      // This ensures the UI reflects database changes (like name updates)
-      if (envSpec && envSpec.name !== localEnvSpec.name) {
+      // This ensures the UI reflects database changes (like name updates from other sources)
+      if (envSpec && envSpec.id === localEnvSpec.id) {
+        // Same environment - check if envSpec has meaningful updates from server
+        // Only sync if the name is different (indicating a server-side update)
+        // and we're not in the middle of a local update
+        if (envSpec.name !== localEnvSpec.name) {
+          setLocalEnvSpec(envSpec)
+        }
+      } else if (envSpec && envSpec.id !== localEnvSpec.id) {
+        // Different environment - full sync
         setLocalEnvSpec(envSpec)
       }
     }
-  }, [envSpec, id, localEnvSpec.name])
+  }, [envSpec, id])
 
   const handleSpecChange = (newSpec: EnvSpec) => {
     // Push to history
@@ -289,15 +304,44 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
 
   const handleNameChange = async (name: string) => {
     if (id === 'new') {
-      setLocalEnvSpec({ ...localEnvSpec, name })
+      // For new environments, use handleSpecChange to properly update everything
+      const updatedSpec = { ...localEnvSpec, name }
+      handleSpecChange(updatedSpec)
     } else {
+      // Set flag to prevent sync from overwriting our local change
+      isUpdatingNameRef.current = true
+      
       // Update both top-level name and envSpec.name to keep them in sync
-      const updatedSpec = { ...envSpec, name }
-      await updateMutation({
-        id: id as any,
-        name,
-        envSpec: updatedSpec, // Also update envSpec.name
-      })
+      const updatedSpec = { ...localEnvSpec, name }
+      
+      // Update local state immediately for instant UI feedback
+      setLocalEnvSpec(updatedSpec)
+      
+      try {
+        // Update in Convex (old system)
+        await updateMutation({
+          id: id as any,
+          name,
+          envSpec: updatedSpec, // Also update envSpec.name
+        })
+        
+        // Also update Scene Service if scene exists
+        if (sceneData?.scene) {
+          try {
+            await updateScene(id, {
+              name,
+            })
+          } catch (err) {
+            console.warn('Failed to update scene name in Scene Service:', err)
+            // Non-critical error, continue
+          }
+        }
+      } finally {
+        // Clear flag after a short delay to allow query to refetch
+        setTimeout(() => {
+          isUpdatingNameRef.current = false
+        }, 1000)
+      }
     }
   }
 
@@ -506,7 +550,9 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     )
   }
 
-  const currentSpec = id === 'new' ? localEnvSpec : envSpec
+  // Use localEnvSpec for both new and existing environments to ensure immediate UI updates
+  // envSpec from query will sync to localEnvSpec via useEffect when it changes
+  const currentSpec = localEnvSpec
 
   return (
     <SelectionProvider>
