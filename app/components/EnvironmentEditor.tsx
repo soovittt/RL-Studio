@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useQuery, useMutation, useAction } from 'convex/react'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
 import { useAuth } from '~/lib/auth'
 import { EnvSpec, createDefaultEnvSpec, Vec2 } from '~/lib/envSpec'
@@ -10,12 +10,6 @@ import { HistoryManager } from '~/lib/historyManager'
 import { createScene, createSceneVersion, updateScene, getScene } from '~/lib/sceneClient'
 import { envSpecToSceneGraph, envSpecToRLConfig } from '~/lib/envSpecToSceneGraph'
 import { sceneGraphToEnvSpec } from '~/lib/sceneGraphToEnvSpec'
-import { StudioLayout } from './StudioLayout'
-import { StudioTopBar } from './StudioTopBar'
-import { StudioSidebar } from './StudioSidebar'
-import { StudioPropertiesPanel } from './StudioPropertiesPanel'
-import { StudioBottomPanel } from './StudioBottomPanel'
-import { EnvironmentCanvas } from './EnvironmentCanvas'
 import { CreateRun } from './CreateRun'
 import { EnhancedImportDialog } from './EnhancedImportDialog'
 import { CodeReviewPanel } from './CodeReviewPanel'
@@ -52,7 +46,6 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const [showCodeReview, setShowCodeReview] = useState(false)
   const [exportedFiles, setExportedFiles] = useState<Record<string, string> | null>(null)
   const [showValidation, setShowValidation] = useState(false)
-  const [selectedObjectId, setSelectedObjectId] = useState<string | undefined>()
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>()
   const [rolloutState, setRolloutState] = useState<{
     agents: Array<{ id: string; position: Vec2 }>
@@ -61,13 +54,11 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   // Try to load from Scene Service first, fallback to old system
   const [sceneData, setSceneData] = useState<{ scene: any; activeVersion: any } | null>(null)
   const [sceneLoading, setSceneLoading] = useState(false)
-  const [sceneError, setSceneError] = useState<string | null>(null)
 
   // Load from Scene Service if id is provided
   useEffect(() => {
     if (id !== 'new' && user?._id) {
       setSceneLoading(true)
-      setSceneError(null)
       getScene(id)
         .then((data) => {
           setSceneData(data)
@@ -76,7 +67,6 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         .catch((err) => {
           // Scene not found in new system - fallback to old system
           console.log('Scene not found in Scene Service, falling back to old system:', err)
-          setSceneError(err.message)
           setSceneLoading(false)
         })
     }
@@ -147,7 +137,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const hasAutoCreatedRef = useRef(false)
   // Keep a ref to the current localEnvSpec for auto-creation
   const localEnvSpecRef = useRef(localEnvSpec)
-  
+
   useEffect(() => {
     // Only reset if we just navigated TO 'new' from a different page
     if (id === 'new' && prevIdRef.current !== 'new') {
@@ -156,7 +146,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     }
     prevIdRef.current = id
   }, [id])
-  
+
   // Auto-create environment when user navigates to /environments/new
   useEffect(() => {
     if (id === 'new' && user?._id && !hasAutoCreatedRef.current) {
@@ -166,9 +156,12 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         const currentSpec = localEnvSpecRef.current
         if (id === 'new' && user?._id && !hasAutoCreatedRef.current && currentSpec) {
           hasAutoCreatedRef.current = true
-          
-          console.log('Auto-creating environment...', { userId: user._id, specName: currentSpec.name })
-          
+
+          console.log('Auto-creating environment...', {
+            userId: user._id,
+            specName: currentSpec.name,
+          })
+
           try {
             // Convert EnvSpec to sceneGraph + rlConfig
             const sceneGraph = envSpecToSceneGraph(currentSpec)
@@ -203,10 +196,13 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
 
               // Update scene with projectId
               await updateScene(sceneId, { projectId: envId })
-              
+
               console.log('Successfully created environment in both systems:', { sceneId, envId })
             } catch (oldSystemError) {
-              console.error('Failed to save to old system (CRITICAL - environment won\'t show in list):', oldSystemError)
+              console.error(
+                "Failed to save to old system (CRITICAL - environment won't show in list):",
+                oldSystemError
+              )
               // This is actually critical - if Convex creation fails, the environment won't show in the list
               // because the list queries Convex, not Scene Service
               alert('Failed to create environment in database. Please try again.')
@@ -276,7 +272,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   useEffect(() => {
     localEnvSpecRef.current = localEnvSpec
   }, [localEnvSpec])
-  
+
   // Sync localEnvSpec when envSpec changes (e.g., template loaded or name updated from database)
   // BUT: Don't overwrite if we just set it manually (e.g., from template selection or name change)
   useEffect(() => {
@@ -284,7 +280,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     if (isUpdatingNameRef.current) {
       return
     }
-    
+
     if (id === 'new') {
       // Only sync on initial mount, not after manual changes
       if (!manuallySetRef.current) {
@@ -415,13 +411,13 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     } else {
       // Set flag to prevent sync from overwriting our local change
       isUpdatingNameRef.current = true
-      
+
       // Update both top-level name and envSpec.name to keep them in sync
       const updatedSpec = { ...localEnvSpec, name }
-      
+
       // Update local state immediately for instant UI feedback
       setLocalEnvSpec(updatedSpec)
-      
+
       try {
         // Update in Convex (old system)
         await updateMutation({
@@ -429,7 +425,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
           name,
           envSpec: updatedSpec, // Also update envSpec.name
         })
-        
+
         // Also update Scene Service if scene exists
         if (sceneData?.scene) {
           try {
@@ -546,7 +542,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     }
   }
 
-  const handleDuplicate = async (envId: string) => {
+  const handleDuplicate = async (_envId: string) => {
     // TODO: Implement duplicate
     alert('Duplicate coming soon!')
   }
@@ -558,93 +554,6 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   const handleImportComplete = (importedSpec: EnvSpec) => {
     handleSpecChange(importedSpec)
     setShowImport(false)
-  }
-
-  const handleSave = async () => {
-    if (!user?._id) {
-      alert('Please log in to create environments')
-      return
-    }
-    try {
-      // Convert EnvSpec to sceneGraph + rlConfig
-      const sceneGraph = envSpecToSceneGraph(localEnvSpec)
-      const rlConfig = envSpecToRLConfig(localEnvSpec)
-
-      let sceneId: string
-      let envId: string
-
-      if (id === 'new') {
-        // Create new scene in Scene Service (primary)
-        const scene = await createScene({
-          projectId: '', // Will be set after creating environment
-          name: localEnvSpec.name || 'Untitled Environment',
-          description: localEnvSpec.metadata?.notes,
-          mode: localEnvSpec.world.coordinateSystem === 'grid' ? 'grid' : '2d',
-          environmentSettings: {},
-          createdBy: user._id,
-        })
-        sceneId = scene.id
-
-        // Create initial version
-        await createSceneVersion(scene.id, {
-          sceneGraph,
-          rlConfig,
-          createdBy: user._id,
-        })
-
-        // Also save to old system for backward compatibility
-        try {
-          envId = await createMutation({
-            ownerId: user._id,
-            name: localEnvSpec.name || 'Untitled Environment',
-            envSpec: localEnvSpec,
-          })
-
-          // Update scene with projectId
-          await updateScene(sceneId, { projectId: envId })
-        } catch (oldSystemError) {
-          console.warn('Failed to save to old system (non-critical):', oldSystemError)
-          // Use scene ID as environment ID
-          envId = sceneId
-        }
-      } else {
-        // Update existing scene
-        sceneId = id
-
-        // Update scene metadata if name changed
-        if (localEnvSpec.name && sceneData?.scene.name !== localEnvSpec.name) {
-          await updateScene(sceneId, {
-            name: localEnvSpec.name,
-            description: localEnvSpec.metadata?.notes,
-          })
-        }
-
-        // Create new version
-        await createSceneVersion(sceneId, {
-          sceneGraph,
-          rlConfig,
-          createdBy: user._id,
-        })
-
-        // Also update old system for backward compatibility
-        try {
-          await updateMutation({
-            id: id as any,
-            name: localEnvSpec.name || 'Untitled Environment',
-            envSpec: localEnvSpec,
-          })
-        } catch (oldSystemError) {
-          console.warn('Failed to update old system (non-critical):', oldSystemError)
-        }
-
-        envId = id
-      }
-
-      navigate({ to: '/environments/$id', params: { id: envId } })
-    } catch (error) {
-      console.error('Failed to save environment:', error)
-      alert('Failed to save environment: ' + (error as Error).message)
-    }
   }
 
   if (isLoading && id !== 'new') {
