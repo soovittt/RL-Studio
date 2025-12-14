@@ -48,3 +48,5 @@ export const clear = mutation({
     return { deleted: logs.length }
   },
 })
+
+
