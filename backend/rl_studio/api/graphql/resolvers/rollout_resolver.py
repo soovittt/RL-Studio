@@ -2,7 +2,9 @@
 Rollout GraphQL resolvers
 """
 
+import hashlib
 import json
+import logging
 from typing import Optional
 
 import strawberry
@@ -11,6 +13,8 @@ from ....rollout.model_loader import load_model_for_inference, run_rollout_with_
 from ....rollout.simulator import run_rollout, validate_env_spec
 from ....utils.security import sanitize_env_spec, validate_env_spec_structure
 from ..types.rollout import RolloutInput, RolloutResult, Step
+
+logger = logging.getLogger(__name__)
 
 
 @strawberry.type
@@ -88,6 +92,24 @@ class RolloutResolver:
                     policy=input.policy,
                     max_steps=input.max_steps,
                 )
+
+            # Save rollout to S3 if configured (non-blocking)
+            try:
+                from ....utils.rollout_storage import save_rollout_to_s3
+                
+                # Generate env_id from env_spec hash
+                env_spec_str = json.dumps(sanitized_spec, sort_keys=True)
+                env_id = hashlib.md5(env_spec_str.encode()).hexdigest()[:12]
+                
+                # Save full rollout data to S3
+                s3_url = save_rollout_to_s3(
+                    rollout_data=result,
+                    env_id=env_id,
+                )
+                logger.info(f"✅ Saved rollout to S3: {s3_url}")
+            except Exception as e:
+                # Don't fail rollout if S3 save fails - just log it
+                logger.warning(f"Failed to save rollout to S3 (non-critical): {e}")
 
             # Convert steps to GraphQL types
             steps = []

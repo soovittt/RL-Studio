@@ -188,3 +188,9 @@ lens-ai-*.json
 .env.test
 !.env.example
 !backend/.env.example
+
+# Token files (never commit)
+**/tokens/*.txt
+**/tokens/dev.txt
+**/tokens/prod.txt
+backend/tokens/

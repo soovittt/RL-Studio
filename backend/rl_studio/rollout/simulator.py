@@ -69,6 +69,71 @@ def evaluate_condition(
     elif cond_type == "timeout":
         return True
 
+    elif cond_type == "step":
+        # Per-step reward - always true (triggers every step)
+        return True
+
+    elif cond_type == "reach_goal":
+        # Check if agent is at any goal object
+        if not state.get("agents") or len(state["agents"]) == 0:
+            return False
+        agent = state["agents"][0]
+        agent_pos_list = agent.get("position", [0, 0])
+        if not isinstance(agent_pos_list, list) or len(agent_pos_list) < 2:
+            return False
+        agent_pos = Vec2.from_list(agent_pos_list)
+
+        # Find goals from env_spec (source of truth)
+        goals = [obj for obj in env_spec.get("objects", []) if obj.get("type") == "goal"]
+        for goal in goals:
+            goal_pos_list = goal.get("position", [0, 0])
+            if isinstance(goal_pos_list, list) and len(goal_pos_list) >= 2:
+                goal_pos = Vec2.from_list(goal_pos_list)
+                distance = agent_pos.distance(goal_pos)
+                if distance <= 0.5:
+                    return True
+        return False
+
+    elif cond_type == "hit_trap":
+        # Check if agent is at any trap object
+        if not state.get("agents") or len(state["agents"]) == 0:
+            return False
+        agent = state["agents"][0]
+        agent_pos_list = agent.get("position", [0, 0])
+        if not isinstance(agent_pos_list, list) or len(agent_pos_list) < 2:
+            return False
+        agent_pos = Vec2.from_list(agent_pos_list)
+
+        traps = [obj for obj in env_spec.get("objects", []) if obj.get("type") == "trap"]
+        for trap in traps:
+            trap_pos_list = trap.get("position", [0, 0])
+            if isinstance(trap_pos_list, list) and len(trap_pos_list) >= 2:
+                trap_pos = Vec2.from_list(trap_pos_list)
+                distance = agent_pos.distance(trap_pos)
+                if distance <= 0.5:
+                    return True
+        return False
+
+    elif cond_type == "collect_key":
+        # Check if agent is at any key object
+        if not state.get("agents") or len(state["agents"]) == 0:
+            return False
+        agent = state["agents"][0]
+        agent_pos_list = agent.get("position", [0, 0])
+        if not isinstance(agent_pos_list, list) or len(agent_pos_list) < 2:
+            return False
+        agent_pos = Vec2.from_list(agent_pos_list)
+
+        keys = [obj for obj in env_spec.get("objects", []) if obj.get("type") == "key"]
+        for key in keys:
+            key_pos_list = key.get("position", [0, 0])
+            if isinstance(key_pos_list, list) and len(key_pos_list) >= 2:
+                key_pos = Vec2.from_list(key_pos_list)
+                distance = agent_pos.distance(key_pos)
+                if distance <= 0.5:
+                    return True
+        return False
+
     elif cond_type == "collision":
         agent_id = condition.get("agentId")
         agent = next((a for a in state["agents"] if a.get("id") == agent_id), None)

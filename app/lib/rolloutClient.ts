@@ -70,13 +70,13 @@ export async function runRolloutHTTP(request: RolloutRequest): Promise<RolloutRe
   try {
     const variables = {
       input: {
-        env_spec: JSON.stringify(request.envSpec),
+        envSpec: JSON.stringify(request.envSpec),
         policy: request.policy,
-        max_steps: request.maxSteps,
-        run_id: request.runId || null,
-        model_url: request.modelUrl || null,
-        batch_size: 1,
-        use_parallel: false,
+        maxSteps: request.maxSteps,
+        runId: request.runId || null,
+        modelUrl: request.modelUrl || null,
+        batchSize: 1,
+        useParallel: false,
       },
     }
 
@@ -222,5 +222,56 @@ export async function checkRolloutServiceHealth(): Promise<boolean> {
     return data?.health?.status === 'healthy'
   } catch {
     return false
+  }
+}
+
+/**
+ * Load rollout data from S3
+ */
+export async function loadRolloutFromS3(s3Url: string): Promise<RolloutResponse> {
+  const getBackendUrl = (): string => {
+    // Prioritize localhost in development mode
+    if (import.meta.env.MODE === 'development') {
+      return 'http://localhost:8000'
+    }
+
+    const envUrl =
+      import.meta.env.VITE_TRAINING_SERVICE_URL ||
+      import.meta.env.VITE_ROLLOUT_SERVICE_URL ||
+      import.meta.env.VITE_BACKEND_URL
+
+    return envUrl || 'http://localhost:8000'
+  }
+
+  const BACKEND_URL = getBackendUrl()
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/rollout/load-from-s3`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ s3Url }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to load rollout: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+
+    if (!data.success || !data.result) {
+      throw new Error(data.error || 'Failed to load rollout from S3')
+    }
+
+    return {
+      success: true,
+      result: data.result,
+      error: undefined,
+      executionTime: undefined,
+    }
+  } catch (error) {
+    console.error('Failed to load rollout from S3:', error)
+    throw error
   }
 }

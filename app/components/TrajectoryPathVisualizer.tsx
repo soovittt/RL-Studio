@@ -1,10 +1,9 @@
 /**
  * Trajectory Path Visualizer Component
- * REQUIRES Python backend - NO FALLBACKS
- * Real calculations use NumPy, SciPy, sklearn in backend
+ * High-quality SVG-based visualization with clean, minimal design
  */
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { analyzeTrajectoryStreaming, type TrajectoryAnalysis } from '~/lib/analysisClient'
 import { EnvSpec } from '~/lib/envSpec'
 
@@ -16,49 +15,39 @@ interface TrajectoryPathVisualizerProps {
     done: boolean
   }>
   envSpec: EnvSpec
-  width?: number
-  height?: number
 }
 
 export function TrajectoryPathVisualizer({
   rolloutSteps,
   envSpec,
-  width = 600,
-  height = 400,
 }: TrajectoryPathVisualizerProps) {
   const [analysis, setAnalysis] = useState<TrajectoryAnalysis | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<{ progress: number; message: string } | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
     if (rolloutSteps.length === 0) return
 
     setLoading(true)
     setError(null)
-    setProgress(null)
 
-    // Use streaming for real-time updates
     const cleanup = analyzeTrajectoryStreaming(
       { rollout_steps: rolloutSteps, env_spec: envSpec },
       {
-        onProgress: (prog, msg) => {
-          setProgress({ progress: prog, message: msg })
-        },
+        onProgress: () => {},
         onComplete: (backendAnalysis) => {
           setAnalysis(backendAnalysis)
-          setProgress(null)
           setLoading(false)
-          console.log(
-            '✅ Trajectory analysis complete - Real Python calculations (NumPy, SciPy, sklearn)'
-          )
         },
         onError: (err) => {
           setError(err.message)
           setLoading(false)
-          setProgress(null)
-          console.error('❌ Trajectory analysis failed:', err)
         },
       }
     )
@@ -66,296 +55,440 @@ export function TrajectoryPathVisualizer({
     return cleanup
   }, [rolloutSteps, envSpec])
 
-  useEffect(() => {
-    if (!analysis || !canvasRef.current) return
+  // Calculate visualization data
+  const vizData = useMemo(() => {
+    if (!analysis) return null
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height)
-
-    // Get world bounds
     const world = envSpec.world || {}
     const worldWidth = world.width || 10
     const worldHeight = world.height || 10
     const isGrid = world.coordinateSystem === 'grid'
-    const cellSize = world.cellSize || 1
 
-    // Coordinate transformation with padding
-    const padding = 20
-    const drawWidth = width - padding * 2
-    const drawHeight = height - padding * 2
-    const scaleX = drawWidth / (worldWidth * cellSize)
-    const scaleY = drawHeight / (worldHeight * cellSize)
-    const scale = Math.min(scaleX, scaleY) // Maintain aspect ratio
+    // SVG dimensions
+    const svgWidth = 500
+    const svgHeight = 400
+    const padding = 40
 
-    const worldToCanvas = (wx: number, wy: number): [number, number] => {
+    const drawWidth = svgWidth - padding * 2
+    const drawHeight = svgHeight - padding * 2
+    const scaleX = drawWidth / worldWidth
+    const scaleY = drawHeight / worldHeight
+    const scale = Math.min(scaleX, scaleY)
+
+    const offsetX = padding + (drawWidth - worldWidth * scale) / 2
+    const offsetY = padding + (drawHeight - worldHeight * scale) / 2
+
+    const toSVG = (x: number, y: number): [number, number] => {
       if (isGrid) {
-        const x = padding + wx * scale
-        const y = padding + wy * scale
-        return [x, y]
-      } else {
-        const x = width / 2 + wx * scale
-        const y = height / 2 - wy * scale // Flip Y axis
-        return [x, y]
+        return [offsetX + (x + 0.5) * scale, offsetY + (y + 0.5) * scale]
       }
+      return [offsetX + x * scale, svgHeight - offsetY - y * scale]
     }
 
-    // Draw obstacles
-    envSpec.objects
-      ?.filter((o) => o.type === 'wall' || o.type === 'obstacle')
-      .forEach((obj) => {
-        const [x, y] = worldToCanvas(obj.position[0], obj.position[1])
-        ctx.fillStyle = '#ef4444'
-        ctx.beginPath()
-        ctx.arc(x, y, 8, 0, Math.PI * 2)
-        ctx.fill()
-      })
+    // Process trajectory path
+    const trajectory = analysis.trajectory_path || []
+    const pathPoints: Array<{ x: number; y: number; step: number; reward: number }> = []
 
-    // Draw goals
-    envSpec.objects
-      ?.filter((o) => o.type === 'goal')
-      .forEach((obj) => {
-        const [x, y] = worldToCanvas(obj.position[0], obj.position[1])
-        ctx.fillStyle = '#10b981'
-        ctx.beginPath()
-        ctx.arc(x, y, 8, 0, Math.PI * 2)
-        ctx.fill()
-      })
-
-    // Draw trajectory path from backend analysis
-    if (analysis.trajectory_path && analysis.trajectory_path.length > 0) {
-      ctx.strokeStyle = '#3b82f6'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-
-      analysis.trajectory_path.forEach((point, idx) => {
-        if (
-          point &&
-          point.position &&
-          Array.isArray(point.position) &&
-          point.position.length >= 2
-        ) {
-          const [x, y] = worldToCanvas(point.position[0], point.position[1])
-          if (idx === 0) {
-            ctx.moveTo(x, y)
-          } else {
-            ctx.lineTo(x, y)
-          }
-        }
-      })
-
-      ctx.stroke()
-
-      // Draw path points
-      analysis.trajectory_path.forEach((point) => {
-        if (
-          point &&
-          point.position &&
-          Array.isArray(point.position) &&
-          point.position.length >= 2
-        ) {
-          const [x, y] = worldToCanvas(point.position[0], point.position[1])
-          ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'
-          ctx.beginPath()
-          ctx.arc(x, y, 2, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      })
-
-      // Draw start point
-      const start = analysis.trajectory_path[0]
-      if (start && start.position && Array.isArray(start.position) && start.position.length >= 2) {
-        const [x, y] = worldToCanvas(start.position[0], start.position[1])
-        ctx.fillStyle = '#3b82f6'
-        ctx.beginPath()
-        ctx.arc(x, y, 8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = '#ffffff'
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-
-      // Draw end point
-      const end = analysis.trajectory_path[analysis.trajectory_path.length - 1]
-      if (end && end.position && Array.isArray(end.position) && end.position.length >= 2) {
-        const [x, y] = worldToCanvas(end.position[0], end.position[1])
-        ctx.fillStyle = '#f59e0b'
-        ctx.beginPath()
-        ctx.arc(x, y, 8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = '#ffffff'
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-
-      // Draw suboptimal attractors (from sklearn DBSCAN clustering)
-      if (analysis.suboptimal_attractors && Array.isArray(analysis.suboptimal_attractors)) {
-        analysis.suboptimal_attractors.forEach((attractor) => {
-          if (
-            attractor &&
-            attractor.position &&
-            Array.isArray(attractor.position) &&
-            attractor.position.length >= 2
-          ) {
-            const [x, y] = worldToCanvas(attractor.position[0], attractor.position[1])
-            ctx.strokeStyle = '#ef4444'
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.arc(x, y, 15, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.2)'
-            ctx.beginPath()
-            ctx.arc(x, y, 15, 0, Math.PI * 2)
-            ctx.fill()
-          }
+    trajectory.forEach((point, idx) => {
+      if (point.position && Array.isArray(point.position)) {
+        const [svgX, svgY] = toSVG(point.position[0], point.position[1])
+        pathPoints.push({
+          x: svgX,
+          y: svgY,
+          step: point.step || idx,
+          reward: point.reward || 0,
         })
       }
+    })
+
+    // Get objects from envSpec
+    const objects = (envSpec.objects || []).map((obj) => {
+      if (!obj.position) return null
+      const [svgX, svgY] = toSVG(obj.position[0], obj.position[1])
+      return { ...obj, svgX, svgY }
+    }).filter(Boolean)
+
+    // Get suboptimal attractors
+    const attractors = (analysis.suboptimal_attractors || []).map((attr) => {
+      if (!attr.position) return null
+      const [svgX, svgY] = toSVG(attr.position[0], attr.position[1])
+      return { ...attr, svgX, svgY }
+    }).filter(Boolean)
+
+    // Create path string for SVG polyline
+    const pathString = pathPoints.map((p) => `${p.x},${p.y}`).join(' ')
+
+    return {
+      svgWidth,
+      svgHeight,
+      worldWidth,
+      worldHeight,
+      scale,
+      offsetX,
+      offsetY,
+      pathPoints,
+      pathString,
+      objects,
+      attractors,
+      startPoint: pathPoints[0],
+      endPoint: pathPoints[pathPoints.length - 1],
+      isGrid,
     }
-  }, [analysis, envSpec, width, height])
+  }, [analysis, envSpec])
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <div className="text-sm mb-2">Running Python analysis (NumPy, SciPy, sklearn)...</div>
-        {progress && (
-          <div className="text-xs text-muted-foreground">
-            {progress.message}{' '}
-            {progress.progress > 0 && `(${Math.round(progress.progress * 100)}%)`}
-          </div>
-        )}
-        <div className="mt-4 w-64 h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${(progress?.progress || 0) * 100}%` }}
-          />
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-sm text-muted-foreground">Analyzing trajectory...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-destructive border border-destructive/50 rounded-lg p-4 bg-destructive/10">
-        <div className="font-semibold mb-2">❌ Backend Required</div>
-        <div className="text-sm text-center">{error}</div>
-        <div className="text-xs mt-2 text-muted-foreground">
-          Real Python calculations (NumPy, SciPy, sklearn) are required. Backend:{' '}
-          <code className="bg-muted px-1 rounded">
-            {import.meta.env.VITE_ROLLOUT_SERVICE_URL || 'http://localhost:8000'}
-          </code>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-sm text-red-600">{error}</div>
       </div>
     )
   }
 
-  if (!analysis) {
+  if (!analysis || !vizData) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        No trajectory data available
+      <div className="flex items-center justify-center h-64">
+        <div className="text-sm text-muted-foreground">No trajectory data</div>
       </div>
     )
+  }
+
+  // Export functions
+  const exportAsPNG = () => {
+    if (!svgRef.current) return
+    const svg = svgRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = vizData.svgWidth * 2
+    canvas.height = vizData.svgHeight * 2
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.scale(2, 2)
+    const data = new XMLSerializer().serializeToString(svg)
+    const img = new Image()
+    img.onload = () => {
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+      const url = canvas.toDataURL('image/png')
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'trajectory.png'
+      a.click()
+    }
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(data)))
+  }
+
+  const exportAsJSON = () => {
+    const data = {
+      trajectory: analysis?.trajectory_path || [],
+      metrics: {
+        pathLength: analysis?.trajectory_length,
+        pathEfficiency: analysis?.path_efficiency,
+        oscillationDetected: analysis?.oscillation_detection?.detected,
+        actionDistribution: analysis?.action_distribution,
+      },
+      env: {
+        width: envSpec.world?.width,
+        height: envSpec.world?.height,
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'trajectory.json'
+    a.click()
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom > 1) {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
   }
 
   return (
-    <div className="space-y-5">
-      {/* Professional Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-border">
-        <div>
-          <h3 className="text-xl font-bold text-foreground">Trajectory Path Analysis</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Agent movement visualization with RL metrics
-          </p>
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
+            className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+          >
+            −
+          </button>
+          <span className="text-xs text-muted-foreground w-12 text-center">{Math.round(zoom * 100)}%</span>
+          <button
+            onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+            className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+          >
+            +
+          </button>
+          <button
+            onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}
+            className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+          >
+            Reset
+          </button>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold text-foreground">
-            {analysis.trajectory_length} steps
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Efficiency: {(analysis.path_efficiency * 100).toFixed(1)}%
-          </div>
-          <div className="text-xs text-green-600 font-mono mt-1">✓ NumPy/SciPy/sklearn</div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportAsPNG}
+            className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+          >
+            PNG
+          </button>
+          <button
+            onClick={exportAsJSON}
+            className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+          >
+            JSON
+          </button>
         </div>
       </div>
 
-      {/* Professional Canvas Visualization */}
-      <div className="border border-border rounded-lg bg-gradient-to-br from-muted/10 to-muted/5 p-4 shadow-sm">
-        <canvas ref={canvasRef} width={width} height={height} className="w-full h-auto rounded" />
+      {/* SVG Visualization */}
+      <div 
+        className="flex justify-center overflow-hidden border border-border rounded-lg bg-muted/10"
+        style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <svg
+          ref={svgRef}
+          width={vizData.svgWidth}
+          height={vizData.svgHeight}
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+            transformOrigin: 'center',
+            transition: isDragging ? 'none' : 'transform 0.1s',
+          }}
+        >
+          {/* Grid lines */}
+          {vizData.isGrid && (
+            <g className="grid-lines" opacity={0.15}>
+              {Array.from({ length: vizData.worldWidth + 1 }, (_, i) => (
+                <line
+                  key={`v-${i}`}
+                  x1={vizData.offsetX + i * vizData.scale}
+                  y1={vizData.offsetY}
+                  x2={vizData.offsetX + i * vizData.scale}
+                  y2={vizData.offsetY + vizData.worldHeight * vizData.scale}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                />
+              ))}
+              {Array.from({ length: vizData.worldHeight + 1 }, (_, i) => (
+                <line
+                  key={`h-${i}`}
+                  x1={vizData.offsetX}
+                  y1={vizData.offsetY + i * vizData.scale}
+                  x2={vizData.offsetX + vizData.worldWidth * vizData.scale}
+                  y2={vizData.offsetY + i * vizData.scale}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                />
+              ))}
+            </g>
+          )}
+
+          {/* Objects */}
+          {vizData.objects.map((obj: any, idx: number) => {
+            const color = obj.type === 'goal' ? '#22c55e' : obj.type === 'trap' ? '#ef4444' : '#6b7280'
+            return (
+              <g key={idx}>
+                <rect
+                  x={obj.svgX - vizData.scale * 0.4}
+                  y={obj.svgY - vizData.scale * 0.4}
+                  width={vizData.scale * 0.8}
+                  height={vizData.scale * 0.8}
+                  fill={color}
+                  opacity={0.3}
+                  rx={2}
+                />
+                <rect
+                  x={obj.svgX - vizData.scale * 0.4}
+                  y={obj.svgY - vizData.scale * 0.4}
+                  width={vizData.scale * 0.8}
+                  height={vizData.scale * 0.8}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1.5}
+                  rx={2}
+                />
+              </g>
+            )
+          })}
+
+          {/* Suboptimal attractors */}
+          {vizData.attractors.map((attr: any, idx: number) => (
+            <circle
+              key={idx}
+              cx={attr.svgX}
+              cy={attr.svgY}
+              r={vizData.scale * 0.6}
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth={1.5}
+              strokeDasharray="4 2"
+              opacity={0.6}
+            />
+          ))}
+
+          {/* Trajectory path */}
+          {vizData.pathString && (
+            <polyline
+              points={vizData.pathString}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.7}
+            />
+          )}
+
+          {/* Path points (sampled for performance) */}
+          {vizData.pathPoints
+            .filter((_, i) => i === 0 || i === vizData.pathPoints.length - 1 || i % Math.max(1, Math.floor(vizData.pathPoints.length / 20)) === 0)
+            .map((point, idx) => (
+              <circle
+                key={idx}
+                cx={point.x}
+                cy={point.y}
+                r={3}
+                fill="#3b82f6"
+                opacity={0.5}
+                onMouseEnter={() => setHoveredStep(point.step)}
+                onMouseLeave={() => setHoveredStep(null)}
+                className="cursor-pointer"
+              />
+            ))}
+
+          {/* Start point */}
+          {vizData.startPoint && (
+            <circle
+              cx={vizData.startPoint.x}
+              cy={vizData.startPoint.y}
+              r={8}
+              fill="#3b82f6"
+              stroke="white"
+              strokeWidth={2}
+            />
+          )}
+
+          {/* End point */}
+          {vizData.endPoint && (
+            <circle
+              cx={vizData.endPoint.x}
+              cy={vizData.endPoint.y}
+              r={8}
+              fill="#f59e0b"
+              stroke="white"
+              strokeWidth={2}
+            />
+          )}
+
+          {/* Hovered point tooltip */}
+          {hoveredStep !== null && vizData.pathPoints[hoveredStep] && (
+            <g>
+              <rect
+                x={vizData.pathPoints[hoveredStep].x + 10}
+                y={vizData.pathPoints[hoveredStep].y - 25}
+                width={80}
+                height={20}
+                fill="hsl(var(--popover))"
+                stroke="hsl(var(--border))"
+                rx={4}
+              />
+              <text
+                x={vizData.pathPoints[hoveredStep].x + 50}
+                y={vizData.pathPoints[hoveredStep].y - 11}
+                textAnchor="middle"
+                fontSize={11}
+                fill="hsl(var(--foreground))"
+              >
+                Step {hoveredStep}
+              </text>
+            </g>
+          )}
+        </svg>
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-blue-500" />
+      <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-blue-500" />
           <span>Start</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-amber-500" />
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-amber-500" />
           <span>End</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-green-500" />
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-green-500/50 border border-green-500" />
           <span>Goal</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-red-500" />
-          <span>Obstacle</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-500/50 border border-red-500" />
+          <span>Trap</span>
         </div>
-        {analysis.suboptimal_attractors && analysis.suboptimal_attractors.length > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full border-2 border-red-500 bg-red-500/20" />
-            <span>Attractor ({analysis.suboptimal_attractors.length})</span>
+        {vizData.attractors.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full border border-dashed border-amber-500" />
+            <span>Attractor</span>
           </div>
         )}
       </div>
 
-      {/* Professional Metrics Cards */}
+      {/* Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-          <div className="text-xs text-muted-foreground mb-1">Policy Entropy</div>
-          <div className="text-2xl font-bold text-foreground">
-            {(analysis.policy_entropy || 0).toFixed(3)}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">
-            scipy.stats.entropy
-          </div>
-        </div>
-        <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-          <div className="text-xs text-muted-foreground mb-1">Path Efficiency</div>
-          <div className="text-2xl font-bold text-foreground">
-            {(analysis.path_efficiency * 100).toFixed(1)}%
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">
-            scipy.spatial.distance
-          </div>
-        </div>
-        <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-          <div className="text-xs text-muted-foreground mb-1">Oscillations</div>
-          <div
-            className={`text-2xl font-bold ${analysis.oscillation_detection?.detected ? 'text-orange-600' : 'text-green-600'}`}
-          >
-            {analysis.oscillation_detection?.detected ? 'Detected' : 'None'}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">
-            scipy.signal.correlate
-          </div>
-        </div>
-        <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-          <div className="text-xs text-muted-foreground mb-1">Suboptimal Attractors</div>
-          <div className="text-2xl font-bold text-foreground">
-            {analysis.suboptimal_attractors?.length || 0}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono mt-1">sklearn.DBSCAN</div>
-        </div>
+        <MetricBox
+          label="Path Length"
+          value={String(analysis.trajectory_length || 0)}
+          unit="steps"
+        />
+        <MetricBox
+          label="Path Efficiency"
+          value={`${((analysis.path_efficiency || 0) * 100).toFixed(1)}%`}
+        />
+        <MetricBox
+          label="Oscillations"
+          value={analysis.oscillation_detection?.detected ? 'Detected' : 'None'}
+          warning={analysis.oscillation_detection?.detected}
+        />
+        <MetricBox
+          label="Attractors"
+          value={String(analysis.suboptimal_attractors?.length || 0)}
+          warning={analysis.suboptimal_attractors && analysis.suboptimal_attractors.length > 0}
+        />
       </div>
 
       {/* Action Distribution */}
       {analysis.action_distribution && Object.keys(analysis.action_distribution).length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold mb-2">Action Distribution</h4>
-          <div className="space-y-2">
+          <h4 className="text-xs font-medium mb-2">Actions Taken</h4>
+          <div className="flex flex-wrap gap-2">
             {Object.entries(analysis.action_distribution)
               .sort(([, a], [, b]) => (b || 0) - (a || 0))
               .map(([action, count]) => {
@@ -363,27 +496,41 @@ export function TrajectoryPathVisualizer({
                   (a: number, b: number) => a + (b || 0),
                   0
                 )
-                const percentage = total > 0 ? ((count || 0) / total) * 100 : 0
+                const pct = total > 0 ? ((count || 0) / total) * 100 : 0
                 return (
-                  <div key={action} className="flex items-center gap-2">
-                    <div className="w-32 text-xs text-muted-foreground truncate" title={action}>
-                      {action.length > 20 ? action.substring(0, 20) + '...' : action}
-                    </div>
-                    <div className="flex-1 bg-muted rounded-full h-4 overflow-hidden">
-                      <div
-                        className="bg-primary h-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <div className="w-20 text-xs text-right">
-                      {count || 0} ({percentage.toFixed(1)}%)
-                    </div>
+                  <div
+                    key={action}
+                    className="px-2 py-1 bg-muted rounded text-xs font-mono"
+                  >
+                    {action}: {count} ({pct.toFixed(0)}%)
                   </div>
                 )
               })}
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function MetricBox({
+  label,
+  value,
+  unit,
+  warning,
+}: {
+  label: string
+  value: string
+  unit?: string
+  warning?: boolean
+}) {
+  return (
+    <div className="border border-border rounded p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-sm font-medium ${warning ? 'text-amber-600' : ''}`}>
+        {value}
+        {unit && <span className="text-xs text-muted-foreground ml-1">{unit}</span>}
+      </div>
     </div>
   )
 }

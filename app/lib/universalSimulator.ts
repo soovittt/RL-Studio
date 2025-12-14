@@ -85,6 +85,67 @@ function evaluateCondition(
     case 'timeout':
       return state.step >= condition.steps
 
+    case 'step':
+      // Per-step reward - always true (triggers every step)
+      return true
+
+    case 'reach_goal': {
+      // Check if agent is at any goal object
+      if (state.agents.length === 0) return false
+      const agent = state.agents[0]
+      const [ax, ay] = agent.position
+
+      const goals = envSpec.objects.filter((obj) => obj.type === 'goal')
+      if (goals.length === 0) {
+        console.warn('[reach_goal] No goal objects found in envSpec')
+        return false
+      }
+      
+      for (const goal of goals) {
+        const [gx, gy] = goal.position
+        const distance = Math.sqrt((ax - gx) ** 2 + (ay - gy) ** 2)
+        if (distance <= 0.5) {
+          console.log(`[reach_goal] Agent at [${ax}, ${ay}] reached goal at [${gx}, ${gy}], distance: ${distance.toFixed(2)}`)
+          return true
+        }
+      }
+      return false
+    }
+
+    case 'hit_trap': {
+      // Check if agent is at any trap object
+      if (state.agents.length === 0) return false
+      const agent = state.agents[0]
+      const [ax, ay] = agent.position
+
+      const traps = envSpec.objects.filter((obj) => obj.type === 'trap')
+      for (const trap of traps) {
+        const [tx, ty] = trap.position
+        const distance = Math.sqrt((ax - tx) ** 2 + (ay - ty) ** 2)
+        if (distance <= 0.5) {
+          return true
+        }
+      }
+      return false
+    }
+
+    case 'collect_key': {
+      // Check if agent is at any key object
+      if (state.agents.length === 0) return false
+      const agent = state.agents[0]
+      const [ax, ay] = agent.position
+
+      const keys = envSpec.objects.filter((obj) => obj.type === 'key')
+      for (const key of keys) {
+        const [kx, ky] = key.position
+        const distance = Math.sqrt((ax - kx) ** 2 + (ay - ky) ** 2)
+        if (distance <= 0.5) {
+          return true
+        }
+      }
+      return false
+    }
+
     case 'inside_region': {
       const agent = state.agents.find((a) => a.id === condition.agentId)
       const region = state.objects.find((o) => o.id === condition.regionId)
@@ -131,11 +192,28 @@ function calculateReward(
   const rewards: Array<{ ruleId: string; value: number; reason: string }> = []
 
   // Only evaluate explicit reward rules - no hardcoded defaults
-  for (const rule of envSpec.rules.rewards) {
-    if (evaluateCondition(rule.condition, state, envSpec)) {
+  const rewardRules = envSpec.rules?.rewards || []
+  
+  if (rewardRules.length === 0) {
+    console.warn('[calculateReward] No reward rules found in envSpec.rules.rewards')
+    return rewards
+  }
+  
+  for (const rule of rewardRules) {
+    if (!rule) continue
+    if (!rule.condition) {
+      console.warn(`[calculateReward] Rule ${rule.id || 'unknown'} has no condition`)
+      continue
+    }
+    
+    const conditionMet = evaluateCondition(rule.condition, state, envSpec)
+    const rewardValue = rule.reward || 0
+    
+    if (conditionMet) {
+      console.log(`[calculateReward] Rule ${rule.id || 'unknown'} triggered: ${formatCondition(rule.condition)} = ${rewardValue}`)
       rewards.push({
-        ruleId: rule.id,
-        value: rule.reward,
+        ruleId: rule.id || 'unknown',
+        value: rewardValue,
         reason: formatCondition(rule.condition),
       })
     }
@@ -228,7 +306,9 @@ function applyAction(
         newY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
         break
       case 'down':
-        newY -= envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
+        // In grid: down means increase Y (move down in visual grid)
+        // In world: down means decrease Y (move down in coordinate system)
+        newY += envSpec.world.coordinateSystem === 'grid' ? 1 : -0.1
         break
       case 'left':
         newX -= envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
@@ -794,7 +874,7 @@ function selectGreedyActionForAgent(
     let altX = ax
     let altY = ay
     if (altAction === 'up') altY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
-    else if (altAction === 'down') altY -= envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
+    else if (altAction === 'down') altY += envSpec.world.coordinateSystem === 'grid' ? 1 : -0.1
     else if (altAction === 'left') altX -= envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
     else if (altAction === 'right') altX += envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
 
@@ -815,7 +895,7 @@ function selectGreedyActionForAgent(
     let testX = ax
     let testY = ay
     if (action === 'up') testY += envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
-    else if (action === 'down') testY -= envSpec.world.coordinateSystem === 'grid' ? -1 : 0.1
+    else if (action === 'down') testY += envSpec.world.coordinateSystem === 'grid' ? 1 : -0.1
     else if (action === 'left') testX -= envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
     else if (action === 'right') testX += envSpec.world.coordinateSystem === 'grid' ? 1 : 0.1
 
@@ -880,6 +960,14 @@ function formatCondition(condition: ConditionSpec): string {
       return `After ${condition.steps} steps`
     case 'inside_region':
       return 'Agent inside region'
+    case 'step':
+      return 'Per Step'
+    case 'reach_goal':
+      return 'Goal Reached'
+    case 'hit_trap':
+      return 'Trap Hit'
+    case 'collect_key':
+      return 'Key Collected'
     case 'custom':
       return 'Custom condition'
     default:
@@ -1068,6 +1156,17 @@ export function runUniversalRollout(
     }
   }
 
+  // Debug: Log reward rules at start of rollout
+  const rewardRules = envSpec.rules?.rewards || []
+  console.log(`[runUniversalRollout] Starting rollout with ${rewardRules.length} reward rules:`)
+  rewardRules.forEach((rule, i) => {
+    console.log(`  Rule ${i + 1}: ${rule.id || 'no-id'} - ${formatCondition(rule.condition)} = ${rule.reward}`)
+  })
+  
+  if (rewardRules.length === 0) {
+    console.warn('[runUniversalRollout] ⚠️ NO REWARD RULES FOUND! Check envSpec.rules.rewards')
+  }
+
   let state = createInitialState(envSpec)
   const steps: SimulatorStep[] = []
 
@@ -1132,11 +1231,20 @@ export function runUniversalRollout(
     )
   }
 
-  return {
+  const finalResult = {
     steps,
     totalReward: state.totalReward,
     episodeLength: state.step,
     success,
     terminationReason: state.info.events[state.info.events.length - 1],
   }
+  
+  // Debug: Log final reward
+  console.log(`[runUniversalRollout] Rollout complete: totalReward=${finalResult.totalReward}, success=${finalResult.success}, steps=${finalResult.episodeLength}`)
+  if (finalResult.totalReward === 0 && rewardRules.length > 0) {
+    console.warn(`[runUniversalRollout] ⚠️ WARNING: Total reward is 0 but ${rewardRules.length} reward rules exist!`)
+    console.warn(`  This suggests reward conditions are not being met. Check console for [calculateReward] logs.`)
+  }
+  
+  return finalResult
 }
