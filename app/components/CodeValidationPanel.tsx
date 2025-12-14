@@ -110,8 +110,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
     (i) => i.message.toLowerCase().includes('reward') || i.category === 'security'
   )
   const terminationIssues = review.issues.filter(
-    (i) =>
-      i.message.toLowerCase().includes('terminat') || i.message.toLowerCase().includes('step')
+    (i) => i.message.toLowerCase().includes('terminat') || i.message.toLowerCase().includes('step')
   )
   const apiIssues = review.issues.filter((i) => i.category === 'api_compliance')
 

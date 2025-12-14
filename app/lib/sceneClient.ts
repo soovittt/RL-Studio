@@ -82,7 +82,7 @@ export async function getSceneByProjectId(
     const convexModule = await import('./convex')
     // Access the httpClient - it's not exported, so we need to use the api object
     const { api: convexApi } = await import('../../convex/_generated/api')
-    
+
     // Use the Convex HTTP client via the api object
     // We need to query scenes:listByProject
     const convexUrl = import.meta.env.VITE_CONVEX_URL || import.meta.env.VITE_CONVEX_DEV_URL || ''
@@ -90,7 +90,7 @@ export async function getSceneByProjectId(
       console.warn('Convex URL not configured')
       return null
     }
-    
+
     // Query Convex HTTP API directly
     const response = await fetch(`${convexUrl}/api/query`, {
       method: 'POST',
@@ -100,23 +100,23 @@ export async function getSceneByProjectId(
         args: { projectId },
       }),
     })
-    
+
     const result = await response.json()
-    
+
     if (result.status === 'error') {
       console.warn('Failed to find scene by projectId:', result.errorMessage)
       return null
     }
-    
+
     const scenes = result.status === 'success' ? result.value : result
-    
+
     if (!scenes || scenes.length === 0) {
       return null
     }
-    
+
     // Get the first scene (there should only be one per project)
     const sceneData = scenes[0]
-    
+
     // Now get the full scene with active version using the scene ID
     return await getScene(sceneData._id)
   } catch (error) {

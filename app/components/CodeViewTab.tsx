@@ -22,7 +22,9 @@ const FILE_OPTIONS = [
 ]
 
 export function CodeViewTab({ envSpec }: CodeViewTabProps) {
-  const [selectedFileType, setSelectedFileType] = useState<string>('environment')
+  const [selectedFileType, setSelectedFileType] = useState<
+    'environment' | 'training' | 'config' | 'skypilot' | 'readme' | 'env_spec'
+  >('environment')
   const [code, setCode] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +65,7 @@ export function CodeViewTab({ envSpec }: CodeViewTabProps) {
         const startTime = performance.now()
         const response = await generateCode({
           env_spec: envSpec,
-          file_type: selectedFileType as any,
+          file_type: selectedFileType,
           training_config: trainingConfig,
           algorithm: algorithm,
         })

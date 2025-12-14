@@ -162,7 +162,7 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
   }
 
   return (
-    <div 
+    <div
       className="group relative bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-all duration-200 cursor-pointer"
       onClick={handleCardClick}
     >
