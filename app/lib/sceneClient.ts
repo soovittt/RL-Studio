@@ -71,6 +71,61 @@ export interface UpdateSceneRequest {
 }
 
 /**
+ * Get scene by projectId (environment ID) - finds scene that belongs to an environment
+ * This is needed because environments have their own ID, but scenes reference them via projectId
+ */
+export async function getSceneByProjectId(
+  projectId: string
+): Promise<{ scene: Scene; activeVersion: SceneVersion | null } | null> {
+  try {
+    // Import Convex HTTP client
+    const convexModule = await import('./convex')
+    // Access the httpClient - it's not exported, so we need to use the api object
+    const { api: convexApi } = await import('../../convex/_generated/api')
+    
+    // Use the Convex HTTP client via the api object
+    // We need to query scenes:listByProject
+    const convexUrl = import.meta.env.VITE_CONVEX_URL || import.meta.env.VITE_CONVEX_DEV_URL || ''
+    if (!convexUrl) {
+      console.warn('Convex URL not configured')
+      return null
+    }
+    
+    // Query Convex HTTP API directly
+    const response = await fetch(`${convexUrl}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: 'scenes:listByProject',
+        args: { projectId },
+      }),
+    })
+    
+    const result = await response.json()
+    
+    if (result.status === 'error') {
+      console.warn('Failed to find scene by projectId:', result.errorMessage)
+      return null
+    }
+    
+    const scenes = result.status === 'success' ? result.value : result
+    
+    if (!scenes || scenes.length === 0) {
+      return null
+    }
+    
+    // Get the first scene (there should only be one per project)
+    const sceneData = scenes[0]
+    
+    // Now get the full scene with active version using the scene ID
+    return await getScene(sceneData._id)
+  } catch (error) {
+    console.warn('Failed to get scene by projectId:', error)
+    return null
+  }
+}
+
+/**
  * Get scene with active version via GraphQL
  * Note: GraphQL only returns scene data, activeVersion is still fetched via REST
  */
@@ -156,13 +211,13 @@ export async function createScene(
 
   const variables = {
     input: {
-      projectId: request.projectId,
+      projectId: request.projectId || null, // Convert undefined/empty string to null for GraphQL
       name: request.name,
       description: request.description,
       mode: request.mode,
-      environmentSettings: request.environmentSettings
-        ? JSON.stringify(request.environmentSettings)
-        : null,
+      // GraphQL JSON scalar expects a dict/object, not a string
+      // The GraphQL client will handle serialization automatically
+      environmentSettings: request.environmentSettings || {},
       createdBy: request.createdBy,
     },
   }
@@ -206,9 +261,9 @@ export async function updateScene(
       name: request.name,
       description: request.description,
       mode: request.mode,
-      environmentSettings: request.environmentSettings
-        ? JSON.stringify(request.environmentSettings)
-        : null,
+      // GraphQL JSON scalar expects a dict/object, not a string
+      // The GraphQL client will handle serialization automatically
+      environmentSettings: request.environmentSettings || undefined,
       projectId: request.projectId,
     },
   }

@@ -124,13 +124,48 @@ class SceneResolver:
 
             # Call REST API function
             result = await rest_create_scene(request)
+            scene_id = result.get("id")
+            
+            # Validate scene_id is a string
+            if not scene_id or not isinstance(scene_id, str):
+                import logging
+                error_msg = f"Invalid scene ID returned: {scene_id}"
+                logging.error(error_msg)
+                raise Exception(error_msg)
 
-            # Fetch the created scene
-            created_scene = await self.scene(result["id"])
-            if not created_scene:
-                raise Exception("Failed to fetch created scene")
-
-            return created_scene
+            # Fetch the created scene directly (don't use self.scene to avoid context issues)
+            try:
+                from ....api.scenes import get_scene
+                scene_response = await get_scene(scene_id)
+                
+                if not scene_response or "scene" not in scene_response:
+                    raise Exception("Failed to fetch created scene")
+                
+                scene_data = scene_response["scene"]
+                
+                # Convert to GraphQL Scene type
+                return Scene(
+                    id=scene_data.get("_id", scene_id),
+                    name=scene_data.get("name", request.name),
+                    env_spec=scene_data.get("envSpec", {}),
+                    created_at=scene_data.get("_creationTime"),
+                    updated_at=scene_data.get("_creationTime"),
+                    created_by=scene_data.get("createdBy", request.createdBy),
+                    project_id=scene_data.get("projectId", request.projectId),
+                )
+            except Exception as fetch_error:
+                # If we can't fetch, at least return basic info
+                import logging
+                logging.warning(f"Could not fetch created scene, returning basic info: {fetch_error}")
+                return Scene(
+                    id=scene_id,
+                    name=request.name,
+                    env_spec={},
+                    created_at=None,
+                    updated_at=None,
+                    created_by=request.createdBy,
+                    project_id=request.projectId,
+                )
         except Exception as e:
             import logging
 
@@ -162,12 +197,39 @@ class SceneResolver:
             # Call REST API function
             await rest_update_scene(id, request)
 
-            # Fetch the updated scene
-            updated_scene = await self.scene(id)
-            if not updated_scene:
-                raise Exception("Failed to fetch updated scene")
-
-            return updated_scene
+            # Fetch the updated scene directly (don't use self.scene to avoid context issues)
+            try:
+                from ....api.scenes import get_scene
+                scene_response = await get_scene(id)
+                
+                if not scene_response or "scene" not in scene_response:
+                    raise Exception("Failed to fetch updated scene")
+                
+                scene_data = scene_response["scene"]
+                
+                # Convert to GraphQL Scene type
+                return Scene(
+                    id=scene_data.get("_id", id),
+                    name=scene_data.get("name", input.name or ""),
+                    env_spec=scene_data.get("envSpec", {}),
+                    created_at=scene_data.get("_creationTime"),
+                    updated_at=scene_data.get("_creationTime"),
+                    created_by=scene_data.get("createdBy"),
+                    project_id=scene_data.get("projectId", input.project_id),
+                )
+            except Exception as fetch_error:
+                # If we can't fetch, at least return basic info
+                import logging
+                logging.warning(f"Could not fetch updated scene, returning basic info: {fetch_error}")
+                return Scene(
+                    id=id,
+                    name=input.name or "",
+                    env_spec={},
+                    created_at=None,
+                    updated_at=None,
+                    created_by=None,
+                    project_id=input.project_id,
+                )
         except Exception as e:
             import logging
 

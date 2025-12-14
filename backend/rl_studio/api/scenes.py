@@ -63,23 +63,62 @@ async def create_scene(request: CreateSceneRequest):
     """
     try:
         # TODO: Get createdBy from auth context
-        # For now, require it in request or use a default
+        # For now, require it in request
         client = get_client()
-        # Use createdBy from request if provided, otherwise use projectId as fallback
-        created_by = (
-            getattr(request, "createdBy", None) or request.projectId or "system"
-        )
-        scene_id = client.mutation(
-            "scenes/create",
-            {
-                "projectId": request.projectId,
-                "name": request.name,
-                "description": request.description,
-                "mode": request.mode,
-                "environmentSettings": request.environmentSettings or {},
-                "createdBy": created_by,
-            },
-        )
+        if not client:
+            raise HTTPException(
+                status_code=500, detail="Convex client not configured"
+            )
+        
+        # createdBy is required and must be a valid user ID
+        created_by = getattr(request, "createdBy", None)
+        if not created_by:
+            raise HTTPException(
+                status_code=400, detail="createdBy is required and must be a valid user ID"
+            )
+        
+        # projectId should be None/undefined if empty string, not ""
+        # Convex expects v.optional(v.id('environments')) which means None/undefined, not ""
+        project_id = request.projectId if (request.projectId and request.projectId.strip()) else None
+        
+        # Build mutation args, omitting None/empty values (Convex handles optional better this way)
+        mutation_args = {
+            "name": request.name,
+            "mode": request.mode,
+            "environmentSettings": request.environmentSettings or {},
+            "createdBy": created_by,
+        }
+        
+        # Only include optional fields if they have values
+        if project_id:
+            mutation_args["projectId"] = project_id
+        
+        # description is optional - only include if it's not None/empty
+        if request.description and request.description.strip():
+            mutation_args["description"] = request.description
+        
+        mutation_result = client.mutation("scenes/create", mutation_args)
+        
+        # Handle wrapped response format (like queries)
+        if isinstance(mutation_result, dict):
+            if mutation_result.get("status") == "error":
+                error_msg = mutation_result.get("errorMessage", "Unknown error")
+                logger.error(f"Convex mutation error: {error_msg}")
+                raise HTTPException(status_code=500, detail=f"Failed to create scene: {error_msg}")
+            elif mutation_result.get("status") == "success":
+                scene_id = mutation_result.get("value")
+            else:
+                # Assume it's the direct result (backward compatibility)
+                scene_id = mutation_result
+        else:
+            # Direct result (string ID)
+            scene_id = mutation_result
+        
+        # Validate scene_id is a string
+        if not isinstance(scene_id, str):
+            logger.error(f"Invalid scene_id type: {type(scene_id)}, value: {scene_id}")
+            raise HTTPException(status_code=500, detail="Failed to create scene: invalid response format")
+        
         return {"id": scene_id, "name": request.name}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -95,19 +134,39 @@ async def update_scene(scene_id: str, request: UpdateSceneRequest):
     """
     try:
         client = get_client()
+        if not client:
+            raise HTTPException(
+                status_code=500, detail="Convex client not configured"
+            )
+        
+        # Build update data - only include fields that Convex update mutation accepts
+        # Note: projectId is NOT in the Convex update mutation args, so we omit it
         update_data = {}
         if request.name is not None:
             update_data["name"] = request.name
-        if request.description is not None:
+        if request.description is not None and request.description.strip():
             update_data["description"] = request.description
         if request.mode is not None:
             update_data["mode"] = request.mode
         if request.environmentSettings is not None:
             update_data["environmentSettings"] = request.environmentSettings
-        if request.projectId is not None:
-            update_data["projectId"] = request.projectId
+        # projectId is NOT supported by Convex scenes:update mutation
+        # If we need to update projectId, we'd need to add it to the Convex mutation
 
-        scene = client.mutation("scenes/update", {"id": scene_id, **update_data})
+        mutation_result = client.mutation("scenes/update", {"id": scene_id, **update_data})
+        
+        # Handle wrapped response format
+        if isinstance(mutation_result, dict):
+            if mutation_result.get("status") == "error":
+                error_msg = mutation_result.get("errorMessage", "Unknown error")
+                logger.error(f"Convex mutation error: {error_msg}")
+                raise HTTPException(status_code=500, detail=f"Failed to update scene: {error_msg}")
+            elif mutation_result.get("status") == "success":
+                # Update mutation returns void, so success means it worked
+                pass
+        
+        # Return success (mutation doesn't return the scene)
+        return {"success": True}
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
         return scene

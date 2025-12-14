@@ -3,8 +3,9 @@
  * Uses GPT API to generate production-ready code based on actual environment configuration
  * Allows editing code and configs with auto-save
  */
+/// <reference types="vite/client" />
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { generateCode, saveCode, getFileTypeMapping, getFileDisplayName } from '~/lib/codegenClient'
+import { generateCode, saveCode, getFileTypeMapping } from '~/lib/codegenClient'
 import type { EnvSpec } from '~/lib/envSpec'
 
 interface CodeViewTabProps {

@@ -160,7 +160,7 @@ class ConvexClient:
             args: Mutation arguments
 
         Returns:
-            Mutation result
+            Mutation result (extracted from wrapped response if needed)
         """
         try:
             # Ensure path is in "module:function" format
@@ -169,15 +169,62 @@ class ConvexClient:
             else:
                 api_path = path
 
+            request_payload = {"path": api_path, "args": args or {}}
+            logger.info(f"📤 Calling Convex mutation: {api_path} with args: {args or {}}")
+
             # Use Convex standard HTTP API endpoint
             response = requests.post(
                 f"{self.convex_url}/api/mutation",
-                json={"path": api_path, "args": args or {}},
+                json=request_payload,
                 headers={"Content-Type": "application/json"},
                 timeout=10,
             )
-            response.raise_for_status()
+            
+            # Check response status before parsing
+            if response.status_code != 200:
+                logger.error(
+                    f"❌ Convex mutation returned status {response.status_code} for {api_path}"
+                )
+                logger.error(f"Request payload: {request_payload}")
+                logger.error(f"Full response text: {response.text}")
+                raise requests.exceptions.HTTPError(
+                    f"Convex mutation failed with status {response.status_code}: {response.text[:200]}"
+                )
+            
             result = response.json()
+            logger.info(
+                f"📥 Convex mutation response status: {result.get('status', 'unknown')}, keys: {list(result.keys())}"
+            )
+
+            # Convex HTTP API wraps responses in {"status": "success", "value": <actual_result>}
+            # or {"status": "error", "errorMessage": "..."}
+            if isinstance(result, dict):
+                if result.get("status") == "error":
+                    error_msg = result.get(
+                        "errorMessage", result.get("error", "Unknown error")
+                    )
+                    error_data = result.get("errorData", {})
+                    logger.error(
+                        f"❌ Convex mutation returned error for {api_path}: {error_msg}"
+                    )
+                    logger.error(f"Full error response: {result}")
+                    logger.error(f"Request args were: {args or {}}")
+                    if error_data:
+                        logger.error(f"Error data: {error_data}")
+                    # Log full response text for debugging
+                    try:
+                        logger.error(f"Full response text: {response.text}")
+                    except:
+                        pass
+                    # Return the error object so caller can handle it
+                    return result
+                elif result.get("status") == "success":
+                    # Extract the actual value from the success response
+                    actual_result = result.get("value")
+                    logger.info(f"✅ Convex mutation success for {api_path}")
+                    return actual_result if actual_result is not None else result
+
+            # If it's not a wrapped response, return as-is (backward compatibility)
             return result
         except requests.exceptions.RequestException as e:
             logger.error(f"Convex mutation failed: {api_path} - {e}")

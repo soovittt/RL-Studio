@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
 import type { Id } from '../../convex/_generated/dataModel'
-import { updateScene, getScene } from '~/lib/sceneClient'
+import { updateScene } from '~/lib/sceneClient'
 
 interface EnvironmentCardProps {
   env: {
@@ -80,16 +80,20 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
       })
 
       // Also update in Scene Service if this environment has been migrated
+      // Note: env._id is an environment ID, we need to find the scene with projectId = env._id
       try {
-        const sceneData = await getScene(env._id)
+        const { getSceneByProjectId } = await import('~/lib/sceneClient')
+        const sceneData = await getSceneByProjectId(env._id)
         if (sceneData?.scene) {
-          await updateScene(env._id, {
+          // Use the scene ID (not environment ID) for update
+          await updateScene(sceneData.scene._id, {
             name: newName,
           })
         }
       } catch (err) {
         // Scene not found in new system - that's okay, just update old system
-        console.log('Environment not in Scene Service, updating old system only')
+        // This is expected for environments that haven't been migrated to Scene Service yet
+        console.log('Environment not in Scene Service, updating old system only:', err)
       }
 
       if (onUpdate) onUpdate()
@@ -107,16 +111,20 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
       })
 
       // Also update in Scene Service if this environment has been migrated
+      // Note: env._id is an environment ID, we need to find the scene with projectId = env._id
       try {
-        const sceneData = await getScene(env._id)
+        const { getSceneByProjectId } = await import('~/lib/sceneClient')
+        const sceneData = await getSceneByProjectId(env._id)
         if (sceneData?.scene) {
-          await updateScene(env._id, {
+          // Use the scene ID (not environment ID) for update
+          await updateScene(sceneData.scene._id, {
             description: newDesc || undefined,
           })
         }
       } catch (err) {
         // Scene not found in new system - that's okay, just update old system
-        console.log('Environment not in Scene Service, updating old system only')
+        // This is expected for environments that haven't been migrated to Scene Service yet
+        console.log('Environment not in Scene Service, updating old system only:', err)
       }
 
       if (onUpdate) onUpdate()
@@ -134,8 +142,30 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
 
   const envType = env.envType || env.type || 'grid'
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on editable areas or menu
+    const target = e.target as HTMLElement
+    if (
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('h3') ||
+      target.closest('[title="Click to edit title"]') ||
+      target.closest('[title="Click to edit description"]') ||
+      target.closest('[ref]') ||
+      isEditingName ||
+      isEditingDescription
+    ) {
+      return
+    }
+    // Navigate to environment view
+    navigate({ to: '/environments/$id', params: { id: env._id } })
+  }
+
   return (
-    <div className="group relative bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-all duration-200">
+    <div 
+      className="group relative bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-all duration-200 cursor-pointer"
+      onClick={handleCardClick}
+    >
       {/* 3-dot menu button */}
       <div className="absolute top-3 right-3" ref={menuRef}>
         <button
@@ -199,8 +229,8 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
         )}
       </div>
 
-      {/* Card content - clickable link */}
-      <Link to="/environments/$id" params={{ id: env._id }} className="block">
+      {/* Card content - editable title and description, clickable footer */}
+      <div className="block">
         {/* Title */}
         {isEditingName ? (
           <input
@@ -223,7 +253,6 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
         ) : (
           <h3
             onClick={(e) => {
-              e.preventDefault()
               e.stopPropagation()
               setIsEditingName(true)
             }}
@@ -258,7 +287,6 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
         ) : (
           <div
             onClick={(e) => {
-              e.preventDefault()
               e.stopPropagation()
               setIsEditingDescription(true)
             }}
@@ -301,7 +329,7 @@ export function EnvironmentCard({ env, onUpdate }: EnvironmentCardProps) {
             })}
           </span>
         </div>
-      </Link>
+      </div>
     </div>
   )
 }

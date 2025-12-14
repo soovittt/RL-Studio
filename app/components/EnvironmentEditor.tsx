@@ -141,13 +141,92 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
   // Only reset when id changes FROM something else TO 'new'
   const manuallySetRef = useRef(false)
   const prevIdRef = useRef(id)
+  // Track if we're currently updating the name to prevent sync from overwriting
+  const isUpdatingNameRef = useRef(false)
+  // Track if we've auto-created the environment
+  const hasAutoCreatedRef = useRef(false)
+  // Keep a ref to the current localEnvSpec for auto-creation
+  const localEnvSpecRef = useRef(localEnvSpec)
+  
   useEffect(() => {
     // Only reset if we just navigated TO 'new' from a different page
     if (id === 'new' && prevIdRef.current !== 'new') {
       manuallySetRef.current = false // Reset when first creating new environment
+      hasAutoCreatedRef.current = false // Reset auto-creation flag
     }
     prevIdRef.current = id
   }, [id])
+  
+  // Auto-create environment when user navigates to /environments/new
+  useEffect(() => {
+    if (id === 'new' && user?._id && !hasAutoCreatedRef.current) {
+      // Small delay to avoid creating if user navigates away immediately
+      const timer = setTimeout(async () => {
+        // Double-check conditions before creating
+        const currentSpec = localEnvSpecRef.current
+        if (id === 'new' && user?._id && !hasAutoCreatedRef.current && currentSpec) {
+          hasAutoCreatedRef.current = true
+          
+          console.log('Auto-creating environment...', { userId: user._id, specName: currentSpec.name })
+          
+          try {
+            // Convert EnvSpec to sceneGraph + rlConfig
+            const sceneGraph = envSpecToSceneGraph(currentSpec)
+            const rlConfig = envSpecToRLConfig(currentSpec)
+
+            // Create new scene in Scene Service (primary)
+            const scene = await createScene({
+              projectId: undefined, // Will be set after creating environment (undefined, not empty string)
+              name: currentSpec.name || 'Untitled Environment',
+              description: currentSpec.metadata?.notes,
+              mode: currentSpec.world.coordinateSystem === 'grid' ? 'grid' : '2d',
+              environmentSettings: {},
+              createdBy: user._id,
+            })
+            const sceneId = scene.id
+
+            // Create initial version
+            await createSceneVersion(scene.id, {
+              sceneGraph,
+              rlConfig,
+              createdBy: user._id,
+            })
+
+            // Also save to old system for backward compatibility (REQUIRED for list to show it)
+            let envId: string
+            try {
+              envId = await createMutation({
+                ownerId: user._id,
+                name: currentSpec.name || 'Untitled Environment',
+                envSpec: currentSpec,
+              })
+
+              // Update scene with projectId
+              await updateScene(sceneId, { projectId: envId })
+              
+              console.log('Successfully created environment in both systems:', { sceneId, envId })
+            } catch (oldSystemError) {
+              console.error('Failed to save to old system (CRITICAL - environment won\'t show in list):', oldSystemError)
+              // This is actually critical - if Convex creation fails, the environment won't show in the list
+              // because the list queries Convex, not Scene Service
+              alert('Failed to create environment in database. Please try again.')
+              hasAutoCreatedRef.current = false // Reset flag so user can retry
+              return // Don't navigate if creation failed
+            }
+
+            // Navigate to the newly created environment
+            navigate({ to: '/environments/$id', params: { id: envId }, replace: true })
+          } catch (error) {
+            console.error('Failed to auto-create environment:', error)
+            hasAutoCreatedRef.current = false // Reset flag on error so we can retry
+            // Don't show alert - let user continue working, they can save manually
+          }
+        }
+      }, 500) // 500ms delay
+
+      return () => clearTimeout(timer)
+    }
+  }, [id, user?._id])
 
   // Create SceneGraphManager instance
   const sceneGraphRef = useRef<SceneGraphManager | null>(null)
@@ -193,9 +272,19 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     }
   }, [])
 
-  // Sync localEnvSpec when envSpec changes (e.g., template loaded or name updated from database)
-  // BUT: Don't overwrite if we just set it manually (e.g., from template selection)
+  // Update ref whenever localEnvSpec changes
   useEffect(() => {
+    localEnvSpecRef.current = localEnvSpec
+  }, [localEnvSpec])
+  
+  // Sync localEnvSpec when envSpec changes (e.g., template loaded or name updated from database)
+  // BUT: Don't overwrite if we just set it manually (e.g., from template selection or name change)
+  useEffect(() => {
+    // Skip sync if we're in the middle of updating the name
+    if (isUpdatingNameRef.current) {
+      return
+    }
+    
     if (id === 'new') {
       // Only sync on initial mount, not after manual changes
       if (!manuallySetRef.current) {
@@ -203,14 +292,22 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
       }
     } else {
       // For existing environments, update local state when envSpec changes from query
-      // This ensures the UI reflects database changes (like name updates)
-      if (envSpec && envSpec.name !== localEnvSpec.name) {
+      // This ensures the UI reflects database changes (like name updates from other sources)
+      if (envSpec && envSpec.id === localEnvSpec.id) {
+        // Same environment - check if envSpec has meaningful updates from server
+        // Only sync if the name is different (indicating a server-side update)
+        // and we're not in the middle of a local update
+        if (envSpec.name !== localEnvSpec.name) {
+          setLocalEnvSpec(envSpec)
+        }
+      } else if (envSpec && envSpec.id !== localEnvSpec.id) {
+        // Different environment - full sync
         setLocalEnvSpec(envSpec)
       }
     }
-  }, [envSpec, id, localEnvSpec.name])
+  }, [envSpec, id])
 
-  const handleSpecChange = (newSpec: EnvSpec) => {
+  const handleSpecChange = async (newSpec: EnvSpec) => {
     // Push to history
     if (historyManagerRef.current) {
       historyManagerRef.current.push(newSpec)
@@ -229,9 +326,32 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         envSpec: newSpec, // Store as universal EnvSpec
       })
 
-      // TODO: Also update Scene Service version if scene exists
-      // For now, we'll only save to Scene Service on explicit save
-      // This can be enhanced later with auto-save to Scene Service
+      // Also auto-save to Scene Service if scene exists
+      if (sceneData?.scene && user?._id) {
+        try {
+          // Convert EnvSpec to sceneGraph + rlConfig
+          const sceneGraph = envSpecToSceneGraph(newSpec)
+          const rlConfig = envSpecToRLConfig(newSpec)
+
+          // Create new version (auto-save)
+          await createSceneVersion(id, {
+            sceneGraph,
+            rlConfig,
+            createdBy: user._id,
+          })
+
+          // Update scene metadata if name changed
+          if (newSpec.name && sceneData.scene.name !== newSpec.name) {
+            await updateScene(id, {
+              name: newSpec.name,
+              description: newSpec.metadata?.notes,
+            })
+          }
+        } catch (err) {
+          console.warn('Failed to auto-save to Scene Service:', err)
+          // Non-critical error, continue
+        }
+      }
     }
   }
 
@@ -289,15 +409,44 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
 
   const handleNameChange = async (name: string) => {
     if (id === 'new') {
-      setLocalEnvSpec({ ...localEnvSpec, name })
+      // For new environments, use handleSpecChange to properly update everything
+      const updatedSpec = { ...localEnvSpec, name }
+      handleSpecChange(updatedSpec)
     } else {
+      // Set flag to prevent sync from overwriting our local change
+      isUpdatingNameRef.current = true
+      
       // Update both top-level name and envSpec.name to keep them in sync
-      const updatedSpec = { ...envSpec, name }
-      await updateMutation({
-        id: id as any,
-        name,
-        envSpec: updatedSpec, // Also update envSpec.name
-      })
+      const updatedSpec = { ...localEnvSpec, name }
+      
+      // Update local state immediately for instant UI feedback
+      setLocalEnvSpec(updatedSpec)
+      
+      try {
+        // Update in Convex (old system)
+        await updateMutation({
+          id: id as any,
+          name,
+          envSpec: updatedSpec, // Also update envSpec.name
+        })
+        
+        // Also update Scene Service if scene exists
+        if (sceneData?.scene) {
+          try {
+            await updateScene(id, {
+              name,
+            })
+          } catch (err) {
+            console.warn('Failed to update scene name in Scene Service:', err)
+            // Non-critical error, continue
+          }
+        }
+      } finally {
+        // Clear flag after a short delay to allow query to refetch
+        setTimeout(() => {
+          isUpdatingNameRef.current = false
+        }, 1000)
+      }
     }
   }
 
@@ -506,7 +655,9 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     )
   }
 
-  const currentSpec = id === 'new' ? localEnvSpec : envSpec
+  // Use localEnvSpec for both new and existing environments to ensure immediate UI updates
+  // envSpec from query will sync to localEnvSpec via useEffect when it changes
+  const currentSpec = localEnvSpec
 
   return (
     <SelectionProvider>
@@ -564,17 +715,7 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
         <TemplateSelector onClose={() => setShowTemplates(false)} onSelect={handleTemplateSelect} />
       )}
 
-      {/* Save Button for New Environments */}
-      {id === 'new' && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <button
-            onClick={handleSave}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg shadow-lg hover:opacity-90 font-medium"
-          >
-            Save Environment
-          </button>
-        </div>
-      )}
+      {/* Save button removed - environments now auto-create and auto-save */}
 
       {/* Create Run Modal */}
       {showCreateRun && id !== 'new' && (

@@ -9,7 +9,9 @@ export interface Asset {
   _id: string
   projectId?: string
   assetTypeId: string
+  assetTypeKey?: string // Optional key for asset type lookup
   name: string
+  description?: string // Optional description
   slug?: string
   thumbnailUrl?: string
   modelUrl?: string

@@ -13,9 +13,35 @@ interface CodeValidationPanelProps {
   onClose: () => void
 }
 
+interface ReviewIssue {
+  severity: 'error' | 'warning' | 'info'
+  file: string
+  line?: number
+  message: string
+  suggestion?: string
+  category: string
+}
+
+interface ReviewSuggestion {
+  title: string
+  description: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+interface ReviewResult {
+  success: boolean
+  review?: {
+    score: number
+    issues: ReviewIssue[]
+    summary: string
+    suggestions?: ReviewSuggestion[]
+  }
+  error?: string
+}
+
 export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelProps) {
   const [isValidating, setIsValidating] = useState(true)
-  const [reviewResult, setReviewResult] = useState<any>(null)
+  const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const validateAction = useAction(api.coderabbit.validateEnvironmentCode)
@@ -74,20 +100,20 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
     return null
   }
 
-  const errorCount = review.issues.filter((i: any) => i.severity === 'error').length
-  const warningCount = review.issues.filter((i: any) => i.severity === 'warning').length
-  const infoCount = review.issues.filter((i: any) => i.severity === 'info').length
+  const errorCount = review.issues.filter((i) => i.severity === 'error').length
+  const warningCount = review.issues.filter((i) => i.severity === 'warning').length
+  const infoCount = review.issues.filter((i) => i.severity === 'info').length
 
   // Filter issues by category
-  const logicErrors = review.issues.filter((i: any) => i.category === 'logic')
+  const logicErrors = review.issues.filter((i) => i.category === 'logic')
   const rewardIssues = review.issues.filter(
-    (i: any) => i.message.toLowerCase().includes('reward') || i.category === 'security'
+    (i) => i.message.toLowerCase().includes('reward') || i.category === 'security'
   )
   const terminationIssues = review.issues.filter(
-    (i: any) =>
+    (i) =>
       i.message.toLowerCase().includes('terminat') || i.message.toLowerCase().includes('step')
   )
-  const apiIssues = review.issues.filter((i: any) => i.category === 'api_compliance')
+  const apiIssues = review.issues.filter((i) => i.category === 'api_compliance')
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -141,7 +167,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">🔍 Logic Errors</h3>
             <div className="space-y-2">
-              {logicErrors.map((issue: any, idx: number) => (
+              {logicErrors.map((issue, idx: number) => (
                 <div key={idx} className="p-3 bg-red-50 border-l-4 border-red-500 rounded">
                   <div className="text-sm font-medium text-gray-900 mb-1">{issue.message}</div>
                   {issue.suggestion && (
@@ -157,7 +183,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">🎯 Reward-Related Issues</h3>
             <div className="space-y-2">
-              {rewardIssues.map((issue: any, idx: number) => (
+              {rewardIssues.map((issue, idx: number) => (
                 <div
                   key={idx}
                   className={`p-3 border-l-4 rounded ${
@@ -180,7 +206,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">⏱️ Termination Issues</h3>
             <div className="space-y-2">
-              {terminationIssues.map((issue: any, idx: number) => (
+              {terminationIssues.map((issue, idx: number) => (
                 <div
                   key={idx}
                   className={`p-3 border-l-4 rounded ${
@@ -203,7 +229,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">🔌 API Compliance Issues</h3>
             <div className="space-y-2">
-              {apiIssues.map((issue: any, idx: number) => (
+              {apiIssues.map((issue, idx: number) => (
                 <div key={idx} className="p-3 bg-red-50 border-l-4 border-red-500 rounded">
                   <div className="text-sm font-medium text-gray-900 mb-1">{issue.message}</div>
                   {issue.suggestion && (
@@ -217,7 +243,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
 
         {/* All Other Issues */}
         {review.issues.filter(
-          (i: any) =>
+          (i) =>
             !logicErrors.includes(i) &&
             !rewardIssues.includes(i) &&
             !terminationIssues.includes(i) &&
@@ -228,13 +254,13 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
             <div className="space-y-2">
               {review.issues
                 .filter(
-                  (i: any) =>
+                  (i) =>
                     !logicErrors.includes(i) &&
                     !rewardIssues.includes(i) &&
                     !terminationIssues.includes(i) &&
                     !apiIssues.includes(i)
                 )
-                .map((issue: any, idx: number) => (
+                .map((issue, idx: number) => (
                   <div
                     key={idx}
                     className={`p-3 border-l-4 rounded ${
@@ -263,7 +289,7 @@ export function CodeValidationPanel({ envSpec, onClose }: CodeValidationPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">💡 Suggestions</h3>
             <div className="space-y-2">
-              {review.suggestions.map((suggestion: any, idx: number) => (
+              {review.suggestions.map((suggestion, idx: number) => (
                 <div
                   key={idx}
                   className={`p-3 rounded border ${

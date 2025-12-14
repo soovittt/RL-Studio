@@ -1,8 +1,10 @@
 // useState removed - not used
 
+import type { EnvSpec } from '~/lib/envSpec'
+
 interface BanditCanvasProps {
-  envSpec: any
-  onSpecChange: (spec: any) => void
+  envSpec: EnvSpec
+  onSpecChange: (spec: EnvSpec) => void
 }
 
 interface Arm {

@@ -1,5 +1,5 @@
 // ContinuousCanvasThree - Beautiful 3D continuous renderer using Three.js + React Three Fiber
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
 import { Bloom, Vignette, EffectComposer } from '@react-three/postprocessing'
@@ -192,16 +192,17 @@ function SceneContent({
   selectedAgentId?: string
 }) {
   const world = envSpec.world
-  const bounds =
-    world.coordinateSystem === 'cartesian'
-      ? [
-          [-world.width / 2, world.width / 2],
-          [-world.height / 2, world.height / 2],
-        ]
-      : [
-          [0, world.width],
-          [0, world.height],
-        ]
+  // bounds calculated but not used yet - reserved for future click-to-place functionality
+  // const bounds =
+  //   world.coordinateSystem === 'cartesian'
+  //     ? [
+  //         [-world.width / 2, world.width / 2],
+  //         [-world.height / 2, world.height / 2],
+  //       ]
+  //     : [
+  //         [0, world.width],
+  //         [0, world.height],
+  //       ]
 
   const agents =
     rolloutState?.agents ||
@@ -299,7 +300,7 @@ export function ContinuousCanvasThree({
     onSpecChange(sceneGraph.getSpec())
   }
 
-  const handleCanvasClick = (e: React.MouseEvent) => {
+  const handleCanvasClick = (_e: React.MouseEvent) => {
     // TODO: Implement click-to-place functionality
     // This would require raycasting to convert screen coordinates to world coordinates
   }
