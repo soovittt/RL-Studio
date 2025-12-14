@@ -129,21 +129,26 @@ function RewardRulesEditor({ envSpec, sceneGraph, onSpecChange }: RuleEditorProp
       </div>
 
       {rules.length > 0 && (
-        <div className="pt-4 border-t border-border">
+        <div className="pt-3 border-t border-border">
           <div className="text-xs text-muted-foreground">
-            <div className="font-medium mb-2">Total Rewards:</div>
-            <div className="space-y-1">
-              {rules.map((rule) => (
-                <div key={rule.id} className="flex justify-between">
-                  <span>{formatCondition(rule.condition)}:</span>
-                  <span
-                    className={`font-mono ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                  >
-                    {rule.reward >= 0 ? '+' : ''}
-                    {rule.reward}
-                  </span>
-                </div>
-              ))}
+            <div className="font-medium mb-1">Total Rewards:</div>
+            <div className="space-y-0.5">
+              {rules.map((rule) => {
+                const stepInfo = rule.condition?.type === 'timeout' && (rule.condition as any)?.steps
+                  ? `After ${(rule.condition as any).steps} steps`
+                  : 'On trigger'
+                return (
+                  <div key={rule.id} className="flex justify-between">
+                    <span>{stepInfo}:</span>
+                    <span
+                      className={`font-mono ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
+                      {rule.reward >= 0 ? '+' : ''}
+                      {rule.reward}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -293,29 +298,79 @@ function RewardRuleCard({
   onUpdate: (updates: Partial<RewardRule>) => void
   onRemove: () => void
 }) {
+  const getConditionLabel = (condition: ConditionSpec) => {
+    if (!condition) return 'Unknown'
+    if (condition.type === 'timeout') return 'Timeout (Steps)'
+    if (condition.type === 'reach_goal') return 'Goal Reached'
+    if (condition.type === 'hit_trap') return 'Trap Hit'
+    if (condition.type === 'step') return 'Per Step'
+    if (condition.type === 'collect_key') return 'Key Collected'
+    return condition.type || 'Custom'
+  }
+
   return (
     <div className="p-3 border border-border rounded bg-muted/30">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium">Reward Rule</span>
         <button onClick={onRemove} className="text-xs text-red-600 hover:text-red-800">
           ×
         </button>
       </div>
       <div className="space-y-2">
-        <ConditionBuilder
-          condition={rule.condition}
-          envSpec={envSpec}
-          onChange={(condition) => onUpdate({ condition })}
-          scriptType="reward"
-        />
         <div className="flex items-center gap-2">
-          <label className="text-xs text-muted-foreground w-20">Reward:</label>
+          <label className="text-xs text-muted-foreground w-12">IF:</label>
+          <select
+            value={rule.condition?.type || ''}
+            onChange={(e) => {
+              const conditionType = e.target.value
+              let newCondition: ConditionSpec = { type: conditionType as any }
+              
+              // Set default steps for timeout
+              if (conditionType === 'timeout') {
+                newCondition = { type: 'timeout', steps: (rule.condition as any)?.steps || 1 }
+              }
+              
+              onUpdate({ condition: newCondition })
+            }}
+            className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
+          >
+            <option value="timeout">Timeout (Steps)</option>
+            <option value="reach_goal">Goal Reached</option>
+            <option value="hit_trap">Trap Hit</option>
+            <option value="step">Per Step</option>
+            <option value="collect_key">Key Collected</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        {rule.condition?.type === 'timeout' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground w-12">Steps:</label>
+            <input
+              type="number"
+              min="1"
+              value={(rule.condition as any)?.steps || 1}
+              onChange={(e) => {
+                onUpdate({
+                  condition: {
+                    type: 'timeout',
+                    steps: parseInt(e.target.value, 10) || 1,
+                  } as ConditionSpec,
+                })
+              }}
+              className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground w-12">Reward:</label>
           <input
             type="number"
             step="0.1"
             value={rule.reward}
             onChange={(e) => onUpdate({ reward: parseFloat(e.target.value) || 0 })}
-            className="flex-1 px-2 py-1 border border-border rounded text-xs"
+            className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
           />
           <span
             className={`text-xs font-mono w-16 text-right ${rule.reward >= 0 ? 'text-green-600' : 'text-red-600'}`}
@@ -324,6 +379,7 @@ function RewardRuleCard({
             {rule.reward}
           </span>
         </div>
+
         <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
@@ -349,20 +405,71 @@ function TerminationRuleCard({
   onUpdate: (updates: Partial<TerminationRule>) => void
   onRemove: () => void
 }) {
+  const getConditionLabel = (condition: ConditionSpec) => {
+    if (!condition) return 'Unknown'
+    if (condition.type === 'timeout') return 'Timeout (Steps)'
+    if (condition.type === 'reach_goal') return 'Goal Reached'
+    if (condition.type === 'hit_trap') return 'Trap Hit'
+    if (condition.type === 'agent_at_object') return 'Agent at Object'
+    if (condition.type === 'collision') return 'Collision'
+    return condition.type || 'Custom'
+  }
+
   return (
     <div className="p-3 border border-border rounded bg-muted/30">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium">Termination Condition</span>
         <button onClick={onRemove} className="text-xs text-red-600 hover:text-red-800">
           ×
         </button>
       </div>
-      <ConditionBuilder
-        condition={rule.condition}
-        envSpec={envSpec}
-        onChange={(condition) => onUpdate({ condition })}
-        scriptType="termination"
-      />
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground w-12">IF:</label>
+          <select
+            value={rule.condition?.type || ''}
+            onChange={(e) => {
+              const conditionType = e.target.value
+              let newCondition: ConditionSpec = { type: conditionType as any }
+              
+              // Set default steps for timeout
+              if (conditionType === 'timeout') {
+                newCondition = { type: 'timeout', steps: (rule.condition as any)?.steps || 1 }
+              }
+              
+              onUpdate({ condition: newCondition })
+            }}
+            className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
+          >
+            <option value="timeout">Timeout (Steps)</option>
+            <option value="reach_goal">Goal Reached</option>
+            <option value="hit_trap">Trap Hit</option>
+            <option value="agent_at_object">Agent at Object</option>
+            <option value="collision">Collision</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        {rule.condition?.type === 'timeout' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground w-12">Steps:</label>
+            <input
+              type="number"
+              min="1"
+              value={(rule.condition as any)?.steps || 1}
+              onChange={(e) => {
+                onUpdate({
+                  condition: {
+                    type: 'timeout',
+                    steps: parseInt(e.target.value, 10) || 1,
+                  } as ConditionSpec,
+                })
+              }}
+              className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -378,27 +485,77 @@ function EventRuleCard({
   onUpdate: (updates: Partial<EventRule>) => void
   onRemove: () => void
 }) {
+  const getConditionLabel = (condition: ConditionSpec) => {
+    if (!condition) return 'Unknown'
+    if (condition.type === 'timeout') return 'Timeout (Steps)'
+    if (condition.type === 'reach_goal') return 'Goal Reached'
+    if (condition.type === 'hit_trap') return 'Trap Hit'
+    if (condition.type === 'agent_at_object') return 'Agent at Object'
+    if (condition.type === 'collision') return 'Collision'
+    return condition.type || 'Custom'
+  }
+
   return (
     <div className="p-3 border border-border rounded bg-muted/30">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium">Event Rule</span>
         <button onClick={onRemove} className="text-xs text-red-600 hover:text-red-800">
           ×
         </button>
       </div>
       <div className="space-y-2">
-        <ConditionBuilder
-          condition={rule.condition}
-          envSpec={envSpec}
-          onChange={(condition) => onUpdate({ condition })}
-          scriptType="custom"
-        />
         <div className="flex items-center gap-2">
-          <label className="text-xs text-muted-foreground w-20">Action:</label>
+          <label className="text-xs text-muted-foreground w-12">IF:</label>
+          <select
+            value={rule.condition?.type || ''}
+            onChange={(e) => {
+              const conditionType = e.target.value
+              let newCondition: ConditionSpec = { type: conditionType as any }
+              
+              // Set default steps for timeout
+              if (conditionType === 'timeout') {
+                newCondition = { type: 'timeout', steps: (rule.condition as any)?.steps || 1 }
+              }
+              
+              onUpdate({ condition: newCondition })
+            }}
+            className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
+          >
+            <option value="timeout">Timeout (Steps)</option>
+            <option value="reach_goal">Goal Reached</option>
+            <option value="hit_trap">Trap Hit</option>
+            <option value="agent_at_object">Agent at Object</option>
+            <option value="collision">Collision</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        {rule.condition?.type === 'timeout' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground w-12">Steps:</label>
+            <input
+              type="number"
+              min="1"
+              value={(rule.condition as any)?.steps || 1}
+              onChange={(e) => {
+                onUpdate({
+                  condition: {
+                    type: 'timeout',
+                    steps: parseInt(e.target.value, 10) || 1,
+                  } as ConditionSpec,
+                })
+              }}
+              className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground w-12">Action:</label>
           <select
             value={rule.action}
             onChange={(e) => onUpdate({ action: e.target.value })}
-            className="flex-1 px-2 py-1 border border-border rounded text-xs"
+            className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background"
           >
             <option value="spawn_object">Spawn Object</option>
             <option value="modify_property">Modify Property</option>

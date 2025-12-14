@@ -18,7 +18,29 @@ logger = logging.getLogger(__name__)
 
 
 def get_storage_client():
-    """Get cloud storage client based on infrastructure configuration."""
+    """
+    Get cloud storage client based on infrastructure configuration.
+    Uses credentials from .env file, NOT default AWS profile.
+    """
+    # Load .env before getting config
+    try:
+        from dotenv import load_dotenv
+        from pathlib import Path
+        
+        env_paths = [
+            Path(__file__).parent.parent.parent / ".env",
+            Path(__file__).parent.parent.parent.parent / ".env",
+            Path(__file__).parent.parent.parent / "tokens" / "prod.txt",
+            Path(__file__).parent.parent.parent / "tokens" / "dev.txt",
+        ]
+        
+        for env_path in env_paths:
+            if env_path.exists():
+                load_dotenv(env_path, override=True)
+                break
+    except ImportError:
+        pass
+    
     config = get_infrastructure_config()
     storage_config = config.get_storage_config()
     provider = storage_config["provider"]
@@ -27,15 +49,35 @@ def get_storage_client():
         try:
             import boto3
 
-            client = boto3.client(
-                "s3",
-                aws_access_key_id=storage_config.get("access_key_id"),
-                aws_secret_access_key=storage_config.get("secret_access_key"),
-                region_name=storage_config.get("region", "us-east-1"),
-                endpoint_url=storage_config.get(
-                    "endpoint_url"
-                ),  # For S3-compatible services
-            )
+            # Explicitly use credentials from .env - DO NOT use default AWS profile
+            access_key = storage_config.get("access_key_id") or os.getenv("AWS_ACCESS_KEY_ID")
+            secret_key = storage_config.get("secret_access_key") or os.getenv("AWS_SECRET_ACCESS_KEY")
+            region = storage_config.get("region") or os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+            
+            if not access_key or not secret_key:
+                raise ValueError(
+                    "AWS credentials must be set in .env file (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)"
+                )
+
+            # Unset AWS_PROFILE to bypass profile system and use .env credentials
+            old_profile = os.environ.get("AWS_PROFILE")
+            if old_profile:
+                del os.environ["AWS_PROFILE"]
+            
+            try:
+                client = boto3.client(
+                    "s3",
+                    aws_access_key_id=access_key,
+                    aws_secret_access_key=secret_key,
+                    region_name=region,
+                    endpoint_url=storage_config.get(
+                        "endpoint_url"
+                    ),  # For S3-compatible services
+                )
+            finally:
+                # Restore AWS_PROFILE if it was set
+                if old_profile:
+                    os.environ["AWS_PROFILE"] = old_profile
             logger.info(
                 f"✅ Initialized S3 client (bucket: {storage_config.get('bucket_name')})"
             )

@@ -5,22 +5,36 @@
 
 // Get backend service URL with proper local vs production handling
 const getBackendUrl = (): string => {
-  const envUrl = import.meta.env.VITE_TRAINING_SERVICE_URL
+  // In development mode, prioritize localhost
+  const isDevelopment = import.meta.env.MODE === 'development' || import.meta.env.DEV
 
-  // If explicitly set, use it
+  // Try multiple environment variables for backend URL
+  const envUrl =
+    import.meta.env.VITE_TRAINING_SERVICE_URL ||
+    import.meta.env.VITE_ROLLOUT_SERVICE_URL ||
+    import.meta.env.VITE_BACKEND_URL
+
+  // In development mode, check if env URL is localhost - if not, use localhost
+  if (isDevelopment) {
+    if (envUrl && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+      // Use the env URL if it's already localhost
+      return envUrl
+    }
+    // Force localhost in development, even if env var is set to production
+    console.log('🔧 Development mode: Using localhost:8000 for backend (ignoring production URL)')
+    return 'http://localhost:8000'
+  }
+
+  // In production, use env URL if set, otherwise warn
   if (envUrl) {
     return envUrl
   }
 
-  // In production, warn if not set (should be set)
-  if (import.meta.env.MODE === 'production') {
-    console.warn(
-      '⚠️ VITE_TRAINING_SERVICE_URL is not set in production. Defaulting to localhost:8000. ' +
-        'Please set your production backend URL in environment variables.'
-    )
-  }
-
-  // Default to localhost for local development
+  // Production but no URL set - warn and default to localhost (shouldn't happen in production)
+  console.warn(
+    '⚠️ Backend URL not set in production. Check VITE_TRAINING_SERVICE_URL, VITE_ROLLOUT_SERVICE_URL, or VITE_BACKEND_URL. ' +
+      'Defaulting to localhost:8000.'
+  )
   return 'http://localhost:8000'
 }
 
@@ -160,41 +174,130 @@ export function analyzeRewardStreaming(
     onError?: (error: Error) => void
   }
 ): () => void {
-  const ws = new WebSocket(`${WS_URL}/api/analysis/ws/reward`)
+  let ws: WebSocket | null = null
+  let timeoutId: NodeJS.Timeout | null = null
+  let connectionTimeoutId: NodeJS.Timeout | null = null
+  let isCleanedUp = false
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify(request))
+  const cleanup = () => {
+    if (timeoutId) clearTimeout(timeoutId)
+    if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      ws.close()
+    }
+    isCleanedUp = true
   }
 
-  ws.onmessage = (event) => {
+  // Fallback to HTTP if WebSocket fails
+  const fallbackToHTTP = async () => {
+    if (isCleanedUp) return
     try {
-      const data = JSON.parse(event.data)
-      if (data.type === 'started') {
-        callbacks.onProgress?.(0, data.message || 'Starting analysis...')
-      } else if (data.type === 'progress') {
-        callbacks.onProgress?.(data.progress || 0, data.message || 'Processing...')
-      } else if (data.type === 'complete') {
-        callbacks.onComplete?.(data.analysis)
-        ws.close()
-      } else if (data.type === 'error') {
-        callbacks.onError?.(new Error(data.error || 'Analysis failed'))
-        ws.close()
-      }
+      callbacks.onProgress?.(0.1, 'WebSocket unavailable, using HTTP fallback...')
+      const analysis = await analyzeReward(request)
+      callbacks.onComplete?.(analysis)
     } catch (error) {
-      callbacks.onError?.(new Error('Failed to parse WebSocket message'))
-      ws.close()
+      callbacks.onError?.(
+        new Error(
+          `Backend analysis failed: ${error instanceof Error ? error.message : String(error)}. ` +
+            `Make sure the backend is running at ${ANALYSIS_SERVICE_URL}`
+        )
+      )
     }
   }
 
-  ws.onerror = () => {
-    callbacks.onError?.(new Error('WebSocket connection failed. Backend required.'))
+  try {
+    ws = new WebSocket(`${WS_URL}/api/analysis/ws/reward`)
+
+    // Connection timeout (5 seconds)
+    connectionTimeoutId = setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.CONNECTING) {
+        console.warn('⚠️ WebSocket connection timeout, falling back to HTTP')
+        ws.close()
+        fallbackToHTTP()
+      }
+    }, 5000)
+
+    // Overall timeout (30 seconds)
+    timeoutId = setTimeout(() => {
+      if (!isCleanedUp) {
+        console.warn('⚠️ Analysis timeout after 30 seconds')
+        cleanup()
+        callbacks.onError?.(
+          new Error(
+            'Analysis timed out after 30 seconds. The backend might be slow or unresponsive. ' +
+              `Backend URL: ${ANALYSIS_SERVICE_URL}`
+          )
+        )
+      }
+    }, 30000)
+
+    ws.onopen = () => {
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+      if (isCleanedUp) {
+        ws?.close()
+        return
+      }
+      ws?.send(JSON.stringify(request))
+    }
+
+    ws.onmessage = (event) => {
+      if (isCleanedUp) return
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'started') {
+          callbacks.onProgress?.(0, data.message || 'Starting analysis...')
+        } else if (data.type === 'progress') {
+          callbacks.onProgress?.(data.progress || 0, data.message || 'Processing...')
+        } else if (data.type === 'complete') {
+          if (timeoutId) clearTimeout(timeoutId)
+          callbacks.onComplete?.(data.analysis)
+          cleanup()
+        } else if (data.type === 'error') {
+          if (timeoutId) clearTimeout(timeoutId)
+          callbacks.onError?.(new Error(data.error || 'Analysis failed'))
+          cleanup()
+        }
+      } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId)
+        callbacks.onError?.(new Error('Failed to parse WebSocket message'))
+        cleanup()
+      }
+    }
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+      // Don't call onError here if we're already trying HTTP fallback
+      if (ws?.readyState === WebSocket.CONNECTING) {
+        fallbackToHTTP()
+      } else {
+        callbacks.onError?.(
+          new Error(
+            `WebSocket connection failed. Backend may not be running at ${ANALYSIS_SERVICE_URL}. ` +
+              `Trying HTTP fallback...`
+          )
+        )
+        fallbackToHTTP()
+      }
+    }
+
+    ws.onclose = (event) => {
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+      // Only error if it wasn't a normal close and we haven't completed
+      if (event.code !== 1000 && !isCleanedUp && ws?.readyState !== WebSocket.CLOSING) {
+        // If we haven't received completion, try HTTP fallback
+        if (timeoutId) {
+          fallbackToHTTP()
+        }
+      }
+    }
+  } catch (error) {
+    if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+    console.error('Failed to create WebSocket:', error)
+    fallbackToHTTP()
   }
 
-  return () => {
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-      ws.close()
-    }
-  }
+  return cleanup
 }
 
 export async function analyzeTrajectory(
@@ -231,41 +334,130 @@ export function analyzeTrajectoryStreaming(
     onError?: (error: Error) => void
   }
 ): () => void {
-  const ws = new WebSocket(`${WS_URL}/api/analysis/ws/trajectory`)
+  let ws: WebSocket | null = null
+  let timeoutId: NodeJS.Timeout | null = null
+  let connectionTimeoutId: NodeJS.Timeout | null = null
+  let isCleanedUp = false
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify(request))
+  const cleanup = () => {
+    if (timeoutId) clearTimeout(timeoutId)
+    if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      ws.close()
+    }
+    isCleanedUp = true
   }
 
-  ws.onmessage = (event) => {
+  // Fallback to HTTP if WebSocket fails
+  const fallbackToHTTP = async () => {
+    if (isCleanedUp) return
     try {
-      const data = JSON.parse(event.data)
-      if (data.type === 'started') {
-        callbacks.onProgress?.(0, data.message || 'Starting trajectory analysis...')
-      } else if (data.type === 'progress') {
-        callbacks.onProgress?.(data.progress || 0, data.message || 'Processing...')
-      } else if (data.type === 'complete') {
-        callbacks.onComplete?.(data.analysis)
-        ws.close()
-      } else if (data.type === 'error') {
-        callbacks.onError?.(new Error(data.error || 'Analysis failed'))
-        ws.close()
-      }
+      callbacks.onProgress?.(0.1, 'WebSocket unavailable, using HTTP fallback...')
+      const analysis = await analyzeTrajectory(request)
+      callbacks.onComplete?.(analysis)
     } catch (error) {
-      callbacks.onError?.(new Error('Failed to parse WebSocket message'))
-      ws.close()
+      callbacks.onError?.(
+        new Error(
+          `Backend analysis failed: ${error instanceof Error ? error.message : String(error)}. ` +
+            `Make sure the backend is running at ${ANALYSIS_SERVICE_URL}`
+        )
+      )
     }
   }
 
-  ws.onerror = () => {
-    callbacks.onError?.(new Error('WebSocket connection failed. Backend required.'))
+  try {
+    ws = new WebSocket(`${WS_URL}/api/analysis/ws/trajectory`)
+
+    // Connection timeout (5 seconds)
+    connectionTimeoutId = setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.CONNECTING) {
+        console.warn('⚠️ WebSocket connection timeout, falling back to HTTP')
+        ws.close()
+        fallbackToHTTP()
+      }
+    }, 5000)
+
+    // Overall timeout (30 seconds)
+    timeoutId = setTimeout(() => {
+      if (!isCleanedUp) {
+        console.warn('⚠️ Analysis timeout after 30 seconds')
+        cleanup()
+        callbacks.onError?.(
+          new Error(
+            'Analysis timed out after 30 seconds. The backend might be slow or unresponsive. ' +
+              `Backend URL: ${ANALYSIS_SERVICE_URL}`
+          )
+        )
+      }
+    }, 30000)
+
+    ws.onopen = () => {
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+      if (isCleanedUp) {
+        ws?.close()
+        return
+      }
+      ws?.send(JSON.stringify(request))
+    }
+
+    ws.onmessage = (event) => {
+      if (isCleanedUp) return
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'started') {
+          callbacks.onProgress?.(0, data.message || 'Starting trajectory analysis...')
+        } else if (data.type === 'progress') {
+          callbacks.onProgress?.(data.progress || 0, data.message || 'Processing...')
+        } else if (data.type === 'complete') {
+          if (timeoutId) clearTimeout(timeoutId)
+          callbacks.onComplete?.(data.analysis)
+          cleanup()
+        } else if (data.type === 'error') {
+          if (timeoutId) clearTimeout(timeoutId)
+          callbacks.onError?.(new Error(data.error || 'Analysis failed'))
+          cleanup()
+        }
+      } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId)
+        callbacks.onError?.(new Error('Failed to parse WebSocket message'))
+        cleanup()
+      }
+    }
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+      // Don't call onError here if we're already trying HTTP fallback
+      if (ws?.readyState === WebSocket.CONNECTING) {
+        fallbackToHTTP()
+      } else {
+        callbacks.onError?.(
+          new Error(
+            `WebSocket connection failed. Backend may not be running at ${ANALYSIS_SERVICE_URL}. ` +
+              `Trying HTTP fallback...`
+          )
+        )
+        fallbackToHTTP()
+      }
+    }
+
+    ws.onclose = (event) => {
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+      // Only error if it wasn't a normal close and we haven't completed
+      if (event.code !== 1000 && !isCleanedUp && ws?.readyState !== WebSocket.CLOSING) {
+        // If we haven't received completion, try HTTP fallback
+        if (timeoutId) {
+          fallbackToHTTP()
+        }
+      }
+    }
+  } catch (error) {
+    if (connectionTimeoutId) clearTimeout(connectionTimeoutId)
+    console.error('Failed to create WebSocket:', error)
+    fallbackToHTTP()
   }
 
-  return () => {
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-      ws.close()
-    }
-  }
+  return cleanup
 }
 
 export async function analyzeTermination(

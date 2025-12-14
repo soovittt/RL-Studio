@@ -3,6 +3,8 @@ API route handlers
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 import os
 from datetime import datetime
@@ -191,12 +193,32 @@ async def run_rollout_http(request: RolloutRequest):
             "terminationReason": result.get("terminationReason"),
         }
 
+        # Save rollout to S3 if configured (non-blocking)
+        s3_url = None
+        try:
+            from ...utils.rollout_storage import save_rollout_to_s3
+            import hashlib
+            
+            # Generate env_id from env_spec hash (or use provided env_id if available)
+            env_spec_str = json.dumps(sanitized_spec, sort_keys=True)
+            env_id = hashlib.md5(env_spec_str.encode()).hexdigest()[:12]
+            
+            # Save full rollout data to S3
+            s3_url = save_rollout_to_s3(
+                rollout_data=result,
+                env_id=env_id,
+            )
+            logger.info(f"✅ Saved rollout to S3: {s3_url}")
+            result_dict["s3Url"] = s3_url  # Include S3 URL in response
+        except Exception as e:
+            # Don't fail rollout if S3 save fails - just log it
+            logger.warning(f"Failed to save rollout to S3 (non-critical): {e}")
+
         execution_time = asyncio.get_event_loop().time() - start_time
 
         return RolloutResponse(
             success=True, result=result_dict, executionTime=execution_time
         )
-
     except ValidationError as e:
         # Validation errors are user errors, not system errors
         logger.warning(f"Rollout validation failed: {e}", extra={"error_id": e.error_id})
@@ -228,6 +250,51 @@ async def run_rollout_http(request: RolloutRequest):
             error=f"{rl_error.user_message} (Error ID: {rl_error.error_id})",
             executionTime=execution_time,
         )
+
+
+@router.post("/rollout/load-from-s3")
+async def load_rollout_from_s3_endpoint(request: Dict[str, Any]):
+    """Load full rollout data from S3"""
+    try:
+        s3_url = request.get("s3Url")
+        if not s3_url:
+            return {"success": False, "error": "s3Url is required"}
+
+        from ...utils.rollout_storage import load_rollout_from_s3
+
+        rollout_data = load_rollout_from_s3(s3_url)
+
+        # Convert to response format
+        result_dict = {
+            "steps": [
+                {
+                    "state": {
+                        "agents": [
+                            {"id": a["id"], "position": a["position"]}
+                            for a in step.get("state", {}).get("agents", [])
+                        ],
+                        "objects": step.get("state", {}).get("objects", []),
+                        "step": step.get("state", {}).get("step", 0),
+                        "totalReward": step.get("state", {}).get("totalReward", 0),
+                        "done": step.get("state", {}).get("done", False),
+                        "info": step.get("state", {}).get("info", {}),
+                    },
+                    "action": step.get("action"),
+                    "reward": step.get("reward", 0),
+                    "done": step.get("done", False),
+                }
+                for step in rollout_data.get("steps", [])
+            ],
+            "totalReward": rollout_data.get("totalReward", 0),
+            "episodeLength": rollout_data.get("episodeLength", 0),
+            "success": rollout_data.get("success", False),
+            "terminationReason": rollout_data.get("terminationReason"),
+        }
+
+        return {"success": True, "result": result_dict}
+    except Exception as e:
+        logger.error(f"Failed to load rollout from S3: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @router.websocket("/ws/rollout")

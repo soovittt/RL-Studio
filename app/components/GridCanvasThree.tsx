@@ -427,24 +427,28 @@ function SceneContentInner({
         if (!agent || !agent.position || !Array.isArray(agent.position)) continue
         const [agentX, agentY] = agent.position
 
-        // Convert agent world position to grid coordinates
-        const agentGridX = Math.round(agentX / cellSize) // Use round instead of floor for better matching
-        const agentGridY = Math.round(agentY / cellSize)
+        // For grid environments, positions are already in grid coordinates (integers)
+        // For continuous environments, we need to convert world to grid
+        const isGrid = envSpec?.world?.coordinateSystem === 'grid'
+        const agentGridX = isGrid ? Math.round(agentX) : Math.round(agentX / cellSize)
+        const agentGridY = isGrid ? Math.round(agentY) : Math.round(agentY / cellSize)
 
         // Exact grid match
         if (agentGridX === gridX && agentGridY === gridY) {
           return agent
         }
 
-        // Tolerance check (for floating point precision)
-        const cellWorldX = worldPos[0]
-        const cellWorldY = worldPos[1]
-        const tolerance = cellSize * 0.6 // Increased tolerance
-        if (
-          Math.abs(agentX - cellWorldX) < tolerance &&
-          Math.abs(agentY - cellWorldY) < tolerance
-        ) {
-          return agent
+        // Tolerance check (for floating point precision in continuous mode)
+        if (!isGrid) {
+          const cellWorldX = worldPos[0]
+          const cellWorldY = worldPos[1]
+          const tolerance = cellSize * 0.6
+          if (
+            Math.abs(agentX - cellWorldX) < tolerance &&
+            Math.abs(agentY - cellWorldY) < tolerance
+          ) {
+            return agent
+          }
         }
       }
 
@@ -713,21 +717,25 @@ export function GridCanvasThree({
       if (!agent || !agent.position || !Array.isArray(agent.position)) continue
       const [agentX, agentY] = agent.position
 
-      // Convert agent world position to grid coordinates (use round for better matching)
-      const agentGridX = Math.round(agentX / cellSize)
-      const agentGridY = Math.round(agentY / cellSize)
+      // For grid environments, positions are already in grid coordinates (integers)
+      // For continuous environments, we need to convert world to grid
+      const isGrid = envSpec?.world?.coordinateSystem === 'grid'
+      const agentGridX = isGrid ? Math.round(agentX) : Math.round(agentX / cellSize)
+      const agentGridY = isGrid ? Math.round(agentY) : Math.round(agentY / cellSize)
 
       // Exact grid match
       if (agentGridX === gridX && agentGridY === gridY) {
         return agent
       }
 
-      // Tolerance check (for floating point precision)
-      const cellWorldX = worldPos[0]
-      const cellWorldY = worldPos[1]
-      const tolerance = cellSize * 0.6 // Increased tolerance
-      if (Math.abs(agentX - cellWorldX) < tolerance && Math.abs(agentY - cellWorldY) < tolerance) {
-        return agent
+      // Tolerance check (for floating point precision in continuous mode)
+      if (!isGrid) {
+        const cellWorldX = worldPos[0]
+        const cellWorldY = worldPos[1]
+        const tolerance = cellSize * 0.6
+        if (Math.abs(agentX - cellWorldX) < tolerance && Math.abs(agentY - cellWorldY) < tolerance) {
+          return agent
+        }
       }
     }
 

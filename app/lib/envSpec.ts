@@ -105,6 +105,10 @@ export type ConditionSpec =
   | { type: 'collision'; a: string; b: string }
   | { type: 'timeout'; steps: number }
   | { type: 'inside_region'; agentId: string; regionId: string }
+  | { type: 'step' }
+  | { type: 'reach_goal' }
+  | { type: 'hit_trap' }
+  | { type: 'collect_key' }
   | { type: 'custom'; script: string }
 
 export type RewardRule = {
