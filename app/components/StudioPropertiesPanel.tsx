@@ -107,27 +107,105 @@ export function StudioPropertiesPanel({
 
 function StructureMode({ envSpec, onSpecChange, selectedObjectId }: StudioPropertiesPanelProps) {
   const envType = envSpec?.envType || envSpec?.type || 'grid'
+  const [widthInput, setWidthInput] = useState<string>('')
+  const [heightInput, setHeightInput] = useState<string>('')
+  const [pendingChanges, setPendingChanges] = useState(false)
+
+  // Sync local state with envSpec when it changes externally
+  useEffect(() => {
+    if (envSpec?.world?.width !== undefined) {
+      setWidthInput(String(envSpec.world.width))
+    }
+  }, [envSpec?.world?.width])
+
+  useEffect(() => {
+    if (envSpec?.world?.height !== undefined) {
+      setHeightInput(String(envSpec.world.height))
+    }
+  }, [envSpec?.world?.height])
+
+  // Reset pending changes when envSpec updates
+  useEffect(() => {
+    setPendingChanges(false)
+  }, [envSpec?.world?.width, envSpec?.world?.height])
+
+  const applyGridSizeChanges = () => {
+    const width = parseInt(widthInput, 10) || envSpec?.world?.width || 10
+    const height = parseInt(heightInput, 10) || envSpec?.world?.height || 10
+    const validWidth = Math.max(1, Math.min(100, width))
+    const validHeight = Math.max(1, Math.min(100, height))
+    
+    setWidthInput(String(validWidth))
+    setHeightInput(String(validHeight))
+    setPendingChanges(false)
+    
+    onSpecChange({
+      ...envSpec,
+      world: {
+        ...envSpec?.world,
+        width: validWidth,
+        height: validHeight,
+      },
+    })
+  }
 
   if (envType === 'grid') {
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Grid Size</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium">Grid Size</label>
+            {pendingChanges && (
+              <button
+                onClick={applyGridSizeChanges}
+                className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
+              >
+                Apply
+              </button>
+            )}
+          </div>
           <div className="flex gap-2">
             <input
               type="number"
               min="1"
               max="100"
-              value={envSpec?.world?.width || 10}
+              value={widthInput || envSpec?.world?.width || 10}
               onChange={(e) => {
-                const width = parseInt(e.target.value) || 10
-                onSpecChange({
-                  ...envSpec,
-                  world: {
-                    ...envSpec?.world,
-                    width: Math.max(1, Math.min(100, width)),
-                  },
-                })
+                const inputValue = e.target.value
+                setWidthInput(inputValue) // Update local state immediately
+                
+                // Check if this is different from current value
+                const currentWidth = envSpec?.world?.width || 10
+                const newWidth = parseInt(inputValue, 10)
+                
+                if (!isNaN(newWidth) && newWidth >= 1 && newWidth <= 100 && newWidth !== currentWidth) {
+                  setPendingChanges(true)
+                  // Update immediately for real-time preview
+                  onSpecChange({
+                    ...envSpec,
+                    world: {
+                      ...envSpec?.world,
+                      width: newWidth,
+                    },
+                  })
+                } else if (inputValue === '' || isNaN(newWidth)) {
+                  setPendingChanges(true)
+                }
+              }}
+              onBlur={(e) => {
+                // Validate and clamp on blur
+                const width = parseInt(e.target.value, 10)
+                if (isNaN(width) || width < 1 || width > 100) {
+                  const validWidth = Math.max(1, Math.min(100, width || 10))
+                  setWidthInput(String(validWidth))
+                  onSpecChange({
+                    ...envSpec,
+                    world: {
+                      ...envSpec?.world,
+                      width: validWidth,
+                    },
+                  })
+                }
               }}
               className="w-full px-2 py-1 border border-input rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Width"
@@ -136,16 +214,43 @@ function StructureMode({ envSpec, onSpecChange, selectedObjectId }: StudioProper
               type="number"
               min="1"
               max="100"
-              value={envSpec?.world?.height || 10}
+              value={heightInput || envSpec?.world?.height || 10}
               onChange={(e) => {
-                const height = parseInt(e.target.value) || 10
-                onSpecChange({
-                  ...envSpec,
-                  world: {
-                    ...envSpec?.world,
-                    height: Math.max(1, Math.min(100, height)),
-                  },
-                })
+                const inputValue = e.target.value
+                setHeightInput(inputValue) // Update local state immediately
+                
+                // Check if this is different from current value
+                const currentHeight = envSpec?.world?.height || 10
+                const newHeight = parseInt(inputValue, 10)
+                
+                if (!isNaN(newHeight) && newHeight >= 1 && newHeight <= 100 && newHeight !== currentHeight) {
+                  setPendingChanges(true)
+                  // Update immediately for real-time preview
+                  onSpecChange({
+                    ...envSpec,
+                    world: {
+                      ...envSpec?.world,
+                      height: newHeight,
+                    },
+                  })
+                } else if (inputValue === '' || isNaN(newHeight)) {
+                  setPendingChanges(true)
+                }
+              }}
+              onBlur={(e) => {
+                // Validate and clamp on blur
+                const height = parseInt(e.target.value, 10)
+                if (isNaN(height) || height < 1 || height > 100) {
+                  const validHeight = Math.max(1, Math.min(100, height || 10))
+                  setHeightInput(String(validHeight))
+                  onSpecChange({
+                    ...envSpec,
+                    world: {
+                      ...envSpec?.world,
+                      height: validHeight,
+                    },
+                  })
+                }
               }}
               className="w-full px-2 py-1 border border-input rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Height"

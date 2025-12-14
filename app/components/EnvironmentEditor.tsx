@@ -312,40 +312,37 @@ export function EnvironmentEditor({ id: propId }: EnvironmentEditorProps = {}) {
     // Update sceneGraph
     sceneGraphRef.current = new SceneGraphManager(newSpec)
 
-    if (id === 'new') {
-      manuallySetRef.current = true // Mark as manually set
-      setLocalEnvSpec(newSpec)
-    } else {
-      // Update in Convex using universal format (old system)
+    // CRITICAL: Update local state IMMEDIATELY for real-time UI updates
+    // This ensures the UI updates instantly, even for saved environments
+    manuallySetRef.current = true // Mark as manually set
+    setLocalEnvSpec(newSpec)
+
+    if (id !== 'new') {
+      // Update in Convex in the background (async, non-blocking)
       updateMutation({
         id: id as any,
         envSpec: newSpec, // Store as universal EnvSpec
       })
 
-      // Also auto-save to Scene Service if scene exists
+      // Also auto-save to Scene Service if scene exists (async, non-blocking)
       if (sceneData?.scene && user?._id) {
-        try {
-          // Convert EnvSpec to sceneGraph + rlConfig
-          const sceneGraph = envSpecToSceneGraph(newSpec)
-          const rlConfig = envSpecToRLConfig(newSpec)
-
-          // Create new version (auto-save)
-          await createSceneVersion(id, {
-            sceneGraph,
-            rlConfig,
-            createdBy: user._id,
-          })
-
-          // Update scene metadata if name changed
-          if (newSpec.name && sceneData.scene.name !== newSpec.name) {
-            await updateScene(id, {
-              name: newSpec.name,
-              description: newSpec.metadata?.notes,
-            })
-          }
-        } catch (err) {
+        // Don't await - let it run in background
+        createSceneVersion(id, {
+          sceneGraph: envSpecToSceneGraph(newSpec),
+          rlConfig: envSpecToRLConfig(newSpec),
+          createdBy: user._id,
+        }).catch((err) => {
           console.warn('Failed to auto-save to Scene Service:', err)
-          // Non-critical error, continue
+        })
+
+        // Update scene metadata if name changed
+        if (newSpec.name && sceneData.scene.name !== newSpec.name) {
+          updateScene(id, {
+            name: newSpec.name,
+            description: newSpec.metadata?.notes,
+          }).catch((err) => {
+            console.warn('Failed to update scene metadata:', err)
+          })
         }
       }
     }

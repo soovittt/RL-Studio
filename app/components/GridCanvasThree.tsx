@@ -379,6 +379,11 @@ function SceneContentInner({
   const height = world.height
   const cellSize = world.cellSize || 1
 
+  // Debug: Log when dimensions change
+  useEffect(() => {
+    console.log('📐 Grid dimensions changed:', { width, height, cellSize })
+  }, [width, height, cellSize])
+
   const cells = useMemo(() => {
     if (!envSpec) {
       return []
@@ -492,13 +497,13 @@ function SceneContentInner({
       <pointLight position={[-10, 10, -10]} intensity={0.7} color="#ffffff" />
 
       {/* Manual grid lines - VERY VISIBLE using thick boxes - aligned with cell edges */}
-      <group position={[0, 0.06, 0]}>
+      <group position={[0, 0.06, 0]} key={`grid-lines-${width}-${height}`}>
         {/* Vertical lines - positioned at cell boundaries */}
         {Array.from({ length: width + 1 }, (_, i) => {
           // Lines at: -width/2, -width/2+1, ..., width/2
           const x = i - width / 2
           return (
-            <mesh key={`v-${i}`} position={[x, 0, 0]}>
+            <mesh key={`v-${width}-${height}-${i}`} position={[x, 0, 0]}>
               <boxGeometry args={[0.02, 0.02, height]} />
               <meshStandardMaterial color="#475569" />
             </mesh>
@@ -509,7 +514,7 @@ function SceneContentInner({
           // Lines at: -height/2, -height/2+1, ..., height/2
           const z = i - height / 2
           return (
-            <mesh key={`h-${i}`} position={[0, 0, z]}>
+            <mesh key={`h-${width}-${height}-${i}`} position={[0, 0, z]}>
               <boxGeometry args={[width, 0.02, 0.02]} />
               <meshStandardMaterial color="#475569" />
             </mesh>
@@ -521,7 +526,12 @@ function SceneContentInner({
       {cells}
 
       {/* Ground plane - positioned below grid cells */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, 0]} receiveShadow>
+      <mesh 
+        key={`ground-${width}-${height}`}
+        rotation={[-Math.PI / 2, 0, 0]} 
+        position={[0, -0.15, 0]} 
+        receiveShadow
+      >
         <planeGeometry args={[width + 4, height + 4]} />
         <meshStandardMaterial color="#e2e8f0" />
       </mesh>
@@ -529,7 +539,8 @@ function SceneContentInner({
   )
 }
 
-const SceneContent = memo(SceneContentInner)
+// Remove memo to ensure updates work - key-based remounting handles performance
+const SceneContent = SceneContentInner
 
 export function GridCanvasThree({
   envSpec,
@@ -653,6 +664,17 @@ export function GridCanvasThree({
   const width = world.width
   const height = world.height
   const cellSize = world.cellSize || 1
+
+  // Debug: Log when envSpec world dimensions change
+  useEffect(() => {
+    console.log('🔍 GridCanvasThree - World dimensions:', { 
+      width, 
+      height, 
+      cellSize,
+      worldWidth: world.width,
+      worldHeight: world.height
+    })
+  }, [width, height, cellSize, world.width, world.height])
 
   // Convert grid position to world coordinates
   const gridToWorld = (gridX: number, gridY: number): Vec2 => {
@@ -1041,6 +1063,7 @@ export function GridCanvasThree({
           />
 
           <SceneContent
+            key={`grid-${width}-${height}`}
             envSpec={envSpec}
             rolloutState={rolloutState}
             onCellClick={handleCellClick}
