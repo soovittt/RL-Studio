@@ -13,9 +13,35 @@ interface CodeReviewPanelProps {
   onFixAll?: () => void
 }
 
+interface ReviewIssue {
+  severity: 'error' | 'warning' | 'info'
+  file: string
+  line?: number
+  message: string
+  suggestion?: string
+  category: string
+}
+
+interface ReviewSuggestion {
+  title: string
+  description: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+interface ReviewResult {
+  success: boolean
+  review?: {
+    score: number
+    issues: ReviewIssue[]
+    summary: string
+    suggestions?: ReviewSuggestion[]
+  }
+  error?: string
+}
+
 export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelProps) {
   const [isReviewing, setIsReviewing] = useState(true)
-  const [reviewResult, setReviewResult] = useState<any>(null)
+  const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const reviewAction = useAction(api.coderabbit.reviewExportedCode)
@@ -83,9 +109,9 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
     return null
   }
 
-  const errorCount = review.issues.filter((i: any) => i.severity === 'error').length
-  const warningCount = review.issues.filter((i: any) => i.severity === 'warning').length
-  const infoCount = review.issues.filter((i: any) => i.severity === 'info').length
+  const errorCount = review.issues.filter((i) => i.severity === 'error').length
+  const warningCount = review.issues.filter((i) => i.severity === 'warning').length
+  const infoCount = review.issues.filter((i) => i.severity === 'info').length
 
   const scoreColor =
     review.score >= 80 ? 'text-green-600' : review.score >= 60 ? 'text-yellow-600' : 'text-red-600'
@@ -132,7 +158,7 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Issues Found</h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {review.issues.map((issue: any, idx: number) => (
+              {review.issues.map((issue, idx: number) => (
                 <div
                   key={idx}
                   className={`p-3 rounded border-l-4 ${
@@ -180,7 +206,7 @@ export function CodeReviewPanel({ files, onClose, onFixAll }: CodeReviewPanelPro
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Suggestions</h3>
             <div className="space-y-2">
-              {review.suggestions.map((suggestion: any, idx: number) => (
+              {review.suggestions.map((suggestion, idx: number) => (
                 <div
                   key={idx}
                   className={`p-3 rounded border ${

@@ -1,9 +1,8 @@
-import { useMemo, memo } from 'react'
+import { memo } from 'react'
 import { EnvSpec, Vec2 } from '~/lib/envSpec'
 import { SceneGraphManager } from '~/lib/sceneGraph'
 import { GridCanvasThree } from './GridCanvasThree'
 import { ContinuousCanvasThree } from './ContinuousCanvasThree'
-import { BanditCanvas } from './BanditCanvas'
 
 interface EnvironmentCanvasProps {
   envSpec: EnvSpec

@@ -1,10 +1,8 @@
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
-import { useAuth } from '~/lib/auth'
 
 export function Dashboard() {
-  const { user } = useAuth()
   const runs = useQuery(api.runs.listRecent, {})
   const envs = useQuery(api.environments.listRecent, {})
 

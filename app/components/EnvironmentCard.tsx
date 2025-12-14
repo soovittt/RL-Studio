@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api.js'
 import type { Id } from '../../convex/_generated/dataModel'
-import { updateScene, getScene } from '~/lib/sceneClient'
+import { updateScene } from '~/lib/sceneClient'
 
 interface EnvironmentCardProps {
   env: {
